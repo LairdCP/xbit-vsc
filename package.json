@@ -15,8 +15,12 @@
     "languages": [
       {
         "id": "hex",
-        "extensions": [".hex"],
-        "aliases": ["Binary"]
+        "extensions": [
+          ".hex"
+        ],
+        "aliases": [
+          "Binary"
+        ]
       }
     ],
     "viewsContainers": {
@@ -27,7 +31,7 @@
           "icon": "resources/dark/usb-device.svg"
         }
       ]
-    },  
+    },
     "views": {
       "xbit-tools": [
         {
@@ -51,7 +55,23 @@
       {
         "command": "usbDevices.writeHexFile",
         "title": "Write Hex File"
-      }
+      },
+      {
+        "command": "usbDevices.connectUsbDevice",
+        "title": "Connect"
+      },
+      {
+        "command": "usbDevices.disconnectUsbDevice",
+        "title": "Disconnect"
+      },
+      {
+        "command": "usbDevices.createTerminal",
+        "title": "Extension Terminal: Create"
+      },
+      {
+        "command": "usbDevices.clearTerminal",
+        "title": "Extension Terminal: Clear"
+      }  
     ],
     "menus": {
       "view/title": [
@@ -66,8 +86,20 @@
           "command": "usbDevices.writeHexFile",
           "when": "resourceLangId == hex"
         }
+      ],
+      "view/item/context": [
+        {
+          "command": "usbDevices.connectUsbDevice",
+          "when": "viewItem == usbDevice",
+          "group": "inline"
+        },
+        {
+          "command": "usbDevices.disconnectUsbDevice",
+          "when": "viewItem == usbDeviceConnected",
+          "group": "inline"
+        }
       ]
-    }  
+    }
   },
   "scripts": {
     "lint": "eslint .",
@@ -86,6 +118,7 @@
     "typescript": "^5.1.3"
   },
   "dependencies": {
+    "async": "^3.2.4",
     "serialport": "^11.0.0"
   }
 }
