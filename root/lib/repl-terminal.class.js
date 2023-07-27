@@ -15,8 +15,8 @@ class ReplTerminal {
       handleInput: (data) => {
         if (data === '\r') { // Enter
           if (this.inputCallback) {
-            this.inputCallback(`${line}\r\n`)
-          }  
+            this.inputCallback(`${line}\r`)
+          }
           line = '';
           return;
         }
@@ -26,13 +26,13 @@ class ReplTerminal {
           }
           line = line.substring(0, line.length - 1);
           // Move cursor backward
-          this.write('\x1b[D');
+          this._write('\x1b[D');
           // Delete character
-          this.write('\x1b[P');
+          this._write('\x1b[P');
           return;
         }
         line += data
-        this.write(data)
+        this._write(data)
       }
     };
     this.terminal = vscode.window.createTerminal({ name: this.name, pty });
@@ -44,6 +44,11 @@ class ReplTerminal {
   }
 
   write (data) {
+    // some terminals will echo writes, so ignore it
+    this.writeEmitter.fire(data);
+  }
+
+  _write (data) {
     this.writeEmitter.fire(data);
   }
 

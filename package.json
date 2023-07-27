@@ -26,19 +26,24 @@
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "xbit-tools",
+          "id": "xbit-devices",
           "title": "xbit",
           "icon": "resources/dark/usb-device.svg"
         }
       ]
     },
     "views": {
-      "xbit-tools": [
+      "xbit-devices": [
         {
           "id": "usbDevices",
-          "name": "USB Devices",
+          "name": "USB devices",
           "icon": "resources/dark/usb-device.svg",
           "contextualTitle": "USB Devices"
+        },
+        {
+          "id": "usbDevice.optionsView",
+          "name": "Selected Device",
+          "type": "webview"
         }
       ]
     },

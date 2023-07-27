@@ -1,9 +1,9 @@
 const vscode = require('vscode')
 const fs  = require('fs')
 const path = require('path');
-const { SerialPort } = require('serialport')
+const { SerialPort, ReadlineParser } = require('serialport')
 const async = require('async')
-const ReplTerminal = require('./lib/repl-terminal.class')
+const ReplTerminal = require('../lib/repl-terminal.class')
 
 class UsbDevicesProvider {
   constructor(workspaceRoot, context) {
@@ -13,6 +13,8 @@ class UsbDevicesProvider {
     this.connected = false
     this.items = []
     this.serialPort = null
+    this.parser = null
+    this.lastSentHex = null
   }
 
   get onDidChangeTreeData () {
@@ -42,13 +44,35 @@ class UsbDevicesProvider {
         this.terminal = new ReplTerminal(this.context)
         this.terminal.onInput((data) => {
           // send line to the serial port
+          const hex = Buffer.from(data).toString('hex')
+          this.lastSentHex = hex
+          // console.log('write to serial', hex, data)
           this.serialPort.write(data)
         })
       }
     })
-    
+
+    // this.parser = new ReadlineParser({ delimiter: '\r' })
+    // this.serialPort.pipe(this.parser)
+
+    // this.parser.on('data', (data) => {
+    //   const hex = Buffer.from(data).toString('hex')
+    //   console.log('prite from serial', hex, data.toString())
+    //   if (this.terminal) {
+    //     this.terminal.write(data.toString())
+    //   }
+    // })
+
+    // 0d 0a 1b 5b 6d 1b 5b 31 3b 33 32 6d  756172743a7e2420
+    // CR LF ES [  m  ES [  1  ;  3  2  m
+
     this.serialPort.on('data', (data) => {
+      // console.log('write from serial', data.toString('hex'), data.toString('utf-8'))
       if (this.terminal) {
+        // for terminal interfaces that echo the input
+        if (this.lastSentHex + '0a' === data.toString('hex')) {
+          return this.terminal.write('\n\r')
+        }
         this.terminal.write(data.toString())
       }
     })
@@ -92,7 +116,6 @@ class UsbDevicesProvider {
     if (element) {
       // connect to device by path and query device files
       // populate tree items
-
       const boot = new UsbDeviceFile('boot.py')
       const main = new UsbDeviceFile('main.py')
 
@@ -231,18 +254,18 @@ class UsbDevice extends vscode.TreeItem {
   get iconPath() {
     if (this.replCapable) {
       return {
-        light: path.join(__filename, '..', '..', 'resources', 'light', 'repl-device.svg'),
-        dark: path.join(__filename, '..', '..', 'resources', 'dark', 'repl-device.svg')
+        light: path.join(__filename, '../../..', 'resources', 'light', 'repl-device.svg'),
+        dark: path.join(__filename, '../../..', 'resources', 'dark', 'repl-device.svg')
       }
     } else if (this.type === 'uart') {
       return {
-        light: path.join(__filename, '..', '..', 'resources', 'light', 'uart-device.svg'),
-        dark: path.join(__filename, '..', '..', 'resources', 'dark', 'uart-device.svg')
+        light: path.join(__filename, '../../..', 'resources', 'light', 'uart-device.svg'),
+        dark: path.join(__filename, '../../..', 'resources', 'dark', 'uart-device.svg')
       }
     } else {
       return {
-        light: path.join(__filename, '..', '..', 'resources', 'light', 'usb-device.svg'),
-        dark: path.join(__filename, '..', '..', 'resources', 'dark', 'usb-device.svg')
+        light: path.join(__filename, '../../..', 'resources', 'light', 'usb-device.svg'),
+        dark: path.join(__filename, '../../..', 'resources', 'dark', 'usb-device.svg')
       }
     }
   }
