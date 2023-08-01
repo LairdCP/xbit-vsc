@@ -15,6 +15,7 @@ class UsbDevicesProvider {
     this.serialPort = null
     this.parser = null
     this.lastSentHex = null
+    this.resultBuffer = ''
   }
 
   get onDidChangeTreeData () {
@@ -26,58 +27,99 @@ class UsbDevicesProvider {
 	}
 
   connect (element) {
-    // if connected, disconnect
+    return new Promise((resolve, reject) => {
+      if (element.path === this.connected) {
+        return resolve()
+      } else if (this.connected) {
+        this.disconnect()
+      }
 
-    this.connected = element.path
-    this.serialPort = new SerialPort({
-      path: element.path,
-      baudRate: element.baudRate
+      this.connected = element.path
+      this.serialPort = new SerialPort({
+        path: element.path,
+        baudRate: element.baudRate || 115200
+      }, (error) => {
+        if (error) {
+          // notify user of error
+          vscode.window.showInformationMessage(`Error opening port: ${error.message}`);
+          reject(error)
+        } else {
+          vscode.window.showInformationMessage(`Port Connected: ${this.connected}`);
+          this.refresh()
+
+          // open terminal
+          this.terminal = new ReplTerminal(this.context)
+          this.terminal.onInput((data) => {
+            // send line to the serial port
+            const hex = Buffer.from(data).toString('hex')
+            this.lastSentHex = hex
+            // console.log('write to serial', hex, data)
+            this.serialPort.write(data)
+          })
+          resolve()
+        }
+      })
+
+      this.serialPort.on('data', (data) => {
+        this.resultBuffer += data.toString()
+        if (this.terminal) {
+          // for terminal interfaces that echo the input
+          if (this.lastSentHex + '0a' === data.toString('hex') 
+            || this.lastSentHex === data.toString('hex')) {
+            return this.terminal.write('\n\r')
+          }
+          this.terminal.write(data.toString())
+        }
+      })
+    })
+  }
+
+  connectAndExecute (port, command, callback) {
+    let timedOut = false
+    const portTimeout = setTimeout(() => {
+      timedOut = true
+      closePort()
+    }, 1000)
+
+    const tempPort = new SerialPort({
+      path: port.path,
+      baudRate: 115200
     }, (error) => {
       if (error) {
-        // notify user of error
-        vscode.window.showInformationMessage(`Error closing port: ${error.message}`);
-      } else {
-        vscode.window.showInformationMessage(`Port Connected: ${this.connected}`);
-        this.refresh()
-
-        // open terminal
-        this.terminal = new ReplTerminal(this.context)
-        this.terminal.onInput((data) => {
-          // send line to the serial port
-          const hex = Buffer.from(data).toString('hex')
-          this.lastSentHex = hex
-          // console.log('write to serial', hex, data)
-          this.serialPort.write(data)
-        })
+        closePort()
       }
     })
 
-    // this.parser = new ReadlineParser({ delimiter: '\r' })
-    // this.serialPort.pipe(this.parser)
-
-    // this.parser.on('data', (data) => {
-    //   const hex = Buffer.from(data).toString('hex')
-    //   console.log('prite from serial', hex, data.toString())
-    //   if (this.terminal) {
-    //     this.terminal.write(data.toString())
-    //   }
-    // })
-
-    // 0d 0a 1b 5b 6d 1b 5b 31 3b 33 32 6d  756172743a7e2420
-    // CR LF ES [  m  ES [  1  ;  3  2  m
-
-    this.serialPort.on('data', (data) => {
-      // console.log('write from serial', data.toString('hex'), data.toString('utf-8'))
-      if (this.terminal) {
-        // for terminal interfaces that echo the input
-        if (this.lastSentHex + '0a' === data.toString('hex')) {
-          return this.terminal.write('\n\r')
-        }
-        this.terminal.write(data.toString())
+    const closePort = (error) => {
+      clearTimeout(portTimeout)
+      tempPort.removeAllListeners()
+      try {
+        tempPort.close()
+      } catch (error) {
+        console.log('error closing port', error)
       }
+      callback(error, receivedData)
+    }
+
+    let receivedData = ''
+    tempPort.on('data', (data) => {
+      // console.log('data', data.toString())
+      receivedData += data.toString()
     })
 
+    tempPort.on('open', () => {
+      tempPort.write(command)
+      setTimeout(() => {
+        closePort()
+      }, 100)
+    })
+
+    tempPort.on('error', (error) => {
+      if (timedOut) return
+      closePort(error)
+    })
   }
+
 
   disconnect () {
     this.connected = false
@@ -106,6 +148,8 @@ class UsbDevicesProvider {
   }
   
   getChildren(element) {
+    console.log('getChildren', element)
+
     // element is the parent tree item
     // workspaceRoot is falsey if not currently in a workspace, otherwise it's the path
     if (!this.workspaceRoot) {
@@ -118,6 +162,11 @@ class UsbDevicesProvider {
       // populate tree items
       const boot = new UsbDeviceFile('boot.py')
       const main = new UsbDeviceFile('main.py')
+
+      boot.command = {
+        command: 'usbDevices.openDeviceFile',
+        arguments: [boot, element]
+      }
 
       main.command = {
         command: 'usbDevices.openDeviceFile',
@@ -149,61 +198,21 @@ class UsbDevicesProvider {
               }
             }
 
-            let timedOut = false
-            const portTimeout = setTimeout(() => {
-              timedOut = true
-              tempPort.removeAllListeners()
-              tempPort.close()
-              next()
-            }, 1000)
-
-            const tempPort = new SerialPort({
-              path: port.path,
-              baudRate: 115200
-            }, (error) => {
-              if (error) {
-                closePort()
+            this.connectAndExecute(port, '\r\n', (error, result) => {
+              // if data is >>> it is a repl capable device
+              if (result.indexOf('>>>') > -1) {
+                let portItem = new UsbDevice(port.path, port.manufacturer, vscode.TreeItemCollapsibleState.Collapsed, 'repl')
+                this.items.push(portItem )
+              } else if (result.indexOf('uart:~$') > -1) {
+                let portItem = new UsbDevice(port.path, port.manufacturer, vscode.TreeItemCollapsibleState.Collapsed, 'uart')
+                this.items.push(portItem )
+              } else if (result) {
+                let portItem = new UsbDevice(port.path, port.manufacturer, vscode.TreeItemCollapsibleState.Collapsed, false)
+                this.items.push(portItem )
               }
+              next(error)
             })
 
-            const closePort = () => {
-              clearTimeout(portTimeout)
-              tempPort.removeAllListeners()
-              tempPort.close()
-              next()
-            }
-
-            let receivedData = null
-            tempPort.on('data', (data) => {
-              if (!receivedData) receivedData = ''
-              receivedData += data.toString()
-            })
-            tempPort.on('open', () => {
-              tempPort.write('\r\n')
-              setTimeout(() => {
-                // if data is >>> it is a repl capable device
-                if (receivedData.toString().indexOf('>>>') > -1) {
-                  let portItem = new UsbDevice(port.path, port.manufacturer, vscode.TreeItemCollapsibleState.Collapsed, 'repl')
-                  this.items.push(portItem )
-                } else if (receivedData.toString().indexOf('uart:~$') > -1) {
-                  let portItem = new UsbDevice(port.path, port.manufacturer, vscode.TreeItemCollapsibleState.Collapsed, 'uart')
-                  this.items.push(portItem )
-                } else if (receivedData) {
-                  let portItem = new UsbDevice(port.path, port.manufacturer, vscode.TreeItemCollapsibleState.Collapsed, false)
-                  this.items.push(portItem )
-                }
-                closePort()
-  
-                next()
-              }, 100)
-  
-            })
-            tempPort.on('error', (data) => {
-              if (timedOut) return
-              tempPort.removeAllListeners()
-              tempPort.close()
-              next()
-            })
           }, (error) => {
             if (error) {
               reject(error)
@@ -219,13 +228,43 @@ class UsbDevicesProvider {
     }
   }
 
-  pathExists(p) {
-    try {
-      fs.accessSync(p);
-    } catch (err) {
-      return false;
+  ls(element) {
+    if (this.connected === element.path) {
+
+    } else {
+
     }
-    return true;
+  }
+
+  writeWait(command, wait = 10, timeout = 1000) {
+    return new Promise((resolve, reject) => {
+      this.resultBuffer = ''
+      this.serialPort.write(command)
+      let waiting = setInterval(() => {
+        if (this.resultBuffer.indexOf('>>>') > -1) {
+          clearInterval(waiting)
+          clearTimeout(timeouting)
+
+          this.resultBuffer = this.resultBuffer.replace(command, '')
+          resolve(this.resultBuffer)
+          this.resultBuffer = ''
+        }
+
+        if (this.resultBuffer.indexOf('Error') > -1) {
+          clearInterval(waiting)
+          clearTimeout(timeouting)
+
+          this.resultBuffer = this.resultBuffer.replace(command, '')
+          reject(this.resultBuffer)
+          this.resultBuffer = ''
+        }
+      }, wait)
+
+      let timeouting = setTimeout(() => {
+        clearInterval(waiting)
+        reject('timeout')
+      }, timeout)
+    })
   }
 }
 
