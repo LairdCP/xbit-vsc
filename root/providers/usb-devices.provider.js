@@ -63,11 +63,6 @@ class UsbDevicesProvider {
       this.serialPort.on('data', (data) => {
         this.resultBuffer += data.toString()
         if (this.terminal) {
-          // for terminal interfaces that echo the input
-          if (this.lastSentHex + '0a' === data.toString('hex') 
-            || this.lastSentHex === data.toString('hex')) {
-            return this.terminal.write('\n\r')
-          }
           this.terminal.write(data.toString())
         }
       })

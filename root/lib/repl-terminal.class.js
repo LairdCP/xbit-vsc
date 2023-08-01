@@ -6,6 +6,7 @@ class ReplTerminal {
     this.name = opts.name || 'REPL'
     this.inputCallback = null
     this.terminal = null
+    this.history = []
 
     let line = '';
     const pty = {
@@ -13,12 +14,22 @@ class ReplTerminal {
       open: () => this.writeEmitter.fire('Hello\r\n'),
       close: () => { /* noop*/ },
       handleInput: (data) => {
+        // if up key
+        // erase line
+        // write line from history
+        // set history index
+        
+        if (this.inputCallback) {
+          // this callback is set by the UsbDevicesProvider
+          // it writes the input to the serial port for the usb device
+          this.inputCallback(data)
+        }
         if (data === '\r') { // Enter
-          if (this.inputCallback) {
-            this.inputCallback(`${line}\r`)
+          this.history.unshift(line);
+          if (this.history.length > 100) {
+            this.history.pop();
           }
           line = '';
-          return;
         }
         if (data === '\x7f') { // Backspace
           if (line.length === 0) {
@@ -32,7 +43,7 @@ class ReplTerminal {
           return;
         }
         line += data
-        this._write(data)
+        //this._write(data)
       }
     };
     this.terminal = vscode.window.createTerminal({ name: this.name, pty });
