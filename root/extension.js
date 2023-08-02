@@ -42,26 +42,24 @@ function activate(context) {
     outputChannel.appendLine(`opening file ${e.path}\n`)
     outputChannel.show()
 
-    const deviceContext = e.command.arguments[1]
-    const fileContext = e.command.arguments[0]
+    const deviceContext = e.parentDevice
     const devicePath = deviceContext.path.split('/').pop()
 
     let file
     try {
-      file = vscode.Uri.parse(`memfs:/${devicePath}/${e.path}`)
+      file = vscode.Uri.parse(`memfs:/${devicePath}${e.path}`)
       memFs.stat(file)
     } catch (error) {
       file = null
-      console.log('error', error)
+      // console.log('error', error)
     }
     // if file is already open, switch to it
     if (file) {
       vscode.window.showTextDocument(file)
     } else {
       // open file
-      const filePath = `/${e.path}`
       usbDevicesProvider.connect(deviceContext).then(() => {
-        return readFileFromDevice(usbDevicesProvider, filePath)
+        return readFileFromDevice(usbDevicesProvider, e.path)
       })
       .then((result) => {
         // convert to hex
@@ -70,14 +68,16 @@ function activate(context) {
         openFiles[e.path] = buffer.toString('utf8')
         // write file to memfs
         try {
-          memFs.stat(vscode.Uri.parse(`memfs:/${devicePath}/`))
+          memFs.stat(vscode.Uri.parse(`memfs:/${devicePath}`))
         } catch (error) {
-          memFs.createDirectory(vscode.Uri.parse(`memfs:/${devicePath}/`));
+          memFs.createDirectory(vscode.Uri.parse(`memfs:/${devicePath}`));
         }
-        memFs.writeFile(vscode.Uri.parse(`memfs:/${devicePath}/${e.path}`), Buffer.from(openFiles[e.path]), { create: true, overwrite: true })
-        const file = vscode.Uri.parse(`memfs:/${devicePath}/${e.path}`)
+        memFs.writeFile(vscode.Uri.parse(`memfs:/${devicePath}${e.path}`), Buffer.from(openFiles[e.path]), { create: true, overwrite: true })
+        const file = vscode.Uri.parse(`memfs:/${devicePath}${e.path}`)
         vscode.window.showTextDocument(file)
         console.log('opened file', file)
+
+        return usbDevicesProvider.disconnect(deviceContext)
       })
     }
   })
@@ -115,19 +115,6 @@ function activate(context) {
   tree.onDidChangeSelection(e => {
     console.log('onDidChangeSelection', e) // breakpoint here for debug
     usbDeviceWebViewProvider.webview.postMessage({ command: 'setPath', path: e.selection[0].path });
-
-    // if type is file, open file
-    // if (e.selection[0].contextValue === 'usbDeviceFile') {
-    //   //  connect?
-    //   // read file from connected device
-    //   usbDevicesProvider.openDeviceFile(e.selection[0], '/lfs1/main.py').then((doc) => {
-    //     console.log('opened file', doc)
-    //   // write to file system provider
-  	// 	// memFs.writeFile(vscode.Uri.parse(`memfs:/tty.usbmodem2104/file.txt`), Buffer.from('foo'), { create: true, overwrite: true });
-    //   })
-
-    // }
-
   })
   tree.onDidCollapseElement(e => {
     console.log('onDidCollapseElement', e) // breakpoint here for debug
@@ -140,25 +127,39 @@ function activate(context) {
   })
 
   // subscribe
-  context.subscriptions.push(tree)
+  // context.subscriptions.push(tree)
 
 	const usbDeviceWebViewProvider = new UsbDeviceWebViewProvider(context.extensionUri, 'usbDevice.optionsView');
-
 	context.subscriptions.push(
 		vscode.window.registerWebviewViewProvider(usbDeviceWebViewProvider.viewType, usbDeviceWebViewProvider));
 
   vscode.workspace.onDidChangeTextDocument(function(e) {
-    // console.log('Changed.', e);
+    console.log('Changed.', e);
   })
+
+  vscode.workspace.onDidCloseTextDocument(function(e) {
+    console.log('Closed.', e);
+  })
+
   vscode.workspace.onDidSaveTextDocument(function(e) {
-    // console.log('Saved!', e);
+    console.log('Saved!', e);
+
+    // should save to e.parentDevice.path
     const dataToWrite = e.getText()
     const fileName = e.uri.path.split('/').pop()
+    const devicePath = '/dev/' + e.uri.path.split('/')[1]
 
-    writeFileToDevice(usbDevicesProvider, fileName, dataToWrite).then((result) => {
-      // console.log('writeDeviceFile result', result)
+    usbDevicesProvider.connect({ path: devicePath }).then((result) => {
+      console.log('connect result', result)
+      return writeFileToDevice(usbDevicesProvider, fileName, dataToWrite)
+    }).then((result) => {
+      // remove the tree cache for the parent folder
+      // e.uri.path.split('/')[1]
+      console.log('writeDeviceFile result', result)
+      return usbDevicesProvider.disconnect({ path: devicePath })
+    }).then((result) => {
+      console.log('disconnect result', result)
     })
-
   })
 }
 
@@ -177,11 +178,12 @@ const readFileFromDevice = (usbDevicesProvider, filePath) => {
   let rate = 256
   let resultData = ''
 
+  console.log('readFileFromDevice', filePath)
   console.time('readFileFromDevice')
   const read = async () => {
     let result
     try {
-      result = await usbDevicesProvider.writeWait(`f.read(${rate})\r`, 100)
+      result = await usbDevicesProvider.writeWait(`f.read(${rate})\r`, 1000)
       // console.log('read result', result)
     } catch (error) {
       console.log('error', error)
@@ -215,6 +217,9 @@ const readFileFromDevice = (usbDevicesProvider, filePath) => {
     // console.log('close result', result)
     console.timeEnd('readFileFromDevice')
     return resultData
+  }).catch((error) => {
+    console.timeEnd('readFileFromDevice')
+    return Promise.reject(error)
   })
 }
 
@@ -223,15 +228,15 @@ const writeFileToDevice = (usbDevicesProvider, filePath, data) => {
 
   const write = async () => {
     try {
-      let byteString = Buffer.from(data, 'ascii').toString('hex').slice(offset, 256).match(/[\s\S]{2}/g) || []
+      let byteString = Buffer.from(data, 'ascii').toString('hex').slice(offset, offset + 50).match(/[\s\S]{2}/g) || []
       byteString = `f.write(b'\\x${byteString.join('\\x')}')\r`
-      // console.log('write', byteString)
+      console.log('write', offset, data.length, byteString)
       await usbDevicesProvider.writeWait(byteString)
     } catch (error) {
       console.log('error', error)
       return Promise.reject(error)
     }
-    offset += 256
+    offset += 50
     if (offset < data.length) {
       return write()
     } else {
@@ -251,8 +256,4 @@ const writeFileToDevice = (usbDevicesProvider, filePath, data) => {
       return usbDevicesProvider.writeWait(`f.close()\r`, 1000)
     })
   })
-}
-
-const readDirFromDevice = (usbDevicesProvider, dirPath) => {
-  return usbDevicesProvider.writeWait(`listdir('${dirPath}')\r`)
 }
