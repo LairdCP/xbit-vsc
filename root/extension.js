@@ -7,6 +7,7 @@ const UsbDevicesProvider = require('./providers/usb-devices.provider')
 const UsbDeviceWebViewProvider = require('./providers/usb-device-webview.provider')
 const { MemFSProvider } = require('./providers/file-system.provider')
 
+let usbDevicesProvider
 /**
  * @param {vscode.ExtensionContext} context
  */
@@ -28,11 +29,14 @@ function activate(context) {
     ? vscode.workspace.workspaceFolders[0].uri.fsPath
     : undefined
   
-  const usbDevicesProvider = new UsbDevicesProvider(rootPath, context)
+  usbDevicesProvider = new UsbDevicesProvider(rootPath, context)
   vscode.window.registerTreeDataProvider('usbDevices', usbDevicesProvider)
-  vscode.commands.registerCommand('usbDevices.refreshEntry', () =>
+  vscode.commands.registerCommand('usbDevices.refreshEntry', () => {
+    // clear the cached devices list to hard refresh
+    usbDevicesProvider.usbDeviceNodes.length = 0
+    usbDevicesProvider.hiddenUsbDeviceNodes.length = 0
     usbDevicesProvider.refresh()
-  )
+  })
 
   // called when a python file on a connected device is selected
   vscode.commands.registerCommand('usbDevices.openDeviceFile', (e) => {
@@ -58,8 +62,8 @@ function activate(context) {
       vscode.window.showTextDocument(file)
     } else {
       // open file
-      usbDevicesProvider.connect(deviceContext).then(() => {
-        return readFileFromDevice(usbDevicesProvider, e.path)
+      usbDevicesProvider.connect(deviceContext, { skipRefresh: true }).then(() => {
+        return readFileFromDevice(usbDevicesProvider, e)
       })
       .then((result) => {
         // convert to hex
@@ -96,7 +100,6 @@ function activate(context) {
     outputChannel.appendLine(`connecting to device ${context.path}\n`)
     outputChannel.show()
     usbDevicesProvider.connect(context)
-
   })
 
   vscode.commands.registerCommand('usbDevices.disconnectUsbDevice', (context) => {
@@ -164,7 +167,9 @@ function activate(context) {
 }
 
 // This method is called when your extension is deactivated
-function deactivate() {}
+function deactivate() {
+  usbDevicesProvider.disconnectAll()
+}
 
 module.exports = {
 	activate,
@@ -173,53 +178,76 @@ module.exports = {
 
 
 // given a filePath, read the file from the device in 64 byte chunks
-const readFileFromDevice = (usbDevicesProvider, filePath) => {
+const readFileFromDevice = (usbDevicesProvider, fileNode) => {
   let data = ''
-  let rate = 256
+  let rate = 64
   let resultData = ''
+  let size = fileNode.size * 2
 
-  console.log('readFileFromDevice', filePath)
+  console.log('readFileFromDevice', fileNode.path)
   console.time('readFileFromDevice')
-  const read = async () => {
-    let result
-    try {
-      result = await usbDevicesProvider.writeWait(`f.read(${rate})\r`, 1000)
-      // console.log('read result', result)
-    } catch (error) {
-      console.log('error', error)
-      return Promise.reject(error)
-    } 
 
-    // loop until returned bytes is less than 64
-    const chunk = Buffer.from(result.slice(result.indexOf("'") + 1, result.lastIndexOf("'")).split('\\x').join(''), 'hex').toString('hex')
-    data += chunk
+  return new Promise((resolve, reject) => {
+    vscode.window.withProgress({
+      location: vscode.ProgressLocation.Notification,
+      title: `Loading ${fileNode.path}`,
+      cancellable: true
+    }, (progress, token) => {
 
-    if (chunk.length === rate * 2) { // 64 bytes
-      return read()
-    } else {
-      return Promise.resolve(data)
-    }
-  }
-  // open file
-  return usbDevicesProvider.writeWait(`f = open('${filePath}', 'rb')\r`, 1000)
-  .then((result) => {
-    if (result.indexOf('>>>') === -1) {
-      return Promise.reject(result)
-    }
-    return read()
-  })
-  .then((result) => {
-    resultData = result
-    // close file
-    return usbDevicesProvider.writeWait(`f.close()\r`, 1000)
-  })
-  .then((result) => {
-    // console.log('close result', result)
-    console.timeEnd('readFileFromDevice')
-    return resultData
-  }).catch((error) => {
-    console.timeEnd('readFileFromDevice')
-    return Promise.reject(error)
+      let canceled = false
+      token.onCancellationRequested(() => {
+        console.log("User canceled the long running operation");
+        canceled = true
+      });
+
+      const read = async () => {
+        let result
+        try {
+          result = await usbDevicesProvider.writeWait(`hex(f.read(${rate}))\r`, 1000)
+          // console.log('read result', result)
+        } catch (error) {
+          console.log('error', error)
+          return Promise.reject(error)
+        } 
+
+        // loop until returned bytes is less than 64
+        const chunk = Buffer.from(result.slice(result.indexOf("'") + 1, result.lastIndexOf("'")), 'hex').toString('hex')
+        data += chunk
+        let increment = Math.round((chunk.length / size) * 100)
+        progress.report({ increment, message: "Loading File..." })
+
+        if (chunk.length === rate * 2) {
+          return read()
+        } else if (canceled) {
+          return Promise.reject('canceled')
+        } else {
+          return Promise.resolve(data)
+        }
+      }
+
+      // open file
+      return usbDevicesProvider.writeWait(`f = open('${fileNode.path}', 'rb')\r`, 1000)
+      .then((result) => {
+        if (result.indexOf('>>>') === -1) {
+          return reject(result)
+        }
+        return read()
+      })
+      .then((result) => {
+        resultData = result
+        // close file
+        return usbDevicesProvider.writeWait(`f.close()\r`, 1000)
+      })
+      .then((result) => {
+        // console.log('close result', result)
+        console.timeEnd('readFileFromDevice')
+        resolve(resultData)
+      }).catch((error) => {
+        console.timeEnd('readFileFromDevice')
+        console.log('rejected error', error)
+        return reject(error)
+      })
+    })
   })
 }
 
@@ -230,14 +258,13 @@ const writeFileToDevice = (usbDevicesProvider, filePath, data) => {
     try {
       let byteString = Buffer.from(data, 'ascii').toString('hex').slice(offset, offset + 50).match(/[\s\S]{2}/g) || []
       byteString = `f.write(b'\\x${byteString.join('\\x')}')\r`
-      console.log('write', offset, data.length, byteString)
       await usbDevicesProvider.writeWait(byteString)
     } catch (error) {
       console.log('error', error)
       return Promise.reject(error)
     }
     offset += 50
-    if (offset < data.length) {
+    if (offset < data.length * 2) {
       return write()
     } else {
       return Promise.resolve()

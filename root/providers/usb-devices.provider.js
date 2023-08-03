@@ -31,6 +31,7 @@ class UsbDevicesProvider {
 	}
 
   connect (element, opts = {}) {
+    console.log('connect', element, opts)
     return new Promise((resolve, reject) => {
       if (element.path === this.connected) {
         return resolve()
@@ -48,6 +49,7 @@ class UsbDevicesProvider {
           vscode.window.showInformationMessage(`Error opening port: ${error.message}`);
           reject(error)
         } else {
+          element.contextValue = 'usbDeviceConnected'
           vscode.window.showInformationMessage(`Port Connected: ${this.connected}`);
           if (!opts.skipRefresh) {
             this.refresh()
@@ -59,7 +61,6 @@ class UsbDevicesProvider {
             // send line to the serial port
             const hex = Buffer.from(data).toString('hex')
             this.lastSentHex = hex
-            // console.log('write to serial', hex, data)
             this.serialPort.write(data)
           })
           resolve()
@@ -75,7 +76,7 @@ class UsbDevicesProvider {
     })
   }
 
-  disconnect (opts = {}) {
+  disconnect (element, opts = {}) {
     this.connected = false
     try {
       if (this.serialPort && this.serialPort.port) {
@@ -85,12 +86,19 @@ class UsbDevicesProvider {
         if (!opts.skipRefresh) {
           this.refresh()
         }
+        element.contextValue = 'usbDevice'
         vscode.window.showInformationMessage('Port Disconnected');
       }
     } catch (error) {
       console.log('error closing port', error)
       vscode.window.showInformationMessage(`Error closing port: ${error.message}`);
     }
+  }
+
+  disconnectAll () {
+    this.usbDeviceNodes.forEach((item) => {
+      this.disconnect(item, { skipRefresh: true })
+    })
   }
 
   // Connect to a port, execute a command, disconnect and return the result
@@ -152,9 +160,6 @@ class UsbDevicesProvider {
   }
 
   getTreeItem(element) {
-    if (element.path === this.connected) {
-      element.contextValue = 'usbDeviceConnected'
-    }
     return element
   }
   
@@ -163,6 +168,7 @@ class UsbDevicesProvider {
   _getUsbDevices() {
     return new Promise((resolve, reject) => {
       SerialPort.list().then((ports) => {
+        console.log(ports)
         // mark devices as pending. If they are not in the list after the scan, remove them
         this.usbDeviceNodes.forEach((item) => item.pending = true)
 
@@ -180,6 +186,7 @@ class UsbDevicesProvider {
           }
 
           this.connectAndExecute(port, '\r\n',).then((result) => {
+            console.log(port, result)
             // if data is >>> it is a repl capable device
             if (result.indexOf('>>>') > -1) {
               let portItem = new UsbDevice(port.path, port.manufacturer, vscode.TreeItemCollapsibleState.Collapsed, 'repl')
@@ -206,6 +213,7 @@ class UsbDevicesProvider {
           this.usbDeviceNodes = this.usbDeviceNodes.filter((item) => {
             return !item.pending
           })
+          console.log('usbDeviceNodes', this.usbDeviceNodes)
           resolve(this.usbDeviceNodes)
         })
       })
@@ -358,6 +366,7 @@ class UsbDevicesProvider {
             // split the result into lines
             result = result.split(',')
             result = result.map(r => r.trim().split(' ')).filter(r => r.length > 1)
+
             // result = [
             //   ['/boot.py', 'file', '131'],
             //   ['/main.py', 'file', '7271'],
