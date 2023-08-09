@@ -91,7 +91,7 @@
       {
         "command": "usbDevices.clearTerminal",
         "title": "Extension Terminal: Clear"
-      }  
+      }
     ],
     "menus": {
       "view/title": [
@@ -130,7 +130,6 @@
           "command": "usbDevices.renameDeviceFile",
           "when": "viewItem == usbDeviceFile"
         }
-
       ]
     }
   },
@@ -145,6 +144,7 @@
     "@types/node": "20.2.5",
     "@types/vscode": "^1.78.0",
     "@vscode/test-electron": "^2.3.2",
+    "esbuild": "^0.19.0",
     "eslint": "^8.41.0",
     "glob": "^8.1.0",
     "mocha": "^10.2.0",
