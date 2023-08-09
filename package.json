@@ -58,6 +58,21 @@
         "title": "Open Device File"
       },
       {
+        "command": "usbDevices.deleteDeviceFile",
+        "title": "Delete Device File",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "usbDevices.renameDeviceFile",
+        "title": "Rename Device File",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "usbDevices.createDeviceFile",
+        "title": "Create Device File",
+        "icon": "$(add)"
+      },
+      {
         "command": "usbDevices.writeHexFile",
         "title": "Write Hex File"
       },
@@ -102,7 +117,20 @@
           "command": "usbDevices.disconnectUsbDevice",
           "when": "viewItem == usbDeviceConnected",
           "group": "inline"
+        },
+        {
+          "command": "usbDevices.createDeviceFile",
+          "when": "viewItem == usbDevice || viewItem == usbDeviceConnected"
+        },
+        {
+          "command": "usbDevices.deleteDeviceFile",
+          "when": "viewItem == usbDeviceFile"
+        },
+        {
+          "command": "usbDevices.renameDeviceFile",
+          "when": "viewItem == usbDeviceFile"
         }
+
       ]
     }
   },

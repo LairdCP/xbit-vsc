@@ -17,7 +17,7 @@ function activate(context) {
 
 	// Use the console to output diagnostic information (console.log) and errors (console.error)
 	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "xbit-vsc" is now active!')
+	// console.log('Congratulations, your extension "xbit-vsc" is now active!')
 
   const memFs = new MemFSProvider();
 	context.subscriptions.push(vscode.workspace.registerFileSystemProvider('memfs', memFs, { isCaseSensitive: true }));
@@ -31,16 +31,61 @@ function activate(context) {
   
   usbDevicesProvider = new UsbDevicesProvider(rootPath, context)
   vscode.window.registerTreeDataProvider('usbDevices', usbDevicesProvider)
-  vscode.commands.registerCommand('usbDevices.refreshEntry', () => {
+  context.subscriptions.push(vscode.commands.registerCommand('usbDevices.refreshEntry', () => {
     // clear the cached devices list to hard refresh
     usbDevicesProvider.usbDeviceNodes.length = 0
     usbDevicesProvider.hiddenUsbDeviceNodes.length = 0
     usbDevicesProvider.refresh()
-  })
+  }))
+
+  context.subscriptions.push(vscode.commands.registerCommand('usbDevices.createDeviceFile', (context) => {
+    // create a new file object with unamed file
+    vscode.window.showInputBox().then((fileName) => {
+      // check if the file already exists with the same filename. If it does, append a number to the filename?
+      // create a new file object with named file
+      const filePath = path.join('/', fileName)
+      return usbDevicesProvider.createFile(context, filePath)
+    }).then((result) => {
+      console.log(result)
+      console.log('file created')
+      // return usbDevicesProvider.refresh()
+    });
+  }))
+
+  const path = require('path')
+  context.subscriptions.push(vscode.commands.registerCommand('usbDevices.renameDeviceFile', (e) => {
+    // create a new file object with unamed file
+    vscode.window.showInputBox({
+      value: e.label,
+    }).then((newFileName) => {
+      // rename the file with fileName
+      const oldFileName = path.join('/', e.label).split('/').pop()
+      newFileName = newFileName.split('/').pop()
+      console.log('oldFileName', oldFileName, 'newFileName', newFileName)
+      return usbDevicesProvider.renameFile(e.parentDevice, oldFileName, newFileName)
+    });
+  }))
+
+  context.subscriptions.push(vscode.commands.registerCommand('usbDevices.deleteDeviceFile', (e) => {
+    // delete the file
+    // e.path is the file selected
+    usbDevicesProvider.deleteFile(e.parentDevice, e.path).then((result) => {
+      const deviceContext = e.parentDevice
+      const devicePath = deviceContext.path.split('/').pop()
+  
+      let file
+      try {
+        file = vscode.Uri.parse(`memfs:/${devicePath}${e.path}`)
+        memFs.delete(file)
+      } catch (error) {
+        file = null
+        console.log('error', error)
+      }
+    })
+  }))
 
   // called when a python file on a connected device is selected
-  vscode.commands.registerCommand('usbDevices.openDeviceFile', (e) => {
-    console.log('open file', e)
+  context.subscriptions.push(vscode.commands.registerCommand('usbDevices.openDeviceFile', (e) => {
     // e.command.arguments[0].label is the file selected
     // e.command.arguments[1].main is the device selected
     outputChannel.appendLine(`opening file ${e.path}\n`)
@@ -79,35 +124,33 @@ function activate(context) {
         memFs.writeFile(vscode.Uri.parse(`memfs:/${devicePath}${e.path}`), Buffer.from(openFiles[e.path]), { create: true, overwrite: true })
         const file = vscode.Uri.parse(`memfs:/${devicePath}${e.path}`)
         vscode.window.showTextDocument(file)
-        console.log('opened file', file)
 
         return usbDevicesProvider.disconnect(deviceContext)
       })
     }
-  })
-  
+  }))
 
-  vscode.commands.registerCommand('usbDevices.writeHexFile', (context, selectedContext) => {
-    console.log('write hex file', context, selectedContext)
+  context.subscriptions.push(vscode.commands.registerCommand('usbDevices.writeHexFile', (context, selectedContext) => {
+    // console.log('write hex file', context, selectedContext)
     // selectedContext[0] is the file selected
     // if not connected to a device, return error
     outputChannel.appendLine(`write hex file ${selectedContext[0].path}\n`)
     outputChannel.show()
-  })
+  }))
 
-  vscode.commands.registerCommand('usbDevices.connectUsbDevice', (context) => {
-    console.log('connect to usb device', context)
+  context.subscriptions.push(vscode.commands.registerCommand('usbDevices.connectUsbDevice', (context) => {
+    // console.log('connect to usb device', context)
     outputChannel.appendLine(`connecting to device ${context.path}\n`)
     outputChannel.show()
     usbDevicesProvider.connect(context)
-  })
+  }))
 
-  vscode.commands.registerCommand('usbDevices.disconnectUsbDevice', (context) => {
-    console.log('disconnect from usb device', context)
+  context.subscriptions.push(vscode.commands.registerCommand('usbDevices.disconnectUsbDevice', (context) => {
+    // console.log('disconnect from usb device', context)
     outputChannel.appendLine(`disconnecting from device ${context.path}\n`)
     outputChannel.show()
     usbDevicesProvider.disconnect(context)
-  })
+  }))
 
   const options = {
     treeDataProvider: usbDevicesProvider,
@@ -116,36 +159,39 @@ function activate(context) {
   const tree = vscode.window.createTreeView('usbDevices', options)
 
   tree.onDidChangeSelection(e => {
-    console.log('onDidChangeSelection', e) // breakpoint here for debug
+    // console.log('onDidChangeSelection', e) // breakpoint here for debug
     usbDeviceWebViewProvider.webview.postMessage({ command: 'setPath', path: e.selection[0].path });
   })
+
   tree.onDidCollapseElement(e => {
-    console.log('onDidCollapseElement', e) // breakpoint here for debug
+    // console.log('onDidCollapseElement', e) // breakpoint here for debug
   })
+
   tree.onDidChangeVisibility(e => {
-    console.log('onDidChangeVisibility', e) // breakpoint here for debug
+    // console.log('onDidChangeVisibility', e) // breakpoint here for debug
   })
+
   tree.onDidExpandElement(e => {
-    console.log('onDidExpandElement', e) // breakpoint here for debug
+    // console.log('onDidExpandElement', e) // breakpoint here for debug
   })
 
   // subscribe
-  // context.subscriptions.push(tree)
+  context.subscriptions.push(tree)
 
 	const usbDeviceWebViewProvider = new UsbDeviceWebViewProvider(context.extensionUri, 'usbDevice.optionsView');
 	context.subscriptions.push(
 		vscode.window.registerWebviewViewProvider(usbDeviceWebViewProvider.viewType, usbDeviceWebViewProvider));
 
   vscode.workspace.onDidChangeTextDocument(function(e) {
-    console.log('Changed.', e);
+    // console.log('Changed.', e);
   })
 
   vscode.workspace.onDidCloseTextDocument(function(e) {
-    console.log('Closed.', e);
+    // console.log('Closed.', e);
   })
 
   vscode.workspace.onDidSaveTextDocument(function(e) {
-    console.log('Saved!', e);
+    // console.log('Saved!', e);
 
     // should save to e.parentDevice.path
     const dataToWrite = e.getText()
@@ -153,15 +199,13 @@ function activate(context) {
     const devicePath = '/dev/' + e.uri.path.split('/')[1]
 
     usbDevicesProvider.connect({ path: devicePath }).then((result) => {
-      console.log('connect result', result)
       return writeFileToDevice(usbDevicesProvider, fileName, dataToWrite)
     }).then((result) => {
-      // remove the tree cache for the parent folder
-      // e.uri.path.split('/')[1]
-      console.log('writeDeviceFile result', result)
+      // OK result
+    }).catch((error) => {
+      console.log('error', error)
+    }).finally(() => {
       return usbDevicesProvider.disconnect({ path: devicePath })
-    }).then((result) => {
-      console.log('disconnect result', result)
     })
   })
 }
@@ -184,7 +228,7 @@ const readFileFromDevice = (usbDevicesProvider, fileNode) => {
   let resultData = ''
   let size = fileNode.size * 2
 
-  console.log('readFileFromDevice', fileNode.path)
+  // console.log('readFileFromDevice', fileNode.path)
   console.time('readFileFromDevice')
 
   return new Promise((resolve, reject) => {
@@ -194,11 +238,11 @@ const readFileFromDevice = (usbDevicesProvider, fileNode) => {
       cancellable: true
     }, (progress, token) => {
 
-      let canceled = false
+      let cancelled = false
       token.onCancellationRequested(() => {
         console.log("User canceled the long running operation");
-        canceled = true
-      });
+        cancelled = true
+      })
 
       const read = async () => {
         let result
@@ -218,8 +262,8 @@ const readFileFromDevice = (usbDevicesProvider, fileNode) => {
 
         if (chunk.length === rate * 2) {
           return read()
-        } else if (canceled) {
-          return Promise.reject('canceled')
+        } else if (cancelled) {
+          return Promise.reject('cancelled')
         } else {
           return Promise.resolve(data)
         }
@@ -228,9 +272,6 @@ const readFileFromDevice = (usbDevicesProvider, fileNode) => {
       // open file
       return usbDevicesProvider.writeWait(`f = open('${fileNode.path}', 'rb')\r`, 1000)
       .then((result) => {
-        if (result.indexOf('>>>') === -1) {
-          return reject(result)
-        }
         return read()
       })
       .then((result) => {
@@ -239,12 +280,9 @@ const readFileFromDevice = (usbDevicesProvider, fileNode) => {
         return usbDevicesProvider.writeWait(`f.close()\r`, 1000)
       })
       .then((result) => {
-        // console.log('close result', result)
-        console.timeEnd('readFileFromDevice')
         resolve(resultData)
       }).catch((error) => {
         console.timeEnd('readFileFromDevice')
-        console.log('rejected error', error)
         return reject(error)
       })
     })
