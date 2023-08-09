@@ -30,10 +30,6 @@ class ReplTerminal {
             return;
           }
           line = line.substring(0, line.length - 1);
-          // Move cursor backward
-          this._write('\x1b[D');
-          // Delete character
-          this._write('\x1b[P');
           return;
         }
         line += data

@@ -67,7 +67,16 @@ class UsbDevicesProvider {
       })
 
       this.serialPort.on('data', (data) => {
-        this.resultBuffer += data.toString()
+        const hex = data.toString('hex')
+        if (/^7f20/.test(hex)) {
+          // Move cursor backward
+          this.terminal.write('\x1b[D');
+          // Delete character
+          this.terminal.write('\x1b[P');
+        } else {
+          this.resultBuffer += data.toString()
+        }
+
         if (this.terminal) {
           this.terminal.write(data.toString())
         }
@@ -225,7 +234,7 @@ class UsbDevicesProvider {
 
   // list the child nodes (files) on the USB Device
   _getUsbDeviceFolder(element) {
-    // every elemenbt has a deviceNode property
+    // every element has a deviceNode property
     // which references the parent device
 
     let dir = '/'
@@ -285,13 +294,6 @@ class UsbDevicesProvider {
   }
 
   getChildren(element) {
-    // element is the parent tree item
-    // workspaceRoot is falsey if not currently in a workspace, otherwise it's the path
-    if (!this.workspaceRoot) {
-      vscode.window.showInformationMessage('No dependency in empty workspace');
-      return Promise.resolve([]);
-    }
-
     if (element) {
       return this._getUsbDeviceFolder(element)
     } else {
