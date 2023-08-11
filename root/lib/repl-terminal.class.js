@@ -1,17 +1,17 @@
 const vscode = require('vscode')
 
 class ReplTerminal {
-  constructor(context, opts = {}) {
+  constructor (context, opts = {}) {
     this.writeEmitter = new vscode.EventEmitter()
     this.name = opts.name || 'REPL'
     this.inputCallback = null
     this.terminal = null
 
-    let line = '';
+    let line = ''
     const pty = {
       onDidWrite: this.writeEmitter.event,
       open: () => this.writeEmitter.fire('Hello\r\n'),
-      close: () => { /* noop*/ },
+      close: () => { /* noop */ },
       handleInput: (data) => {
         if (this.inputCallback) {
           // this callback is set by the UsbDevicesProvider
@@ -19,25 +19,24 @@ class ReplTerminal {
           this.inputCallback(data)
         }
         if (data === '\r') { // Enter
-          this.history.unshift(line);
+          this.history.unshift(line)
           if (this.history.length > 100) {
-            this.history.pop();
+            this.history.pop()
           }
-          line = '';
+          line = ''
         }
         if (data === '\x7f') { // Backspace
           if (line.length === 0) {
-            return;
+            return
           }
-          line = line.substring(0, line.length - 1);
-          return;
+          line = line.substring(0, line.length - 1)
+          return
         }
         line += data
-        //this._write(data)
       }
-    };
-    this.terminal = vscode.window.createTerminal({ name: this.name, pty });
-    this.terminal.show();  
+    }
+    this.terminal = vscode.window.createTerminal({ name: this.name, pty })
+    this.terminal.show()
   }
 
   onInput (callback) {
@@ -46,17 +45,16 @@ class ReplTerminal {
 
   write (data) {
     // some terminals will echo writes, so ignore it
-    this.writeEmitter.fire(data);
+    this.writeEmitter.fire(data)
   }
 
   _write (data) {
-    this.writeEmitter.fire(data);
+    this.writeEmitter.fire(data)
   }
 
-  remove() {
-    this.terminal.dispose();
+  remove () {
+    this.terminal.dispose()
   }
-
 }
 
 module.exports = ReplTerminal

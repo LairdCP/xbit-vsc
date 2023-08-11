@@ -44,20 +44,19 @@ const vscode = require('vscode')
 
 class UsbDevice extends vscode.TreeItem {
   constructor(
-    label,
+    uri,
     // iconPath?: string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } | vscode.ThemeIcon,
-    manufacturer,
+    port,
     collapsibleState,
     type,
     command,
       ) {
-    super(label, collapsibleState)
-    this.path = label
+    super(uri.path, collapsibleState)
+    this.uri = uri
+    this.port = port
     this.baudRate = 115200
     this.tooltip = `${this.label}`
-    this.description = this.manufacturer || ''
     this.command = command // default vs code command when clicking on item
-    this.replCapable = type === 'repl'
     this.type = type
     this.contextValue = 'usbDevice'
     
@@ -67,8 +66,24 @@ class UsbDevice extends vscode.TreeItem {
     // })
   }
 
+  get uriString () {
+    return this.uri.toString()
+  }
+
+  get path () {
+    return this.port.path
+  }
+
   get parentDevice () {
     return this
+  }
+
+  get description () {
+    return this.port.manufacturer || ''
+  }
+
+  get replCapable () {
+    return this.type === 'repl'
   }
 
   get iconPath() {
@@ -113,20 +128,37 @@ class UsbDevice extends vscode.TreeItem {
 
 class UsbDeviceFile extends vscode.TreeItem {
   constructor(
-    label,
+    uri,
+    type,
     size,
-    // iconPath?: string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } | vscode.ThemeIcon,
     command,
       ) {
+    const label = uri.path.split('/').pop()
     super(label, vscode.TreeItemCollapsibleState.None);
-    this.path = label
-    this.tooltip = `${this.label}`;
-    this.command = command;
-    this.contextValue = 'usbDeviceFile';
+    this.uri = uri
     this.size = size
-    // this.iconPath = iconPath;
-    // this.children = children;
+    this.type = type
+    this.command = command;
   }
+
+  // full fs path
+  get dir () {
+    return path.dirname(this.uri.path)
+  }
+
+  // file system provider.readFile will figure this out
+  get devPath () {
+    return this.uri.path.replace(this.parentDevice.uri.path, '')
+  }
+
+  get tooltip () {
+    return this.uri.path
+  }
+
+  get contextValue () {
+    return this.type == 'file' ? 'usbDeviceFile' : 'usbDeviceFolder'
+  }
+
   get iconPath() {
     return {
       light: path.join(__filename, '../../..', 'resources', 'light', 'gen-file.svg'),

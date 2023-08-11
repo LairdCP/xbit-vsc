@@ -1,38 +1,36 @@
-
 class UsbDeviceWebViewProvider {
-	constructor(
-		_extensionUri,
+  constructor (
+    _extensionUri,
     viewType
-	) {
+  ) {
     this._extensionUri = _extensionUri
     this.viewType = viewType
     this.webview = null
   }
 
-  resolveWebviewView(
-	  	webviewView,
-  		context,
-		  _token
-	  ) {
-		  this._view = webviewView;
+  resolveWebviewView (
+    webviewView,
+    context,
+    token
+  ) {
+    this._view = webviewView
+    webviewView.webview.options = {
+      // Allow scripts in the webview
+      enableScripts: true,
+      localResourceRoots: [
+        this._extensionUri
+      ]
+    }
 
-      webviewView.webview.options = {
-        // Allow scripts in the webview
-        enableScripts: true,
-        localResourceRoots: [
-          this._extensionUri
-        ]
-      }
-
-		webviewView.webview.html = this.getWebviewContent()
-		webviewView.webview.onDidReceiveMessage(data => {
+    webviewView.webview.html = this.getWebviewContent()
+    webviewView.webview.onDidReceiveMessage(data => {
       console.log('webviewView received message', data)
     })
     this.webview = webviewView.webview
-	}
+  }
 
-  getWebviewContent() {
-  return `<!DOCTYPE html>
+  getWebviewContent () {
+    return `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">

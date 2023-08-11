@@ -1,14 +1,17 @@
 const vscode = require('vscode')
-const fs  = require('fs')
-const path = require('path');
-const { SerialPort, ReadlineParser } = require('serialport')
+const path = require('path')
+const { SerialPort } = require('serialport')
 const async = require('async')
 const ReplTerminal = require('../lib/repl-terminal.class')
 
-const { UsbDevice, UsbDeviceFile, UsbDeviceFolder } = require('../lib/usb-devices-tree.class')
+const {
+  UsbDevice,
+  // UsbDeviceFolder
+  UsbDeviceFile
+} = require('../lib/usb-devices-tree.class')
 
 class UsbDevicesProvider {
-  constructor(workspaceRoot, context) {
+  constructor (workspaceRoot, context) {
     this.workspaceRoot = workspaceRoot
     this.context = context
     this._onDidChangeTreeData = new vscode.EventEmitter()
@@ -26,9 +29,9 @@ class UsbDevicesProvider {
     return this._onDidChangeTreeData.event
   }
 
-  refresh() {
-		this._onDidChangeTreeData.fire();
-	}
+  refresh () {
+    this._onDidChangeTreeData.fire()
+  }
 
   connect (element, opts = {}) {
     return new Promise((resolve, reject) => {
@@ -45,11 +48,11 @@ class UsbDevicesProvider {
       }, (error) => {
         if (error) {
           // notify user of error
-          vscode.window.showInformationMessage(`Error opening port: ${error.message}`);
+          vscode.window.showInformationMessage(`Error opening port: ${error.message}`)
           reject(error)
         } else {
           element.contextValue = 'usbDeviceConnected'
-          vscode.window.showInformationMessage(`Port Connected: ${this.connected}`);
+          vscode.window.showInformationMessage(`Port Connected: ${this.connected}`)
           if (!opts.skipRefresh) {
             this.refresh()
           }
@@ -58,8 +61,7 @@ class UsbDevicesProvider {
           this.terminal = new ReplTerminal(this.context)
           this.terminal.onInput((data) => {
             // send line to the serial port
-            const hex = Buffer.from(data).toString('hex')
-            this.lastSentHex = hex
+            this.lastSentHex = Buffer.from(data).toString('hex')
             this.serialPort.write(data)
           })
           resolve()
@@ -70,9 +72,9 @@ class UsbDevicesProvider {
         const hex = data.toString('hex')
         if (/^7f20/.test(hex)) {
           // Move cursor backward
-          this.terminal.write('\x1b[D');
+          this.terminal.write('\x1b[D')
           // Delete character
-          this.terminal.write('\x1b[P');
+          this.terminal.write('\x1b[P')
         } else {
           this.resultBuffer += data.toString()
         }
@@ -98,11 +100,11 @@ class UsbDevicesProvider {
         this.refresh()
       }
       element.contextValue = 'usbDevice'
-      vscode.window.showInformationMessage('Port Disconnected');
+      vscode.window.showInformationMessage('Port Disconnected')
       return Promise.resolve()
     } catch (error) {
       console.log('error closing port', error)
-      vscode.window.showInformationMessage(`Error closing port: ${error.message}`);
+      vscode.window.showInformationMessage(`Error closing port: ${error.message}`)
       return Promise.reject(error)
     }
   }
@@ -115,6 +117,9 @@ class UsbDevicesProvider {
 
   // Connect to a port, execute a command, disconnect and return the result
   // This is used for commands that don't require a persistant connection to the device
+  // params:
+  // port is the UsbDeviceClass Instance
+  // ----------------------------
   connectAndExecute (port, command) {
     if (this.connected === port.path) {
       this.disconnect(port, { skipRefresh: true })
@@ -171,52 +176,63 @@ class UsbDevicesProvider {
     })
   }
 
-  getTreeItem(element) {
+  getTreeItem (element) {
     return element
   }
-  
 
   // list the connected parent nodes (USB Devices)
-  _getUsbDevices() {
+  // returns a promise
+  // ----------------------------
+  _getUsbDevices () {
     return new Promise((resolve, reject) => {
       SerialPort.list().then((ports) => {
-        console.log(ports)
         // mark devices as pending. If they are not in the list after the scan, remove them
-        this.usbDeviceNodes.forEach((item) => item.pending = true)
+        this.usbDeviceNodes.forEach((item) => {
+          item.pending = true
+        })
 
         // for each port, check if it's already known.
         // if not, connect and detect if repl capable
         async.eachSeries(ports, (port, next) => {
-          if (this.hiddenUsbDeviceNodes.indexOf(port.path) > -1) {
+          // create a uri from the path
+
+          // memfs:/serial/dev/tty.usbmodem1411
+          // memfs:/serial/COM3
+          const uri = vscode.Uri.parse(`memfs:/serial${port.path}`)
+
+          if (this.hiddenUsbDeviceNodes.indexOf(uri.toString()) > -1) {
             return next()
           }
 
+          // check if the port is already known
           for (let idx = 0; idx < this.usbDeviceNodes.length; idx++) {
-            if (this.usbDeviceNodes[idx].path === port.path) {
+            if (this.usbDeviceNodes[idx].uriString === uri.toString()) {
               delete this.usbDeviceNodes[idx].pending
               return next()
             }
           }
 
-          this.connectAndExecute(port, '\r\n',).then((result) => {
+          // if not, connect and detect if repl capable
+          this.connectAndExecute(port, '\r\n').then((result) => {
             // if data is >>> it is a repl capable device
             if (result.indexOf('>>>') > -1) {
-              let portItem = new UsbDevice(port.path, port.manufacturer, vscode.TreeItemCollapsibleState.Collapsed, 'repl')
-              this.usbDeviceNodes.push(portItem )
+              const portItem = new UsbDevice(uri, port, vscode.TreeItemCollapsibleState.Collapsed, 'repl')
+              this.usbDeviceNodes.push(portItem)
             } else if (result.indexOf('uart:~$') > -1) {
-              let portItem = new UsbDevice(port.path, port.manufacturer, vscode.TreeItemCollapsibleState.Collapsed, 'uart')
-              this.usbDeviceNodes.push(portItem )
+              const portItem = new UsbDevice(uri, port, vscode.TreeItemCollapsibleState.Collapsed, 'uart')
+              this.usbDeviceNodes.push(portItem)
             } else if (result) {
-              let portItem = new UsbDevice(port.path, port.manufacturer, vscode.TreeItemCollapsibleState.Collapsed, false)
-              this.usbDeviceNodes.push(portItem )
+              const portItem = new UsbDevice(uri, port, vscode.TreeItemCollapsibleState.Collapsed, false)
+              this.usbDeviceNodes.push(portItem)
             } else {
-              this.hiddenUsbDeviceNodes.push(port.path)
+              // if no data, it's probably not a serial device we can use
+              // hide it so it doesn't get queried everytime
+              this.hiddenUsbDeviceNodes.push(uri.toString())
             }
             next()
           }).catch((error) => {
             next(error)
           })
-
         }, (error) => {
           if (error) {
             reject(error)
@@ -225,51 +241,58 @@ class UsbDevicesProvider {
           this.usbDeviceNodes = this.usbDeviceNodes.filter((item) => {
             return !item.pending
           })
+          console.log('usbDeviceNodes', this.usbDeviceNodes)
           resolve(this.usbDeviceNodes)
         })
       })
     })
-
   }
 
   // list the child nodes (files) on the USB Device
-  _getUsbDeviceFolder(element) {
+  _getUsbDeviceFolder (element) {
     // every element has a deviceNode property
     // which references the parent device
 
-    let dir = '/'
-    if (element.contextValue === 'usbDeviceFolder') {
-      dir = element.path
-    }
+    const dir = '/'
+    // if (element.contextValue === 'usbDeviceFolder') {
+    //   dir = element.path
+    // }
 
     // if we have cached items, return them
     // connect to device by path and query device files
     //
     // if we have cached items, return them
-    if (this.treeCache[path.join(element.path, dir)]) {
-      return Promise.resolve(this.treeCache[path.join(element.path, dir)])
+    if (this.treeCache[element.uri.toString()]) {
+      return Promise.resolve(this.treeCache[element.uri.toString()])
     }
 
     return new Promise((resolve, reject) => {
       if (element.parentDevice.replCapable) {
         let files = []
-        return this.connect(element.parentDevice, {skipRefresh: true}).then(() => {
+        return this.connect(element.parentDevice, { skipRefresh: true }).then(() => {
           return this.readDirFromDevice(dir)
         }).then((result) => {
           files = result
-          return this.disconnect({skipRefresh: true})
+          return this.disconnect({ skipRefresh: true })
         }).then(() => {
           const treeNodes = []
           files.forEach((file) => {
             const [path, type, size] = file
             // populate tree items from the read file information
             let treeNode
-            if (type === 'dir') {
-              treeNode = new UsbDeviceFolder(path)
-              // command will be handled by the tree provider, getChildren
-              treeNode.parentDevice = element.parentDevice
-            } else if (type === 'file') {
-              treeNode = new UsbDeviceFile(path, size)
+
+            // memfs://tty.usbmodem1411/blink.py
+            const uri = vscode.Uri.parse(`${element.parentDevice.uri._formatted}${path}`)
+
+            //
+            // Omit folders from the tree for now
+            // if (type === 'dir') {
+            // treeNode = new UsbDeviceFolder(uri)
+            // command will be handled by the tree provider, getChildren
+            // treeNode.parentDevice = element.parentDevice
+            // } else
+            if (type === 'file') {
+              treeNode = new UsbDeviceFile(uri, type, size)
               treeNode.command = {
                 command: 'usbDevices.openDeviceFile',
                 arguments: [treeNode]
@@ -281,7 +304,9 @@ class UsbDevicesProvider {
             treeNodes.push(treeNode)
           })
           // cache the result
-          this.treeCache[path.join(element.path, dir)] = treeNodes
+          this.treeCache[element.uri.toString()] = treeNodes
+          console.log('>>>', this.treeCache, element.path)
+
           resolve(treeNodes)
         }).catch((error) => {
           console.log('error', error)
@@ -293,7 +318,7 @@ class UsbDevicesProvider {
     })
   }
 
-  getChildren(element) {
+  getChildren (element) {
     if (element) {
       return this._getUsbDeviceFolder(element)
     } else {
@@ -303,11 +328,11 @@ class UsbDevicesProvider {
 
   // Must be connected to device
   // Returns a promise
-  writeWait(command, timeout = 1000, wait = 10) {
+  writeWait (command, timeout = 1000, wait = 10) {
     return new Promise((resolve, reject) => {
       this.resultBuffer = ''
       this.serialPort.write(command)
-      let waiting = setInterval(() => {
+      const waiting = setInterval(() => {
         // check for Error first as there will also be a >>> at the end
         if (this.resultBuffer.indexOf('Error') > -1) {
           clearInterval(waiting)
@@ -326,9 +351,9 @@ class UsbDevicesProvider {
         }
       }, wait)
 
-      let timeouting = setTimeout(() => {
+      const timeouting = setTimeout(() => {
         clearInterval(waiting)
-        reject('timeout: ', command)
+        reject(new Error('timeout: ' + command))
       }, timeout)
     })
   }
@@ -356,12 +381,12 @@ class UsbDevicesProvider {
       ]
 
       const writeInterval = setInterval(() => {
-        // 
+        //
         this.serialPort.write(lsFunction.shift())
         if (lsFunction.length === 0) {
           clearInterval(writeInterval)
           // press enter to complete the function and return to >>>
-          this.writeWait('\r', 1000).then((result) => {
+          this.writeWait('\r', 1000).then(() => {
             // call the function with our current dir
             return this.writeWait(`ls('${dirPath}')\r`, 1000)
           }).then((result) => {
@@ -379,23 +404,21 @@ class UsbDevicesProvider {
             console.log('error', error)
             reject(error)
           })
-
         }
-      }, 100) 
+      }, 100)
     })
   }
 
-  createFile(usbDevice, filePath) {
+  createFile (usbDevice, filePath) {
     // connect
     const dirPath = path.dirname(filePath)
-    return this.connect(usbDevice, {skipRefresh: true}).then(() => {
+    return this.connect(usbDevice, { skipRefresh: true }).then(() => {
       return this.writeWait(`f = open('${filePath}', 'wb')\r`, 1000)
-    }).then((result) => {
-      return this.writeWait(`f.close()\r`, 1000)
-    }).then((result) => {
+    }).then(() => {
+      return this.writeWait('f.close()\r', 1000)
+    }).then(() => {
       vscode.window.showInformationMessage(`Created New File: ${filePath}`)
     }).catch((error) => {
-      console.log('error', error)
       vscode.window.showInformationMessage(`Error Creating File: ${error.message}`)
     }).finally(() => {
       // remove from MemFS cache
@@ -404,47 +427,40 @@ class UsbDevicesProvider {
     })
   }
 
-  deleteFile(usbDevice, filePath) {
-    const dirPath = path.dirname(filePath)
-    return this.connect(usbDevice, {skipRefresh: true}).then(() => {
-      return this.writeWait(`unlink('${filePath}')\r`, 1000)
-    }).then((result) => {
-      vscode.window.showInformationMessage(`Deleted File: ${filePath}`)
+  deleteFile (usbDeviceFile) {
+    // const dirPath = path.dirname(filePath)
+    return this.connect(usbDeviceFile.parentDevice, { skipRefresh: true }).then(() => {
+      return this.writeWait(`unlink('${usbDeviceFile.devPath}')\r`, 1000)
+    }).then(() => {
+      vscode.window.showInformationMessage(`Deleted File: ${usbDeviceFile.uri.toString()}`)
     }).catch((error) => {
-      console.log('error', error)
       vscode.window.showInformationMessage(`Error Deleting File: ${error.message}`)
     }).finally(() => {
       // remove from MemFS cache
-      delete this.treeCache[path.join(usbDevice.path, dirPath)]
-      this.disconnect(usbDevice)
+      delete this.treeCache[usbDeviceFile.uri.toString()]
+      this.disconnect(usbDeviceFile.parentDevice)
     })
   }
 
-  renameFile(usbDevice, oldFilePath, newFilePath) {
+  renameFile (usbDevice, oldFilePath, newFilePath) {
     let newDirPath = path.dirname(newFilePath)
     let oldDirPath = path.dirname(oldFilePath)
     // temporary solution until rename works with paths
     newDirPath = '/'
     oldDirPath = '/'
-    console.log('renameFile', oldFilePath, newFilePath)
-    return this.connect(usbDevice, {skipRefresh: true}).then(() => {
-      console.log('rename', oldFilePath, newFilePath)
+    return this.connect(usbDevice, { skipRefresh: true }).then(() => {
       return this.writeWait(`rename('${oldFilePath}', '${newFilePath}')\r`, 1000)
-    }).then((result) => {
+    }).then(() => {
       vscode.window.showInformationMessage(`Renamed File: ${newFilePath}`)
     }).catch((error) => {
-      console.log(error)
       vscode.window.showInformationMessage(`Error Renaming File: ${error.message}`)
     }).finally(() => {
-      console.log('finally', path.join(usbDevice.path, newDirPath))
       // remove from MemFS cache
       delete this.treeCache[path.join(usbDevice.path, newDirPath)]
       delete this.treeCache[path.join(usbDevice.path, oldDirPath)]
-      console.log('treeCache', this.treeCache)
       this.disconnect(usbDevice)
     })
   }
 }
 
-
-module.exports = UsbDevicesProvider;
+module.exports = UsbDevicesProvider
