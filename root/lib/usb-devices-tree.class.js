@@ -22,7 +22,6 @@
 //         baudRate: this.baudRate
 //       })
 
-
 //     })
 //   }
 //   // disconnect
@@ -43,14 +42,14 @@ const path = require('path')
 const vscode = require('vscode')
 
 class UsbDevice extends vscode.TreeItem {
-  constructor(
+  constructor (
     uri,
     // iconPath?: string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } | vscode.ThemeIcon,
     port,
     collapsibleState,
     type,
-    command,
-      ) {
+    command
+  ) {
     super(uri.path, collapsibleState)
     this.uri = uri
     this.port = port
@@ -59,7 +58,7 @@ class UsbDevice extends vscode.TreeItem {
     this.command = command // default vs code command when clicking on item
     this.type = type
     this.contextValue = 'usbDevice'
-    
+
     // this.serialPort = new UsbDeviceInterface({
     //   path: this.path,
     //   baudRate: 115200,
@@ -86,7 +85,7 @@ class UsbDevice extends vscode.TreeItem {
     return this.type === 'repl'
   }
 
-  get iconPath() {
+  get iconPath () {
     if (this.replCapable) {
       return {
         light: path.join(__filename, '../../..', 'resources', 'light', 'repl-device.svg'),
@@ -105,7 +104,7 @@ class UsbDevice extends vscode.TreeItem {
     }
   }
 
-  get connected() {
+  get connected () {
     return false
     // return this.serialPort.connected
   }
@@ -125,20 +124,19 @@ class UsbDevice extends vscode.TreeItem {
   // }
 }
 
-
 class UsbDeviceFile extends vscode.TreeItem {
-  constructor(
+  constructor (
     uri,
     type,
     size,
-    command,
-      ) {
+    command
+  ) {
     const label = uri.path.split('/').pop()
-    super(label, vscode.TreeItemCollapsibleState.None);
+    super(label, vscode.TreeItemCollapsibleState.None)
     this.uri = uri
     this.size = size
     this.type = type
-    this.command = command;
+    this.command = command
   }
 
   // full fs path
@@ -156,32 +154,33 @@ class UsbDeviceFile extends vscode.TreeItem {
   }
 
   get contextValue () {
-    return this.type == 'file' ? 'usbDeviceFile' : 'usbDeviceFolder'
+    return this.type === 'file' ? 'usbDeviceFile' : 'usbDeviceFolder'
   }
 
-  get iconPath() {
+  get iconPath () {
     return {
       light: path.join(__filename, '../../..', 'resources', 'light', 'gen-file.svg'),
       dark: path.join(__filename, '../../..', 'resources', 'dark', 'gen-file.svg')
     }
-  } 
+  }
 }
 
 class UsbDeviceFolder extends vscode.TreeItem {
-  constructor(
+  constructor (
     label,
     // iconPath?: string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } | vscode.ThemeIcon,
-    command,
-      ) {
-    super(label, vscode.TreeItemCollapsibleState.Collapsed);
+    command
+  ) {
+    super(label, vscode.TreeItemCollapsibleState.Collapsed)
     this.path = label
-    this.tooltip = `${this.label}`;
-    this.command = command;
-    this.contextValue = 'usbDeviceFolder';
+    this.tooltip = `${this.label}`
+    this.command = command
+    this.contextValue = 'usbDeviceFolder'
     // this.iconPath = iconPath;
     // this.children = children;
   }
-  get iconPath() {
+
+  get iconPath () {
     return {
       light: path.join(__filename, '../../..', 'resources', 'light', 'gen-folder.svg'),
       dark: path.join(__filename, '../../..', 'resources', 'dark', 'gen-folder.svg')
