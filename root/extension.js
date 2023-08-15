@@ -7,7 +7,7 @@ const UsbDevicesProvider = require('./providers/usb-devices.provider')
 const UsbDeviceWebViewProvider = require('./providers/usb-device-webview.provider')
 const { MemFSProvider } = require('./providers/file-system.provider')
 const ReplTerminal = require('./lib/repl-terminal.class')
-const PythonExecutable = require('./providers/python.provider')
+const { PythonExecutable, Pyocd } = require('./lib/pyocd')
 
 let usbDevicesProvider
 /**
@@ -27,6 +27,11 @@ function activate (context) {
   PythonExecutable(outputChannel).then((pythonExecutable) => {
     if (pythonExecutable) {
       console.log('found pythonExecutable', pythonExecutable[0])
+      Pyocd(outputChannel, pythonExecutable[0]).then((pyocd) => {
+        if (pyocd) {
+          console.log('found pyocd', pyocd)
+        }
+      })
     }
   })
 
