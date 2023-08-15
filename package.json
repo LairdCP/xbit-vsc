@@ -55,21 +55,21 @@
       },
       {
         "command": "usbDevices.openDeviceFile",
-        "title": "Open Device File"
+        "title": "Open File"
       },
       {
         "command": "usbDevices.deleteDeviceFile",
-        "title": "Delete Device File",
+        "title": "Delete File",
         "icon": "$(trash)"
       },
       {
         "command": "usbDevices.renameDeviceFile",
-        "title": "Rename Device File",
+        "title": "Rename File",
         "icon": "$(edit)"
       },
       {
         "command": "usbDevices.createDeviceFile",
-        "title": "Create Device File",
+        "title": "Create File",
         "icon": "$(add)"
       },
       {
