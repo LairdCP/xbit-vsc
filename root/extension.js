@@ -7,6 +7,7 @@ const UsbDevicesProvider = require('./providers/usb-devices.provider')
 const UsbDeviceWebViewProvider = require('./providers/usb-device-webview.provider')
 const { MemFSProvider } = require('./providers/file-system.provider')
 const ReplTerminal = require('./lib/repl-terminal.class')
+const PythonExecutable = require('./providers/python.provider')
 
 let usbDevicesProvider
 /**
@@ -23,6 +24,11 @@ function activate (context) {
   memFs.createDirectory(vscode.Uri.parse('memfs:/serial/dev'))
 
   const outputChannel = vscode.window.createOutputChannel('xbit-vsc')
+  PythonExecutable(outputChannel).then((pythonExecutable) => {
+    if (pythonExecutable) {
+      console.log('found pythonExecutable', pythonExecutable[0])
+    }
+  })
 
   const rootPath =
   vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0
