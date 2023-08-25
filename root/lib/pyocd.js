@@ -1,7 +1,112 @@
 const vscode = require('vscode')
 const { spawn } = require('child_process')
+const config = vscode.workspace.getConfiguration('xbit-vsc')
+const path = require('path')
+const fs = require('fs/promises')
+
+const getVenv = () => {
+  const subsection = config.get('python-venv')
+  return fs.stat(subsection)
+    .then((stat) => {
+      if (stat.isDirectory()) {
+        return subsection
+      } else {
+        throw new Error('python-venv is not a directory')
+      }
+    })
+}
+
+// runs a command in the venv
+// runCommand(context, OUTPUT_CHANNEL, venv, 'pyocd', ['list'])
+const runCommand = (context, OUTPUT_CHANNEL, venv, command, args = []) => {
+  if (!venv) {
+    return Promise.reject(new Error('No venv selected'))
+  }
+
+  if (!command) {
+    return Promise.reject(new Error('No command specified'))
+  }
+
+  return new Promise((resolve, reject) => {
+    const pip = path.join(venv, 'bin', command)
+    const child = spawn(pip, args)
+    let error = ''
+
+    child.stdout.on('data', (data) => {
+      OUTPUT_CHANNEL.appendLine(data.toString())
+    })
+    child.stderr.on('data', (data) => {
+      error += data
+      OUTPUT_CHANNEL.appendLine(data.toString())
+    })
+    child.on('close', (code) => {
+      if (code !== 0) {
+        reject(new Error(error))
+      } else {
+        return resolve()
+      }
+    })
+  })
+}
+
+const installDeps = (context, OUTPUT_CHANNEL, venv) => {
+  return runCommand(context, OUTPUT_CHANNEL, venv, 'pip', ['install', '-r', context.asAbsolutePath('./requirements.in')])
+}
+
+// prompts the user to select a folder location and
+const selectVenv = async (OUTPUT_CHANNEL) => {
+  const onFulfilled = await vscode.window.showOpenDialog({
+    canSelectMany: false,
+    canSelectFolders: true,
+    canSelectFiles: false,
+    title: 'Select Virtual Environment Location',
+    openLabel: 'Select V-Env'
+  })
+  if (onFulfilled && onFulfilled.length > 0) {
+    return onFulfilled[0].fsPath
+  } else {
+    throw new Error('No folder selected')
+  }
+}
+
+// creates the venv in that location
+const initVenv = (OUTPUT_CHANNEL, executable) => {
+  return new Promise((resolve, reject) => {
+    selectVenv(OUTPUT_CHANNEL).then((targetLocation) => {
+      let error = ''
+      process.chdir(targetLocation)
+
+      console.log('InitVenv', process.cwd())
+      const child = spawn(executable, ['-m', 'venv', './xbit.venv'])
+      child.stdout.on('data', (data) => {
+        OUTPUT_CHANNEL.appendLine(data.toString())
+      })
+
+      child.stderr.on('data', (data) => {
+        error += data
+        OUTPUT_CHANNEL.appendLine(data.toString())
+      })
+
+      child.on('close', (code) => {
+        if (code !== 0) {
+          OUTPUT_CHANNEL.appendLine('pyocd error: ' + error)
+          reject(new Error(error))
+        } else {
+          const venvFolder = path.join(targetLocation, 'xbit.venv')
+          config.update('python-venv', venvFolder, vscode.ConfigurationTarget.Global).then(() => {
+            resolve(venvFolder)
+          })
+        }
+      })
+    })
+  })
+}
 
 module.exports = {
+  initVenv,
+  getVenv,
+  selectVenv,
+  installDeps,
   // detect if pyocd is installed
   Pyocd: (OUTPUT_CHANNEL, executable) => {
     const commands = {

@@ -7,7 +7,16 @@ const UsbDevicesProvider = require('./providers/usb-devices.provider')
 const UsbDeviceWebViewProvider = require('./providers/usb-device-webview.provider')
 const { MemFSProvider } = require('./providers/file-system.provider')
 const ReplTerminal = require('./lib/repl-terminal.class')
-const { PythonExecutable, Pyocd } = require('./lib/pyocd')
+const { PythonExecutable, initVenv, getVenv, installDeps } = require('./lib/pyocd')
+// const fs = require('fs/promises')
+
+// function getPath(file, context, webView) {
+//   // if (webView) {
+//   //   let uri = Uri.file(context.asAbsolutePath(path.join('misc', file)));
+//   //   return webView.asWebviewUri(uri).toString();
+//   // }
+//   return context.asAbsolutePath(path.join('misc', file));
+// }
 
 let usbDevicesProvider
 /**
@@ -27,11 +36,37 @@ function activate (context) {
   PythonExecutable(outputChannel).then((pythonExecutable) => {
     if (pythonExecutable) {
       console.log('found pythonExecutable', pythonExecutable[0])
-      Pyocd(outputChannel, pythonExecutable[0]).then((pyocd) => {
-        if (pyocd) {
-          console.log('found pyocd', pyocd)
+      // Pyocd(outputChannel, pythonExecutable[0]).then((pyocd) => {
+      //   if (pyocd) {
+      //     console.log('found pyocd', pyocd)
+      //   }
+      // })
+      let venv = null
+      getVenv().then((result) => {
+        venv = result
+        return venv
+      }).catch(() => {
+        return vscode.window.showWarningMessage('This extension uses a python virtual enviroment to install dependencies. Please select a location for the venv.', 'Select', 'Cancel')
+      }).then((selection) => {
+        if (selection === 'Select') {
+          return initVenv(outputChannel, pythonExecutable[0])
+        } else if (selection === venv) {
+          return venv
+        } else {
+          throw new Error('No venv selected')
         }
+      }).then((result) => {
+        venv = result
+        // check for pyocd
+        // catch
+        return installDeps(context, outputChannel, venv)
+      }).catch((error) => {
+        console.log('venv error', error)
       })
+    } else {
+      console.log('pythonExecutable not found')
+      // show notifcation to install the python extension as recommended
+      // does this happene automatically?
     }
   })
 
@@ -238,6 +273,11 @@ function activate (context) {
         outputChannel.show()
       })
   })
+
+  // context.subscriptions.push(vscode.commands.registerCommand('usbDevices.writeHex', (usbDevice, file) => {
+  // if (usbDevice.ifc.connected) { usbDevice.ifc.disconnect() }
+  // make pyocd write hex file based on the usbDevice and file info
+  // })
 }
 
 // This method is called when your extension is deactivated

@@ -12,6 +12,17 @@
   "activationEvents": [],
   "main": "./root/extension.js",
   "contributes": {
+    "configuration": {
+      "title": "xbit configuration",
+      "type": "object",
+      "properties": {
+        "xbit-vsc.python-venv": {
+          "type": "string",
+          "default": "",
+          "description": "Specifies the path to the python virtual env to install required tools."
+        }
+      }
+    },
     "languages": [
       {
         "id": "hex",
