@@ -7,7 +7,7 @@ const UsbDevicesProvider = require('./providers/usb-devices.provider')
 const UsbDeviceWebViewProvider = require('./providers/usb-device-webview.provider')
 const { MemFSProvider } = require('./providers/file-system.provider')
 const ReplTerminal = require('./lib/repl-terminal.class')
-const { PythonExecutable, initVenv, getVenv, installDeps } = require('./lib/pyocd')
+const PyocdInterface = require('./lib/pyocd')
 // const fs = require('fs/promises')
 
 // function getPath(file, context, webView) {
@@ -33,41 +33,8 @@ function activate (context) {
   memFs.createDirectory(vscode.Uri.parse('memfs:/serial/dev'))
 
   const outputChannel = vscode.window.createOutputChannel('xbit-vsc')
-  PythonExecutable(outputChannel).then((pythonExecutable) => {
-    if (pythonExecutable) {
-      console.log('found pythonExecutable', pythonExecutable[0])
-      // Pyocd(outputChannel, pythonExecutable[0]).then((pyocd) => {
-      //   if (pyocd) {
-      //     console.log('found pyocd', pyocd)
-      //   }
-      // })
-      let venv = null
-      getVenv().then((result) => {
-        venv = result
-        return venv
-      }).catch(() => {
-        return vscode.window.showWarningMessage('This extension uses a python virtual enviroment to install dependencies. Please select a location for the venv.', 'Select', 'Cancel')
-      }).then((selection) => {
-        if (selection === 'Select') {
-          return initVenv(outputChannel, pythonExecutable[0])
-        } else if (selection === venv) {
-          return venv
-        } else {
-          throw new Error('No venv selected')
-        }
-      }).then((result) => {
-        venv = result
-        // check for pyocd
-        // catch
-        return installDeps(context, outputChannel, venv)
-      }).catch((error) => {
-        console.log('venv error', error)
-      })
-    } else {
-      console.log('pythonExecutable not found')
-      // show notifcation to install the python extension as recommended
-      // does this happene automatically?
-    }
+  const pyocdInterface = new PyocdInterface(context, outputChannel).then(() => {
+    console.log(pyocdInterface.venv)
   })
 
   const rootPath =

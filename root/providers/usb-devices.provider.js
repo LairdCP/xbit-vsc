@@ -3,6 +3,7 @@ const { SerialPort } = require('serialport')
 const async = require('async')
 
 const UsbDevice = require('../lib/usb-device.class')
+const { getDevices } = require('../lib/pyocd')
 
 class UsbDevicesProvider {
   constructor (workspaceRoot, context) {
@@ -105,6 +106,8 @@ class UsbDevicesProvider {
   // ----------------------------
   _getUsbDevices () {
     return new Promise((resolve, reject) => {
+      // Pyocd.exec(['--list']).then((result) => {
+
       SerialPort.list().then((ports) => {
         // mark devices as pending. If they are not in the list after the scan, remove them
         this.usbDeviceNodes.forEach((item) => {
@@ -179,6 +182,7 @@ class UsbDevicesProvider {
         return result
       })
     } else {
+      // pyocd query
       return this._getUsbDevices()
     }
   }
