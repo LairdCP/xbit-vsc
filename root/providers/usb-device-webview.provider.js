@@ -1,3 +1,10 @@
+import { provideVSCodeDesignSystem, vsCodeButton } from '@vscode/webview-ui-toolkit'
+
+const vscode = require('vscode')
+const fs = require('fs')
+
+provideVSCodeDesignSystem().register(vsCodeButton())
+
 class UsbDeviceWebViewProvider {
   constructor (
     _extensionUri,
@@ -21,43 +28,25 @@ class UsbDeviceWebViewProvider {
         this._extensionUri
       ]
     }
-
-    webviewView.webview.html = this.getWebviewContent()
-    webviewView.webview.onDidReceiveMessage(data => {
-      console.log('webviewView received message', data)
-    })
-    this.webview = webviewView.webview
+    try {
+      const path = vscode.Uri.joinPath(this._extensionUri, 'root/providers', 'device-details.webview.html')
+      console.log(path)
+      const html = fs.readFileSync(path.fsPath, 'utf8')
+      // const src = webviewView.webview.asWebviewUri(path)
+      // console.log(src)
+      webviewView.webview.html = html
+      webviewView.webview.onDidReceiveMessage(data => {
+        console.log('webviewView received message', data)
+      })
+      this.webview = webviewView.webview
+    } catch (error) {
+      console.log(error)
+    }
   }
 
   getWebviewContent () {
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cat Coding</title>
-</head>
-<body>
-    <p>Selected:</p>
-    <h3 id="lines-of-code-counter">None</h3>
-    <p>Baud Rate: <input type="text" id="baudRate" /></p>
-    <button>Connect</button>
-    <script>
-        const counter = document.getElementById('lines-of-code-counter');
-
-        // Handle the message inside the webview
-        window.addEventListener('message', event => {
-
-            const message = event.data; // The JSON data our extension sent
-            switch (message.command) {
-                case 'setPath':
-                    counter.textContent = message.path;
-                    break;
-            }
-        });
-    </script>
-</body>
-</html>`
+  //   const path = vscode.Uri.joinPath(context.extensionUri, 'room/providers', 'device-details.webview.html')
+    return ''
   }
 }
 
