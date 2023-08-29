@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  </head>
+  <body>
+    <div class="device-selected" style="display: none">
+      <p><span id="serial-number"></span></p>
+      <vscode-button class="connect-button">Connect</vscode-button>
+      <vscode-button class="disconnect-button">Disconnect</vscode-button>
+      <p>Baud Rate: <input type="text" id="baud-rate" /></p>
+      <vscode-button class="save-button">Save</vscode-button>
+    </div>
+    <script>
+      const serialNumber = document.getElementById('serial-number')
+      const baudRate = document.getElementById('baud-rate')
+      const vscode = acquireVsCodeApi()
+      let currentDevice = null
+      let connected = false
+
+      document.querySelector('.save-button').addEventListener('click', () => {
+        vscode.postMessage({ type: 'saveSettings', value: baudRate.value })
+      })
+
+      const handledConnected = () => {
+        if (connected) {
+          document.querySelector('.connect-button').style.display = 'none'
+          document.querySelector('.disconnect-button').style.display = 'block'
+        } else {
+          document.querySelector('.connect-button').style.display = 'block'
+          document.querySelector('.disconnect-button').style.display = 'none'
+        }
+      }
+
+      // Handle the message inside the webview
+      window.addEventListener('message', event => {
+        console.log('event data', event.data)
+        const message = event.data; // The JSON data our extension sent
+        switch (message.command) {
+          case 'setSelected':
+            if (message.device) {
+              currentDevice = message.device
+              serialNumber.textContent = message.device.serialNumber
+              baudRate.value = message.device.baudRate
+              connected = message.device.connected || false
+              handledConnected()
+              document.querySelector('.device-selected').style.display = 'block'
+            } else {
+              serialNumber.textContent = 'None'
+              baudRate.value = ''
+              connected = false
+              handledConnected()
+              document.querySelector('.device-selected').style.display = 'none'
+            }
+            break;
+          case 'connected':
+            // hide the connect button
+            connected = message.device.connected
+            handledConnected()
+            break;
+          case 'disconnected':
+            // hide the connect button
+            connected = message.device.connected
+            handledConnected()
+            break;
+
+        }
+      });
+    </script>
+  </body>
+</html>

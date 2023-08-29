@@ -33,16 +33,9 @@ function activate (context) {
   memFs.createDirectory(vscode.Uri.parse('memfs:/serial/dev'))
 
   const outputChannel = vscode.window.createOutputChannel('xbit-vsc')
-  const pyocdInterface = new PyocdInterface(context, outputChannel).then(() => {
-    console.log(pyocdInterface.venv)
-  })
+  const pyocdInterface = new PyocdInterface(context, outputChannel)
+  usbDevicesProvider = new UsbDevicesProvider(context, pyocdInterface)
 
-  const rootPath =
-  vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0
-    ? vscode.workspace.workspaceFolders[0].uri.fsPath
-    : undefined
-
-  usbDevicesProvider = new UsbDevicesProvider(rootPath, context)
   vscode.window.registerTreeDataProvider('usbDevices', usbDevicesProvider)
   context.subscriptions.push(vscode.commands.registerCommand('usbDevices.refreshEntry', () => {
     // clear the cached devices list to hard refresh
@@ -185,7 +178,25 @@ function activate (context) {
 
   tree.onDidChangeSelection(e => {
     // console.log('onDidChangeSelection', e) // breakpoint here for debug
-    usbDeviceWebViewProvider.webview.postMessage({ command: 'setPath', path: e.selection[0].path })
+    console.log('e.selection[0]', e)
+    if (e.selection[0]) {
+      usbDeviceWebViewProvider.webview.postMessage({
+        command: 'setSelected',
+        device: {
+          serialNumber: e.selection[0].port.serialNumber,
+          path: e.selection[0].port.path,
+          name: e.selection[0].port.name,
+          manufacturer: e.selection[0].port.manufacturer,
+          baudRate: e.selection[0].baudRate,
+          connected: e.selection[0].connected
+        }
+      })
+    } else {
+      usbDeviceWebViewProvider.webview.postMessage({
+        command: 'setSelected',
+        device: null
+      })
+    }
   })
 
   tree.onDidCollapseElement(e => {

@@ -20,6 +20,7 @@ class UsbDevice extends vscode.TreeItem {
     this.command = command // default vs code command when clicking on item
     this.type = type
     this.port = port
+    this.probe = null
 
     // if has serialPort
     this.ifc = new UsbDeviceInterface({

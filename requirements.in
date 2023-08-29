@@ -10,4 +10,5 @@
 
 # Required packages
 packaging
-pyocd
+pyocd==0.35.1
+pyserial==3.5

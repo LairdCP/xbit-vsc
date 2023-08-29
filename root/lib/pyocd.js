@@ -10,8 +10,9 @@ class PyocdInterface {
     this.outputChannel = OUTPUT_CHANNEL
     this.executable = null
     this.venv = null
+    this.ready = false
 
-    return findPythonExecutable().then((pythonExecutable) => {
+    findPythonExecutable(this.outputChannel).then((pythonExecutable) => {
       if (pythonExecutable) {
         console.log('found pythonExecutable', pythonExecutable[0])
         this.executable = pythonExecutable[0]
@@ -36,6 +37,8 @@ class PyocdInterface {
           // check for pyocd
           // catch
           return this.installDeps()
+        }).then(() => {
+          this.ready = true
         }).catch((error) => {
           console.log('venv error', error)
         })
@@ -45,6 +48,44 @@ class PyocdInterface {
         // does this happene automatically?
       }
     })
+  }
+
+  _listDevices () {
+    // ask pyocd for the list of devices
+    return this.runCommand('python', [this.context.asAbsolutePath('./root/server/probe.py')]).then((result) => {
+      let probeResult = []
+      try {
+        probeResult = JSON.parse(result)
+      } catch (error) {
+        console.error(error)
+      }
+      return probeResult
+    })
+  }
+
+  listDevices () {
+    // there is initialization that takes n time to complete
+    // this will block listing devices until it's ready
+    if (!this.ready) {
+      this.listDevicesPromise = new Promise((resolve, reject) => {
+        const watcher = setInterval(() => {
+          if (this.ready) {
+            clearInterval(watcher)
+            this._listDevices().then((devices) => {
+              resolve(devices)
+            }).catch((error) => {
+              reject(error)
+            })
+          }
+        }, 100)
+      })
+      return this.listDevicesPromise
+    }
+
+    if (this.listDevicesPromise) {
+      return this.listDevicesPromise
+    }
+    return this._listDevices()
   }
 
   installDeps () {
@@ -66,8 +107,10 @@ class PyocdInterface {
       const pip = path.join(this.venv, 'bin', command)
       const child = spawn(pip, args)
       let error = ''
+      let result = ''
 
       child.stdout.on('data', (data) => {
+        result += data.toString()
         this.outputChannel.appendLine(data.toString())
       })
       child.stderr.on('data', (data) => {
@@ -78,7 +121,7 @@ class PyocdInterface {
         if (code !== 0) {
           reject(new Error(error))
         } else {
-          return resolve()
+          return resolve(result)
         }
       })
     })
@@ -150,70 +193,70 @@ module.exports = PyocdInterface
 
 // creates the venv in that location
 
-module.exports = {
-  // detect if pyocd is installed
-  Pyocd: (OUTPUT_CHANNEL, executable) => {
-    const commands = {
-      exec: (command) => {
-        return new Promise((resolve, reject) => {
-          let response = ''
-          let error = ''
-          const child = spawn(executable, command)
-          child.stdout.on('data', (data) => {
-            response += data.toString()
-            OUTPUT_CHANNEL.appendLine(data.toString())
-          })
+// module.exports = {
+//   // detect if pyocd is installed
+//   Pyocd: (OUTPUT_CHANNEL, executable) => {
+//     const commands = {
+//       exec: (command) => {
+//         return new Promise((resolve, reject) => {
+//           let response = ''
+//           let error = ''
+//           const child = spawn(executable, command)
+//           child.stdout.on('data', (data) => {
+//             response += data.toString()
+//             OUTPUT_CHANNEL.appendLine(data.toString())
+//           })
 
-          child.stderr.on('data', (data) => {
-            error += data
-            OUTPUT_CHANNEL.appendLine(data.toString())
-          })
+//           child.stderr.on('data', (data) => {
+//             error += data
+//             OUTPUT_CHANNEL.appendLine(data.toString())
+//           })
 
-          child.on('close', (code) => {
-            if (code !== 0) {
-              OUTPUT_CHANNEL.appendLine('pyocd error: ' + error)
-              reject(new Error(error))
-            } else {
-              resolve(response)
-            }
-          })
-        })
-      }
-    }
+//           child.on('close', (code) => {
+//             if (code !== 0) {
+//               OUTPUT_CHANNEL.appendLine('pyocd error: ' + error)
+//               reject(new Error(error))
+//             } else {
+//               resolve(response)
+//             }
+//           })
+//         })
+//       }
+//     }
 
-    return new Promise((resolve, reject) => {
-      // check if pyocd is installed
-      const child = spawn('pip', ['show', 'pyocd'])
-      let pyocdInstalled = false
-      let allData = ''
+//     return new Promise((resolve, reject) => {
+//       // check if pyocd is installed
+//       const child = spawn('pip', ['show', 'pyocd'])
+//       let pyocdInstalled = false
+//       let allData = ''
 
-      child.stdout.on('data', (data) => {
-        allData += data.toString()
-        if (allData.includes('Name: pyocd')) {
-          pyocdInstalled = true
-        }
-      })
-      child.stderr.on('data', (data) => {
-        console.error('show pyocd: ' + data.toString())
-      })
+//       child.stdout.on('data', (data) => {
+//         allData += data.toString()
+//         if (allData.includes('Name: pyocd')) {
+//           pyocdInstalled = true
+//         }
+//       })
+//       child.stderr.on('data', (data) => {
+//         console.error('show pyocd: ' + data.toString())
+//       })
 
-      child.on('close', (code) => {
-        if (pyocdInstalled) {
-          const dict = {}
-          allData.split('\n').forEach((line) => {
-            const [key, value] = line.split(': ')
-            dict[key] = value
-          })
-          OUTPUT_CHANNEL.appendLine('pyocd version: ' + dict.Version)
-          resolve(commands)
-        } else {
-          // install it?
-          reject(new Error('pyocd not installed'))
-        }
-      })
-    })
-  }
-}
+//       child.on('close', (code) => {
+//         if (pyocdInstalled) {
+//           const dict = {}
+//           allData.split('\n').forEach((line) => {
+//             const [key, value] = line.split(': ')
+//             dict[key] = value
+//           })
+//           OUTPUT_CHANNEL.appendLine('pyocd version: ' + dict.Version)
+//           resolve(commands)
+//         } else {
+//           // install it?
+//           reject(new Error('pyocd not installed'))
+//         }
+//       })
+//     })
+//   }
+// }
 
 const findPythonExecutable = async (OUTPUT_CHANNEL, resource = null) => {
   // find a python executable reference
