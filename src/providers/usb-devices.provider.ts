@@ -14,7 +14,7 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
   hiddenUsbDeviceNodes: string[]
   parser: any
   lastSentHex: any
-  treeCache: Map<string, vscode.TreeItem[]>
+  treeCache: Map<string, UsbDeviceFile[]>
   pyocdInterface: any
 
   constructor (context: any, ifc: any) {
@@ -38,7 +38,7 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
     // where the first time clicked, the emitted event is empty
     setTimeout(() => {
       this._onDidChangeTreeData.fire(null)
-    }, 100)
+    }, 500)
   }
 
   disconnectAll (): void {
@@ -112,7 +112,8 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
         label: element.label,
         collapsibleState: element.collapsibleState,
         command: element.command,
-        contextValue: element.ifc?.connected === true ? 'usbDeviceConnected' : 'usbDevice'
+        contextValue: element.ifc?.connected === true ? 'usbDeviceConnected' : 'usbDevice',
+        iconPath: element.iconPath
       }
     } else {
       return element
@@ -149,8 +150,11 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
           // create a uri from the path
           // memfs:/serial/dev/tty.usbmodem1411
           // memfs:/serial/COM3
+          if (port.serialNumber === '') {
+            return next()
+          }
           const uri = vscode.Uri.parse(`memfs:/serial/${port.serialNumber}${port.path}`)
-
+          console.log('memfs uri', uri)
           if (this.hiddenUsbDeviceNodes.includes(uri.toString())) {
             return next()
           }
@@ -165,16 +169,15 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
           // if no target_board_name, fallback to serial port query
           // if not, connect and detect if repl capable
           this.connectAndExecute(port, '\r\n').then((result) => {
-            console.log('connectAndExecute', result)
             // if data is >>> it is a repl capable device
             if (result.includes('>>>')) {
               const portItem = new UsbDevice(uri, vscode.TreeItemCollapsibleState.Collapsed, port, 'repl')
               this.usbDeviceNodes.push(portItem)
             } else if (result.includes('uart:~$')) {
-              const portItem = new UsbDevice(uri, vscode.TreeItemCollapsibleState.Collapsed, port, 'uart')
+              const portItem = new UsbDevice(uri, vscode.TreeItemCollapsibleState.None, port, 'uart')
               this.usbDeviceNodes.push(portItem)
             } else if (result !== '') {
-              const portItem = new UsbDevice(uri, vscode.TreeItemCollapsibleState.Collapsed, port, 'unknown')
+              const portItem = new UsbDevice(uri, vscode.TreeItemCollapsibleState.None, port, 'unknown')
               this.usbDeviceNodes.push(portItem)
             } else {
               // if no data, it's probably not a serial device we can use
@@ -203,7 +206,7 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
 
   async getChildren (element?: UsbDevice): Promise<vscode.TreeItem[]> {
     if (element !== undefined) {
-      const key = element?.uri.toString() ?? 'root'
+      const key = element?.uri.path ?? 'root'
       const result = this.treeCache.get(key)
       if (result !== undefined) {
         return await Promise.resolve(result)

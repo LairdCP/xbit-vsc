@@ -41,10 +41,10 @@ export class PyocdInterface {
           } else {
             throw new Error('No venv selected')
           }
-        }).then(async () => {
-          // check for pyocd
-          // catch
-          return await this.installDeps()
+        // }).then(async () => {
+        //   // check for pyocd
+        //   // catch
+        //   return await this.installDeps()
         }).then(() => {
           this.ready = true
         }).catch((error) => {

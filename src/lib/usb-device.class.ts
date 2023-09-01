@@ -25,8 +25,8 @@ export class UsbDevice extends vscode.TreeItem {
   lastSentHex: any
 
   // overrides
-  public readonly iconPath: any
-  public readonly description?: string
+  public iconPath: any
+  public description?: string
 
   constructor (
     uri: vscode.Uri,
@@ -43,7 +43,7 @@ export class UsbDevice extends vscode.TreeItem {
     this.command = command // default vs code command when clicking on item
     this.baudRate = 115200
 
-    this.name = this.options.name
+    this.name = this.options.name === '' ? this.options.path : this.options.name
     // if has serialPort
     this.ifc = new UsbDeviceInterface({
       path: this.options.path,
@@ -73,6 +73,7 @@ export class UsbDevice extends vscode.TreeItem {
         dark: path.join(__filename, '../../..', 'resources', 'dark', 'usb-device.svg')
       }
     }
+
     console.log(this)
   }
 
@@ -138,12 +139,24 @@ export class UsbDevice extends vscode.TreeItem {
               // split the result into lines
               const resultMap = result.split(',')
                 .map(r => r.trim()
-                  .split(' '))
-                .filter(r => r.length > 1)
+                  .split(' ')
+                )
+                .filter(r => {
+                  if (r.length > 1) {
+                    if (r[1] === '32768') {
+                      r[1] = 'file'
+                    } else if (r[1] === '16384') {
+                      r[1] = 'dir'
+                    }
+                    return true
+                  } else {
+                    return false
+                  }
+                })
               // result = [
-              //   ['/boot.py', 'file', '131'],
-              //   ['/main.py', 'file', '7271'],
-              //   ['/pikascript-api', 'dir', '0']
+              //   ['/boot.py', '32768', '131'],
+              //   ['/main.py', '32768', '7271'],
+              //   ['/pikascript-api', '16384', '0']
               // ]
               resolve(resultMap)
             }).catch((error: Error) => {
@@ -170,9 +183,8 @@ export class UsbDevice extends vscode.TreeItem {
         // populate tree items from the read file information
         let treeNode
 
-        // memfs://tty.usbmodem1411/blink.py
-        const uri = vscode.Uri.parse(this.uri.path + path)
-
+        // memfs:/serial/id/tty.usbmodem1411/blink.py
+        const uri = vscode.Uri.parse('memfs:' + this.uri.path + path)
         //
         // Omit folders from the tree for now
         // if (type === 'dir') {
@@ -181,10 +193,7 @@ export class UsbDevice extends vscode.TreeItem {
         // treeNode.parentDevice = element.parentDevice
         // } else
         if (type === 'file') {
-          treeNode = new UsbDeviceFile(uri, type, size, {
-            command: 'usbDevices.openDeviceFile',
-            arguments: [treeNode]
-          })
+          treeNode = new UsbDeviceFile(uri, type, size)
           treeNode.parentDevice = this
         } else {
           return

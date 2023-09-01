@@ -11,6 +11,7 @@ import { UsbDeviceFile } from './lib/usb-device-file.class'
 import { UsbDevice } from './lib/usb-device.class'
 
 import { UsbDeviceWebViewProvider } from './providers/usb-device-webview.provider'
+import { text } from 'stream/consumers'
 
 let usbDevicesProvider: UsbDevicesProvider
 
@@ -20,9 +21,9 @@ export function activate (context: vscode.ExtensionContext): void {
   // console.log('Congratulations, your extension "xbit-vsc" is now active!')
 
   const memFs = new MemFS()
+  memFs.createDirectory(vscode.Uri.parse('memfs:/serial/'))
+
   context.subscriptions.push(vscode.workspace.registerFileSystemProvider('memfs', memFs, { isCaseSensitive: true }))
-  memFs.createDirectory(vscode.Uri.parse('memfs:/serial'))
-  memFs.createDirectory(vscode.Uri.parse('memfs:/serial/dev'))
 
   const outputChannel = vscode.window.createOutputChannel('xbit-vsc')
   const pyocdInterface = new PyocdInterface(context, outputChannel)
@@ -70,6 +71,7 @@ export function activate (context: vscode.ExtensionContext): void {
 
   // called when a python file on a connected device is selected
   context.subscriptions.push(vscode.commands.registerCommand('usbDevices.openDeviceFile', async (usbDeviceFile: UsbDeviceFile) => {
+    console.log('opening', usbDeviceFile)
     // e.command.arguments[0].label is the file selected
     // e.command.arguments[1].main is the device selected
     outputChannel.appendLine(`Opening File ${usbDeviceFile.label}\n`)
@@ -82,23 +84,34 @@ export function activate (context: vscode.ExtensionContext): void {
       outputChannel.appendLine(`Opened File ${usbDeviceFile.name}\n`)
       return
     } catch (error: any) {
-      outputChannel.appendLine(`Error Opening File ${String(error.message)}\n`)
+      // outputChannel.appendLine(`Error Opening File ${String(error.message)}\n`)
+    }
+
+    const pathParts = usbDeviceFile.parentDevice.uri.path.split('/')
+    let pathToCreate = ''
+    while (pathParts.length !== 0) {
+      pathToCreate = path.join(pathToCreate, pathParts.shift() as string)
+      try {
+      // check if directory exists in memfs
+        memFs.stat(vscode.Uri.parse(pathToCreate))
+      } catch (error) {
+        memFs.createDirectory(vscode.Uri.parse(pathToCreate))
+      }
     }
 
     // open file
     const result: string = await usbDeviceFile.readFileFromDevice()
-    const fileData = Buffer.from(result, 'hex')
+    console.log('result', result)
+    const fileData = Buffer.from(result, 'ascii')
+    
     try {
-    // check if directory exists in memfs
-      memFs.stat(usbDeviceFile.parentDevice.uri)
-    } catch (error) {
-      memFs.createDirectory(usbDeviceFile.parentDevice.uri)
-    }
-    try {
+      console.log('write', usbDeviceFile.uri, fileData)
       memFs.writeFile(usbDeviceFile.uri, fileData, { create: true, overwrite: true })
+      console.log('showTextDocument', usbDeviceFile.uri)
       await vscode.window.showTextDocument(usbDeviceFile.uri)
       outputChannel.appendLine(`Opened File ${usbDeviceFile.name}\n`)
     } catch (error: any) {
+      console.log(error)
       outputChannel.appendLine(`Error Opening File ${String(error.message)}\n`)
     }
   }))
@@ -132,7 +145,9 @@ export function activate (context: vscode.ExtensionContext): void {
     try {
       await usbDevice.disconnect()
       await vscode.window.showInformationMessage('Port Disconnected')
-      usbDevice.terminal.remove()
+      if (usbDevice.terminal !== undefined) {
+        usbDevice.terminal.remove()
+      }
       usbDevicesProvider.refresh()
     } catch (error: any) {
       await vscode.window.showInformationMessage(`Error closing port: ${String(error.message)}`)
@@ -199,31 +214,34 @@ export function activate (context: vscode.ExtensionContext): void {
 
   vscode.workspace.onDidSaveTextDocument(async (textDocument: vscode.TextDocument) => {
     console.log('Saved.', textDocument)
-    // let usbDeviceFile = null
-    // // find the deviceFile by uri
+    let usbDeviceFile: UsbDeviceFile | undefined = undefined
+    // find the deviceFile by uri
 
-    // const iterator = usbDevicesProvider.treeCache.entries()
-    // for (const [key, value] of iterator) {
-    //   for (const i of value) {
-    //     if (textDocument.uri.toString() === i.uri.toString()) {
-    //       usbDeviceFile = usbDevicesProvider.treeCache[k][i]
-    //       break
-    //     }
-    //   }
-    // }
-    // if (!usbDeviceFile) {
-    //   return
-    // }
-    // const dataToWrite = textDocument.getText()
-    // usbDeviceFile.writeFileToDevice(dataToWrite)
-    //   .then(() => {
-    //     // OK result
-    //     outputChannel.appendLine(`Saved ${usbDeviceFile.name}\n`)
-    //     outputChannel.show()
-    //   }).catch((error) => {
-    //     outputChannel.appendLine(`Error saving: ${String(error.message)}\n`)
-    //     outputChannel.show()
-    //   })
+    const iterator = usbDevicesProvider.treeCache.entries()
+    for (const [key, value] of iterator) {
+      for (const i of value) {
+        console.log(textDocument.uri.path, i.uri.path)
+        if (i.uri.path === textDocument.uri.path) {
+          usbDeviceFile = i
+          break
+        }
+      }
+    }
+    if (usbDeviceFile === undefined) {
+      return
+    }
+    const dataToWrite = textDocument.getText()
+    try {
+      const writeResult = await usbDeviceFile.writeFileToDevice(dataToWrite)
+      // OK result
+      console.log('writeResult', writeResult)
+      outputChannel.appendLine(`Saved\n`)
+      outputChannel.show()
+    } catch (error) {
+      console.log(error)
+      outputChannel.appendLine('Error saving\n')
+      outputChannel.show()
+    }
   })
 
   // context.subscriptions.push(vscode.commands.registerCommand('usbDevices.writeHex', (usbDevice, file) => {
