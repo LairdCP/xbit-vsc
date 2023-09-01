@@ -1,10 +1,20 @@
-const vscode = require('vscode')
+import * as vscode from 'vscode'
 
-class ReplTerminal {
-  constructor (context, opts = {}) {
+interface ReplOptions {
+  name?: string
+}
+
+export class ReplTerminal {
+  writeEmitter: vscode.EventEmitter<string>
+  name: string
+  history: string[] = []
+  inputCallback: (data: string) => void
+  private readonly terminal: vscode.Terminal | null
+
+  constructor (context: vscode.ExtensionContext, opts: ReplOptions = {}) {
     this.writeEmitter = new vscode.EventEmitter()
-    this.name = opts.name || 'REPL'
-    this.inputCallback = null
+    this.name = opts.name ?? 'REPL'
+    this.inputCallback = () => { /* noop */ }
     this.terminal = null
 
     let line = ''
@@ -12,8 +22,8 @@ class ReplTerminal {
       onDidWrite: this.writeEmitter.event,
       open: () => this.writeEmitter.fire('Hello\r\n'),
       close: () => { /* noop */ },
-      handleInput: (data) => {
-        if (this.inputCallback) {
+      handleInput: (data: string) => {
+        if (this.inputCallback !== null) {
           // this callback is set by the UsbDevicesProvider
           // it writes the input to the serial port for the usb device
           this.inputCallback(data)
@@ -39,22 +49,22 @@ class ReplTerminal {
     this.terminal.show()
   }
 
-  onInput (callback) {
+  onInput (callback: () => void): void {
     this.inputCallback = callback
   }
 
-  write (data) {
+  write (data: string): void {
     // some terminals will echo writes, so ignore it
     this.writeEmitter.fire(data)
   }
 
-  _write (data) {
+  _write (data: string): void {
     this.writeEmitter.fire(data)
   }
 
-  remove () {
-    this.terminal.dispose()
+  remove (): void {
+    if (this.terminal !== null) {
+      this.terminal.dispose()
+    }
   }
 }
-
-module.exports = ReplTerminal

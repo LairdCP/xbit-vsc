@@ -1,25 +1,25 @@
-import { provideVSCodeDesignSystem, vsCodeButton } from '@vscode/webview-ui-toolkit'
+// import { provideVSCodeDesignSystem, vsCodeButton } from '@vscode/webview-ui-toolkit'
+import * as vscode from 'vscode'
+import * as fs from 'fs'
 
-const vscode = require('vscode')
-const fs = require('fs')
+// provideVSCodeDesignSystem().register(vsCodeButton())
 
-provideVSCodeDesignSystem().register(vsCodeButton())
+export class UsbDeviceWebViewProvider implements vscode.WebviewViewProvider {
+  public readonly viewType: string = ''
+  public webview?: vscode.Webview
+  private _view?: vscode.WebviewView
 
-class UsbDeviceWebViewProvider {
   constructor (
-    _extensionUri,
-    viewType
+    private readonly _extensionUri: vscode.Uri,
+    viewType: string
   ) {
     this._extensionUri = _extensionUri
     this.viewType = viewType
-    this.webview = null
   }
 
   resolveWebviewView (
-    webviewView,
-    context,
-    token
-  ) {
+    webviewView: vscode.WebviewView
+  ): void {
     this._view = webviewView
     webviewView.webview.options = {
       // Allow scripts in the webview
@@ -29,7 +29,7 @@ class UsbDeviceWebViewProvider {
       ]
     }
     try {
-      const path = vscode.Uri.joinPath(this._extensionUri, 'root/providers', 'device-details.webview.html')
+      const path = vscode.Uri.joinPath(this._extensionUri, 'src/providers', 'device-details.webview.html')
       console.log(path)
       const html = fs.readFileSync(path.fsPath, 'utf8')
       // const src = webviewView.webview.asWebviewUri(path)
@@ -43,11 +43,4 @@ class UsbDeviceWebViewProvider {
       console.log(error)
     }
   }
-
-  getWebviewContent () {
-  //   const path = vscode.Uri.joinPath(context.extensionUri, 'room/providers', 'device-details.webview.html')
-    return ''
-  }
 }
-
-module.exports = UsbDeviceWebViewProvider

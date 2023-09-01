@@ -1,21 +1,29 @@
-const vscode = require('vscode')
-const { spawn } = require('child_process')
-const config = vscode.workspace.getConfiguration('xbit-vsc')
-const path = require('path')
-const fs = require('fs/promises')
+import * as path from 'path'
+import * as vscode from 'vscode'
+import { ChildProcess, spawn } from 'child_process'
+import * as fs from 'fs/promises'
 
-class PyocdInterface {
-  constructor (context, OUTPUT_CHANNEL) {
+const config = vscode.workspace.getConfiguration('xbit-vsc')
+
+export class PyocdInterface {
+  context: vscode.ExtensionContext
+  outputChannel: vscode.OutputChannel
+  executable: string
+  venv: string
+  ready: boolean
+  listDevicesPromise: Promise<any> | null = null
+
+  constructor (context: vscode.ExtensionContext, outputChannel: vscode.OutputChannel) {
     this.context = context
-    this.outputChannel = OUTPUT_CHANNEL
-    this.executable = null
-    this.venv = null
+    this.outputChannel = outputChannel
+    this.executable = ''
+    this.venv = ''
     this.ready = false
 
-    findPythonExecutable(this.outputChannel).then((pythonExecutable) => {
-      if (pythonExecutable) {
-        console.log('found pythonExecutable', pythonExecutable[0])
-        this.executable = pythonExecutable[0]
+    findPythonExecutable(this.outputChannel).then((pythonExecutable: string) => {
+      if (pythonExecutable !== '') {
+        console.log('found pythonExecutable', pythonExecutable)
+        this.executable = pythonExecutable
         // Pyocd(outputChannel, pythonExecutable[0]).then((pyocd) => {
         //   if (pyocd) {
         //     console.log('found pyocd', pyocd)
@@ -25,18 +33,18 @@ class PyocdInterface {
           return null
         }).catch(() => {
           return vscode.window.showWarningMessage('This extension uses a python virtual enviroment to install dependencies. Please select a location for the venv.', 'Select', 'Cancel')
-        }).then((selection) => {
+        }).then(async (selection) => {
           if (selection === 'Select') {
-            return this.initVenv(this.outputChannel, pythonExecutable[0])
-          } else if (this.venv) {
+            return await this.initVenv()
+          } else if (this.venv !== null) {
             return null
           } else {
             throw new Error('No venv selected')
           }
-        }).then(() => {
+        }).then(async () => {
           // check for pyocd
           // catch
-          return this.installDeps()
+          return await this.installDeps()
         }).then(() => {
           this.ready = true
         }).catch((error) => {
@@ -47,23 +55,26 @@ class PyocdInterface {
         // show notifcation to install the python extension as recommended
         // does this happene automatically?
       }
+    }).catch(() => {
+      console.log('findPythonExecutable error')
     })
   }
 
-  _listDevices () {
+  private async _listDevices (): Promise<any> {
     // ask pyocd for the list of devices
-    return this.runCommand('python', [this.context.asAbsolutePath('./root/server/probe.py')]).then((result) => {
-      let probeResult = []
-      try {
-        probeResult = JSON.parse(result)
-      } catch (error) {
-        console.error(error)
-      }
-      return probeResult
-    })
+    return await this.runCommand('python', [this.context.asAbsolutePath('./src/server/probe.py')])
+      .then((result: string) => {
+        let probeResult = []
+        try {
+          probeResult = JSON.parse(result)
+        } catch (error) {
+          console.error(error)
+        }
+        return probeResult
+      })
   }
 
-  listDevices () {
+  async listDevices (): Promise<any[]> {
     // there is initialization that takes n time to complete
     // this will block listing devices until it's ready
     if (!this.ready) {
@@ -79,42 +90,42 @@ class PyocdInterface {
           }
         }, 100)
       })
-      return this.listDevicesPromise
+      return await this.listDevicesPromise
     }
 
-    if (this.listDevicesPromise) {
-      return this.listDevicesPromise
+    if (this.listDevicesPromise !== null) {
+      return await this.listDevicesPromise
     }
-    return this._listDevices()
+    return await this._listDevices()
   }
 
-  installDeps () {
-    return this.runCommand('pip', ['install', '-r', this.context.asAbsolutePath('./requirements.in')])
+  async installDeps (): Promise<string> {
+    return await this.runCommand('pip', ['install', '-r', this.context.asAbsolutePath('./requirements.in')])
   }
 
   // runs a command in the venv
   // runCommand(context, OUTPUT_CHANNEL, venv, 'pyocd', ['list'])
-  runCommand (command, args = []) {
-    if (!this.venv) {
-      return Promise.reject(new Error('No venv selected'))
+  async runCommand (command: string, args: string[] = []): Promise<string> {
+    if (this.venv === '') {
+      return await Promise.reject(new Error('No venv selected'))
     }
 
-    if (!command) {
-      return Promise.reject(new Error('No command specified'))
+    if (command === undefined) {
+      return await Promise.reject(new Error('No command specified'))
     }
 
-    return new Promise((resolve, reject) => {
+    return await new Promise((resolve, reject) => {
       const pip = path.join(this.venv, 'bin', command)
       const child = spawn(pip, args)
       let error = ''
       let result = ''
 
-      child.stdout.on('data', (data) => {
+      child.stdout.on('data', (data: Buffer) => {
         result += data.toString()
         this.outputChannel.appendLine(data.toString())
       })
-      child.stderr.on('data', (data) => {
-        error += data
+      child.stderr.on('data', (data: Buffer) => {
+        error += data.toString()
         this.outputChannel.appendLine(data.toString())
       })
       child.on('close', (code) => {
@@ -127,53 +138,63 @@ class PyocdInterface {
     })
   }
 
-  initVenv () {
-    return new Promise((resolve, reject) => {
-      this.selectVenv(this.OUTPUT_CHANNEL).then((targetLocation) => {
+  async initVenv (): Promise<string> {
+    if (this.executable === '') {
+      return await Promise.reject(new Error('No python executable found'))
+    }
+    return await new Promise((resolve, reject) => {
+      this.selectVenv().then((targetLocation) => {
         let error = ''
         process.chdir(targetLocation)
 
-        console.log('InitVenv', process.cwd())
-        const child = spawn(this.executable, ['-m', 'venv', './xbit.venv'])
-        child.stdout.on('data', (data) => {
+        const child: ChildProcess = spawn(this.executable, ['-m', 'venv', './xbit.venv'])
+        if (child === null || child.stdout === null || child.stderr === null) {
+          return reject(new Error('Unable to spawn child process'))
+        }
+        child.stdout.on('data', (data: string) => {
           this.outputChannel.appendLine(data.toString())
         })
 
-        child.stderr.on('data', (data) => {
+        child.stderr.on('data', (data: string) => {
           error += data
           this.outputChannel.appendLine(data.toString())
         })
 
-        child.on('close', (code) => {
+        child.on('close', (code: number) => {
           if (code !== 0) {
-            this.OUTPUT_CHANNEL.appendLine('pyocd error: ' + error)
+            this.outputChannel.appendLine('pyocd error: ' + error)
             reject(new Error(error))
           } else {
             const venvFolder = path.join(targetLocation, 'xbit.venv')
             config.update('python-venv', venvFolder, vscode.ConfigurationTarget.Global).then(() => {
               resolve(venvFolder)
+            }, (error) => {
+              reject(error)
             })
           }
         })
+      }).catch((error) => {
+        reject(error)
       })
     })
   }
 
-  getVenv () {
-    const pythonVenv = config.get('python-venv')
-    return fs.stat(pythonVenv)
-      .then((stat) => {
-        if (stat.isDirectory()) {
-          this.venv = pythonVenv
-          return pythonVenv
-        } else {
-          throw new Error('python-venv is not a directory')
-        }
-      })
+  async getVenv (): Promise<string> {
+    const pythonVenv: string | undefined = config.get('python-venv')
+    if (pythonVenv === undefined) {
+      throw new Error('python-venv not set')
+    }
+    const stat = await fs.stat(pythonVenv)
+    if (stat.isDirectory()) {
+      this.venv = pythonVenv
+      return pythonVenv
+    } else {
+      throw new Error('python-venv is not a directory')
+    }
   }
 
   // prompts the user to select a folder location and
-  async selectVenv () {
+  async selectVenv (): Promise<string> {
     const onFulfilled = await vscode.window.showOpenDialog({
       canSelectMany: false,
       canSelectFolders: true,
@@ -181,15 +202,13 @@ class PyocdInterface {
       title: 'Select Virtual Environment Location',
       openLabel: 'Select'
     })
-    if (onFulfilled && onFulfilled.length > 0) {
+    if (onFulfilled !== null && onFulfilled !== undefined && onFulfilled.length > 0) {
       return onFulfilled[0].fsPath
     } else {
       throw new Error('No folder selected')
     }
   }
 }
-
-module.exports = PyocdInterface
 
 // creates the venv in that location
 
@@ -258,22 +277,22 @@ module.exports = PyocdInterface
 //   }
 // }
 
-const findPythonExecutable = async (OUTPUT_CHANNEL, resource = null) => {
+const findPythonExecutable = async (OUTPUT_CHANNEL: vscode.OutputChannel, resource = null): Promise<string> => {
   // find a python executable reference
   try {
     const extension = vscode.extensions.getExtension('ms-python.python')
-    if (!extension) {
+    if (extension === undefined) {
       OUTPUT_CHANNEL.appendLine(
         'Unable to get python executable from vscode-python. ms-python.python extension not found.'
       )
-      return undefined
+      return ''
     }
 
     let usingNewInterpreterStorage = false
     try {
       usingNewInterpreterStorage = extension.packageJSON.featureFlags.usingNewInterpreterStorage
     } catch (error) {
-
+      // ignore
     }
 
     if (usingNewInterpreterStorage) {
@@ -284,31 +303,31 @@ const findPythonExecutable = async (OUTPUT_CHANNEL, resource = null) => {
           // loaded
         }
       }
-      const execCommand = extension.exports.settings.getExecutionDetails(resource).execCommand
-      OUTPUT_CHANNEL.appendLine('vscode-python execCommand: ' + execCommand)
-      if (!execCommand) {
+      const execCommand: string[] | string = extension.exports.settings.getExecutionDetails(resource).execCommand
+      // OUTPUT_CHANNEL.appendLine('vscode-python execCommand: ' + execCommand.join(' '))
+      if (execCommand === null || execCommand.length === 0) {
         OUTPUT_CHANNEL.appendLine('vscode-python did not return proper execution details.')
-        return undefined
+        return ''
       }
       if (execCommand instanceof Array) {
         if (execCommand.length === 0) {
-          return undefined
+          return ''
         }
-        return execCommand
+        return execCommand[0]
       }
-      return [execCommand]
+      return execCommand
     } else {
       const config = vscode.workspace.getConfiguration('python')
-      const executable = await config.get('defaultInterpreterPath')
-      if (!executable) {
-        return undefined
+      const executable: string | undefined = await config.get('defaultInterpreterPath')
+      if (executable === undefined) {
+        return ''
       }
-      return [executable]
+      return executable
     }
   } catch (error) {
     OUTPUT_CHANNEL.appendLine(
       'Error when querying about python executable path from vscode-python.'
     )
-    return undefined
+    return ''
   }
 }

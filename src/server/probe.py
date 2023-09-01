@@ -8,3 +8,6 @@ def obj_dict(obj):
 json_string = json.dumps(result, default=obj_dict)
 
 print(json_string)
+
+# create an instance
+# inst.get_dap_info(8)
