@@ -41,12 +41,14 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
     }, 500)
   }
 
-  disconnectAll (): void {
-    this.usbDeviceNodes.forEach((usbDevice) => {
-      usbDevice.disconnect().catch((error: Error) => {
+  async disconnectAll (): Promise<void> {
+    for (const usbDevice of this.usbDeviceNodes) {
+      try {
+        await usbDevice.disconnect()
+      } catch (error: any) {
         console.log('error disconnecting', error)
-      })
-    })
+      }
+    }
   }
 
   // Connect to a port, execute a command, disconnect and return the result
@@ -154,7 +156,6 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
             return next()
           }
           const uri = vscode.Uri.parse(`memfs:/serial/${port.serialNumber}${port.path}`)
-          console.log('memfs uri', uri)
           if (this.hiddenUsbDeviceNodes.includes(uri.toString())) {
             return next()
           }
@@ -226,41 +227,44 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
   }
 
   async createFile (element: UsbDevice, filePath: string): Promise<void> {
+    const key = element.parentDevice.uri.path
     try {
       await element.createFile(filePath)
-      await vscode.window.showInformationMessage(`Created New File: ${filePath}`)
+      void vscode.window.showInformationMessage(`Created New File: ${filePath}`)
     } catch (error) {
-      await vscode.window.showInformationMessage('Error Creating File')
+      void vscode.window.showInformationMessage('Error Creating File')
     }
-    const key = element?.uri.toString() ?? 'root'
     this.treeCache.delete(key)
     this.refresh()
+    return await Promise.resolve()
   }
 
   async deleteFile (element: UsbDeviceFile): Promise<void> {
     // const dirPath = path.dirname(filePath)
-    const key = element?.uri.toString()
+    const key = element.parentDevice.uri.path
     try {
       await element.parentDevice.deleteFile(element.devPath)
-      await vscode.window.showInformationMessage(`Deleted File: ${key}`)
+      void vscode.window.showInformationMessage(`Deleted File: ${key}`)
     } catch (error) {
-      await vscode.window.showInformationMessage('Error Deleting File')
+      void vscode.window.showInformationMessage('Error Deleting File')
     }
     // remove from MemFS cache
     this.treeCache.delete(key)
-    console.log('refreshing')
     this.refresh()
   }
 
   async renameFile (element: UsbDeviceFile, newFilePath: string): Promise<void> {
-    const oldFilePath = element.devPath.split('/').pop()
-    const newFileName = newFilePath.split('/').pop()
-    const key = element?.uri.toString()
+    const oldFilePath = element.devPath.split('/').pop() ?? ''
+    const newFileName = newFilePath.split('/').pop() ?? ''
+    if (oldFilePath === '' || newFileName === '') {
+      return await Promise.reject(new Error('invalid file path for rename'))
+    }
+    const key = element.uri.path
     try {
       await element.parentDevice.renameFile(oldFilePath, newFileName)
-      await vscode.window.showInformationMessage(`Renamed File: ${newFileName ?? ''}`)
+      void vscode.window.showInformationMessage(`Renamed File: ${newFileName ?? ''}`)
     } catch (error) {
-      await vscode.window.showInformationMessage('Error Renaming File')
+      void vscode.window.showInformationMessage('Error Renaming File')
     }
     // remove from MemFS cache
     this.treeCache.delete(key)

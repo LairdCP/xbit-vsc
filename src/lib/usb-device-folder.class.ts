@@ -5,7 +5,7 @@ export class UsbDeviceFolder extends vscode.TreeItem {
   path: string
   constructor (
     label: string,
-    command: any
+    command: vscode.Command
   ) {
     super(label, vscode.TreeItemCollapsibleState.Collapsed)
     this.path = label

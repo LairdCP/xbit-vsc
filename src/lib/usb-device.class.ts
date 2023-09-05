@@ -141,27 +141,34 @@ export class UsbDevice extends vscode.TreeItem {
                 .map(r => r.trim()
                   .split(' ')
                 )
-                .filter(r => {
-                  if (r.length > 1) {
-                    if (r[1] === '32768') {
-                      r[1] = 'file'
-                    } else if (r[1] === '16384') {
-                      r[1] = 'dir'
-                    }
-                    return true
-                  } else {
-                    return false
-                  }
+                .filter((r) => {
+                  return r.length > 1
                 })
+              const fileResult = []
+              for (let i = 0; i < resultMap.length; i++) {
+                const element: Array<string | number> = resultMap[i]
+                if (element[1] === '32768') {
+                  element[1] = 'file'
+                } else if (element[1] === '16384') {
+                  element[1] = 'dir'
+                }
+                if (typeof element[2] === 'string') {
+                  element[2] = parseInt(element[2], 10)
+                }
+                fileResult.push(element)
+              }
+
               // result = [
               //   ['/boot.py', '32768', '131'],
               //   ['/main.py', '32768', '7271'],
               //   ['/pikascript-api', '16384', '0']
               // ]
-              resolve(resultMap)
+              resolve(fileResult)
             }).catch((error: Error) => {
               console.log('error', error)
               reject(error)
+            }).finally(() => {
+              this.disconnect()
             })
           }
         }, 100)
@@ -175,7 +182,7 @@ export class UsbDevice extends vscode.TreeItem {
       return await Promise.resolve([])
     }
     try {
-      const files = await this.readDirFromDevice(dir)
+      const files: File[] = await this.readDirFromDevice(dir)
 
       const treeNodes: UsbDeviceFile[] = []
       files.forEach((file: File) => {
@@ -193,8 +200,8 @@ export class UsbDevice extends vscode.TreeItem {
         // treeNode.parentDevice = element.parentDevice
         // } else
         if (type === 'file') {
-          treeNode = new UsbDeviceFile(uri, type, size)
-          treeNode.parentDevice = this
+          console.log(file)
+          treeNode = new UsbDeviceFile(uri, type, size, this)
         } else {
           return
         }
@@ -206,28 +213,48 @@ export class UsbDevice extends vscode.TreeItem {
     }
   }
 
-  async createFile (filePath: string): Promise<void> {
+  async createFile (filePath: string): Promise<string> {
+    console.log('createFile2', filePath)
     try {
       await this.ifc.writeWait(`f = open('${filePath}', 'w')\r`, 1000)
       await this.ifc.writeWait('f.close()\r', 1000)
-      return await Promise.resolve()
+      return await Promise.resolve('ok')
     } catch (error) {
       return await Promise.reject(error)
     }
   }
 
   async deleteFile (filePath: string): Promise<void> {
-    return this.ifc.writeWait(`unlink('${filePath}')\r`, 1000)
+    // write import os
+    return this.ifc.writeWait(`import os\ros.unlink('${filePath}')\r`, 1000)
   }
 
   async renameFile (oldFilePath: string, newFilePath: string): Promise<void> {
-    return this.ifc.writeWait(`rename('${oldFilePath}', '${newFilePath}')\r`, 1000)
+    // write import os
+    return this.ifc.writeWait(`import os\ros.rename('${oldFilePath}', '${newFilePath}')\r`, 1000)
+  }
+
+  private _handleTerminalData (data: Buffer): void {
+    if (this.terminal !== null) {
+      const hex = data.toString('hex')
+      if (/^7f20/.test(hex)) {
+        // Move cursor backward
+        this.terminal.write('\x1b[D')
+        // Delete character
+        this.terminal.write('\x1b[P')
+      }
+
+      if (this.terminal !== null) {
+        this.terminal.write(data.toString())
+      }
+    }
   }
 
   async createTerminal (context: vscode.ExtensionContext): Promise<void> {
     this.terminal = new ReplTerminal(context, {
       name: this.options.path
     })
+
     this.terminal.onInput((data: string) => {
       // send line to the serial port
       if (this.connected) {
@@ -235,20 +262,15 @@ export class UsbDevice extends vscode.TreeItem {
         this.write(data)
       }
     })
-    this.ifc.on('data', (data: Buffer) => {
-      if (this.terminal !== null) {
-        const hex = data.toString('hex')
-        if (/^7f20/.test(hex)) {
-          // Move cursor backward
-          this.terminal.write('\x1b[D')
-          // Delete character
-          this.terminal.write('\x1b[P')
-        }
+    // when disconnected, the listener is not removed
+    this.ifc.on('data', this._handleTerminalData.bind(this))
+  }
 
-        if (this.terminal !== null) {
-          this.terminal.write(data.toString())
-        }
-      }
-    })
+  async destroyTerminal (): Promise<void> {
+    if (this.terminal !== null) {
+      this.terminal.dispose()
+      this.terminal = null
+    }
+    this.ifc.removeAllListeners('data')
   }
 }

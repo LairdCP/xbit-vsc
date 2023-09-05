@@ -55,13 +55,13 @@ export interface PortInfo extends DvkProbeInterface {
 // from either the serial port list or the dvk probe script
 export class ProbeInfo {
   options: PortInfo
-  serialNumber: string = ''
-  locationId: string = ''
-  manufacturer: string = ''
+  serialNumber = ''
+  locationId = ''
+  manufacturer = ''
   path: string
-  productId: number = 0
-  vendorId: number = 0
-  name: string = ''
+  productId = 0
+  vendorId = 0
+  name = ''
 
   constructor (options: PortInfo) {
     this.options = options

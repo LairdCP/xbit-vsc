@@ -11,7 +11,6 @@ import { UsbDeviceFile } from './lib/usb-device-file.class'
 import { UsbDevice } from './lib/usb-device.class'
 
 import { UsbDeviceWebViewProvider } from './providers/usb-device-webview.provider'
-import { text } from 'stream/consumers'
 
 let usbDevicesProvider: UsbDevicesProvider
 
@@ -30,14 +29,21 @@ export function activate (context: vscode.ExtensionContext): void {
   usbDevicesProvider = new UsbDevicesProvider(context, pyocdInterface)
 
   vscode.window.registerTreeDataProvider('usbDevices', usbDevicesProvider)
-  context.subscriptions.push(vscode.commands.registerCommand('usbDevices.refreshEntry', () => {
+  context.subscriptions.push(vscode.commands.registerCommand('usbDevices.refreshEntry', async () => {
     // clear the cached devices list to hard refresh
+    for (const usbDevice of usbDevicesProvider.usbDeviceNodes) {
+      await vscode.commands.executeCommand('usbDevices.disconnectUsbDevice', usbDevice)
+    }
     usbDevicesProvider.usbDeviceNodes.length = 0
     usbDevicesProvider.hiddenUsbDeviceNodes.length = 0
     usbDevicesProvider.refresh()
   }))
 
   context.subscriptions.push(vscode.commands.registerCommand('usbDevices.createDeviceFile', async (usbDevice: UsbDevice) => {
+    if (!usbDevice.connected) {
+      await vscode.commands.executeCommand('usbDevices.connectUsbDevice', usbDevice)
+    }
+
     // create a new file object with unamed file
     const fileName = await vscode.window.showInputBox()
     // check if the file already exists with the same filename. If it does, append a number to the filename?
@@ -49,6 +55,10 @@ export function activate (context: vscode.ExtensionContext): void {
   }))
 
   context.subscriptions.push(vscode.commands.registerCommand('usbDevices.renameDeviceFile', async (usbDeviceFile: UsbDeviceFile) => {
+    if (!usbDeviceFile.parentDevice.connected) {
+      await vscode.commands.executeCommand('usbDevices.connectUsbDevice', usbDeviceFile.parentDevice)
+    }
+
     // create a new file object with unamed file
     const newFileName = await vscode.window.showInputBox({
       value: usbDeviceFile.label
@@ -60,6 +70,9 @@ export function activate (context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(vscode.commands.registerCommand('usbDevices.deleteDeviceFile', async (usbDeviceFile: UsbDeviceFile) => {
     // delete the file
+    if (!usbDeviceFile.parentDevice.connected) {
+      await vscode.commands.executeCommand('usbDevices.connectUsbDevice', usbDeviceFile.parentDevice)
+    }
     await usbDevicesProvider.deleteFile(usbDeviceFile)
     try {
       await memFs.delete(usbDeviceFile.uri)
@@ -71,9 +84,12 @@ export function activate (context: vscode.ExtensionContext): void {
 
   // called when a python file on a connected device is selected
   context.subscriptions.push(vscode.commands.registerCommand('usbDevices.openDeviceFile', async (usbDeviceFile: UsbDeviceFile) => {
-    console.log('opening', usbDeviceFile)
     // e.command.arguments[0].label is the file selected
     // e.command.arguments[1].main is the device selected
+    // if not connected, connect
+    if (!usbDeviceFile.parentDevice.connected) {
+      await vscode.commands.executeCommand('usbDevices.connectUsbDevice', usbDeviceFile.parentDevice)
+    }
     outputChannel.appendLine(`Opening File ${usbDeviceFile.label}\n`)
     outputChannel.show()
 
@@ -103,7 +119,7 @@ export function activate (context: vscode.ExtensionContext): void {
     const result: string = await usbDeviceFile.readFileFromDevice()
     console.log('result', result)
     const fileData = Buffer.from(result, 'ascii')
-    
+
     try {
       console.log('write', usbDeviceFile.uri, fileData)
       memFs.writeFile(usbDeviceFile.uri, fileData, { create: true, overwrite: true })
@@ -125,9 +141,12 @@ export function activate (context: vscode.ExtensionContext): void {
   }))
 
   context.subscriptions.push(vscode.commands.registerCommand('usbDevices.connectUsbDevice', async (usbDevice: UsbDevice) => {
+    if (usbDevice.connected) {
+      return
+    }
     // console.log('connect to usb device', context)
     outputChannel.appendLine(`connecting to device ${usbDevice.name}\n`)
-    outputChannel.show()
+    // outputChannel.show()
     try {
       await usbDevice.connect()
       await usbDevice.createTerminal(context)
@@ -139,16 +158,18 @@ export function activate (context: vscode.ExtensionContext): void {
   }))
 
   context.subscriptions.push(vscode.commands.registerCommand('usbDevices.disconnectUsbDevice', async (usbDevice: UsbDevice) => {
+    if (!usbDevice.connected) {
+      return
+    }
+
     // console.log('disconnect from usb device', context)
     outputChannel.appendLine(`disconnecting from device ${usbDevice.name}\n`)
-    outputChannel.show()
+    // outputChannel.show()
     try {
       await usbDevice.disconnect()
-      await vscode.window.showInformationMessage('Port Disconnected')
-      if (usbDevice.terminal !== undefined) {
-        usbDevice.terminal.remove()
-      }
+      await usbDevice.destroyTerminal()
       usbDevicesProvider.refresh()
+      void vscode.window.showInformationMessage('Port Disconnected')
     } catch (error: any) {
       await vscode.window.showInformationMessage(`Error closing port: ${String(error.message)}`)
     }
@@ -214,13 +235,12 @@ export function activate (context: vscode.ExtensionContext): void {
 
   vscode.workspace.onDidSaveTextDocument(async (textDocument: vscode.TextDocument) => {
     console.log('Saved.', textDocument)
-    let usbDeviceFile: UsbDeviceFile | undefined = undefined
+    let usbDeviceFile: UsbDeviceFile | undefined
     // find the deviceFile by uri
 
     const iterator = usbDevicesProvider.treeCache.entries()
-    for (const [key, value] of iterator) {
+    for (const [, value] of iterator) {
       for (const i of value) {
-        console.log(textDocument.uri.path, i.uri.path)
         if (i.uri.path === textDocument.uri.path) {
           usbDeviceFile = i
           break
@@ -235,7 +255,7 @@ export function activate (context: vscode.ExtensionContext): void {
       const writeResult = await usbDeviceFile.writeFileToDevice(dataToWrite)
       // OK result
       console.log('writeResult', writeResult)
-      outputChannel.appendLine(`Saved\n`)
+      outputChannel.appendLine('Saved\n')
       outputChannel.show()
     } catch (error) {
       console.log(error)
@@ -252,7 +272,9 @@ export function activate (context: vscode.ExtensionContext): void {
 
 // This method is called when your extension is deactivated
 export function deactivate (): void {
-  usbDevicesProvider.disconnectAll()
+  usbDevicesProvider.disconnectAll().catch((error: any) => {
+    console.log('error disconnecting all', error)
+  })
 }
 
 module.exports = {
