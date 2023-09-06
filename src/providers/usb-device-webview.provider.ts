@@ -5,16 +5,14 @@ import * as fs from 'fs'
 // provideVSCodeDesignSystem().register(vsCodeButton())
 
 export class UsbDeviceWebViewProvider implements vscode.WebviewViewProvider {
-  public readonly viewType: string = ''
+  public static readonly viewType: string = 'usbDevice.optionsView'
   public webview?: vscode.Webview
   private _view?: vscode.WebviewView
 
   constructor (
-    private readonly _extensionUri: vscode.Uri,
-    viewType: string
+    private readonly _extensionUri: vscode.Uri
   ) {
     this._extensionUri = _extensionUri
-    this.viewType = viewType
   }
 
   resolveWebviewView (

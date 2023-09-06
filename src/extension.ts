@@ -226,7 +226,7 @@ export function activate (context: vscode.ExtensionContext): void {
   // tree is a disposable object so we need to push it to subscriptions
   context.subscriptions.push(tree)
 
-  const usbDeviceWebViewProvider = new UsbDeviceWebViewProvider(context.extensionUri, 'usbDevice.optionsView')
+  const usbDeviceWebViewProvider = new UsbDeviceWebViewProvider(context.extensionUri)
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(UsbDeviceWebViewProvider.viewType, usbDeviceWebViewProvider))
 
