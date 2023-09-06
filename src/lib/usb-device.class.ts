@@ -21,7 +21,7 @@ export class UsbDevice extends vscode.TreeItem {
   write: any
   name = 'Unknown'
   serialNumber: string
-  terminal: any
+  terminal: any = null
   lastSentHex: any
 
   // overrides
@@ -90,7 +90,8 @@ export class UsbDevice extends vscode.TreeItem {
   }
 
   get connected (): boolean {
-    return this.ifc.connected
+    // if no terminal, it's a temporary connection
+    return this.ifc.connected === true && this.terminal !== null
   }
 
   // Returns a promise
@@ -100,80 +101,64 @@ export class UsbDevice extends vscode.TreeItem {
   // Parse the result and populate an array
   // return the array in the promise
   async readDirFromDevice (dirPath: string): Promise<any[]> {
-    return await new Promise((resolve, reject) => {
-      this.connect().then(() => {
-        // make sure there is a trailing /
-        if (!(/\/$/.test(dirPath))) {
-          dirPath = `${dirPath}/`
-        }
-        const lsFunction = [
-          'import os\r',
-          'def ls(path:str):\r',
-          '    for f in os.listdir(path):\r',
-          '        full_name = path + f\r',
-          '        s = os.stat(full_name)\r',
-          '        print(full_name, s[0], s[5], ",")\r'
-        ]
+    const timeout = async (ms: number): Promise<void> => {
+      return await new Promise(resolve => setTimeout(resolve, ms))
+    }
+    let tempConnection = false
+    if (!this.replCapable) {
+      return await Promise.resolve([])
+    }
+    if (!this.connected) {
+      tempConnection = true
+      await this.connect()
+    }
+    if (!(/\/$/.test(dirPath))) {
+      dirPath = `${dirPath}/`
+    }
+    const lsFunction = [
+      'import os\r',
+      'def ls(path:str):\r',
+      '    for f in os.listdir(path):\r',
+      '        full_name = path + f\r',
+      '        s = os.stat(full_name)\r',
+      '        print(full_name, s[0], s[5], ",")\r'
+    ]
 
-        /*
-        s[0] octals
-        S_IFDIR  = 0o040000  # directory
-        S_IFCHR  = 0o020000  # character device
-        S_IFBLK  = 0o060000  # block device
-        S_IFREG  = 0o100000  # regular file
-        S_IFIFO  = 0o010000  # fifo (named pipe)
-        S_IFLNK  = 0o120000  # symbolic link
-        S_IFSOCK = 0o140000  # socket file
-        */
+    for (const i of lsFunction) {
+      const drain = await this.ifc.write(i)
+      if (drain === false) {
+        console.log('wait for drain', drain)
+      }
+      await timeout(100)
+    }
 
-        const writeInterval = setInterval(() => {
-          //
-          this.ifc.write(lsFunction.shift())
-          if (lsFunction.length === 0) {
-            clearInterval(writeInterval)
-            // press enter to complete the function and return to >>>
-            this.ifc.writeWait('\r', 1000).then(() => {
-              // call the function with our current dir
-              return this.ifc.writeWait(`ls('${dirPath}')\r`, 1000)
-            }).then((result: string) => {
-              // split the result into lines
-              const resultMap = result.split(',')
-                .map(r => r.trim()
-                  .split(' ')
-                )
-                .filter((r) => {
-                  return r.length > 1
-                })
-              const fileResult = []
-              for (let i = 0; i < resultMap.length; i++) {
-                const element: Array<string | number> = resultMap[i]
-                if (element[1] === '32768') {
-                  element[1] = 'file'
-                } else if (element[1] === '16384') {
-                  element[1] = 'dir'
-                }
-                if (typeof element[2] === 'string') {
-                  element[2] = parseInt(element[2], 10)
-                }
-                fileResult.push(element)
-              }
-
-              // result = [
-              //   ['/boot.py', '32768', '131'],
-              //   ['/main.py', '32768', '7271'],
-              //   ['/pikascript-api', '16384', '0']
-              // ]
-              resolve(fileResult)
-            }).catch((error: Error) => {
-              console.log('error', error)
-              reject(error)
-            }).finally(() => {
-              this.disconnect()
-            })
-          }
-        }, 100)
+    await this.ifc.writeWait('\r', 1000)
+    const result = await this.ifc.writeWait(`ls('${dirPath}')\r`, 1000)
+    const resultMap = result.split(',')
+      .map((r: string) => r.trim()
+        .split(' ')
+      )
+      .filter((r: string) => {
+        return r.length > 1
       })
-    })
+
+    const fileResult = []
+    for (let i = 0; i < resultMap.length; i++) {
+      const element: Array<string | number> = resultMap[i]
+      if (element[1] === '32768') {
+        element[1] = 'file'
+      } else if (element[1] === '16384') {
+        element[1] = 'dir'
+      }
+      if (typeof element[2] === 'string') {
+        element[2] = parseInt(element[2], 10)
+      }
+      fileResult.push(element)
+    }
+    if (tempConnection) {
+      await this.disconnect()
+    }
+    return await Promise.resolve(fileResult)
   }
 
   // list the child nodes (files) on the USB Device
@@ -268,7 +253,7 @@ export class UsbDevice extends vscode.TreeItem {
 
   async destroyTerminal (): Promise<void> {
     if (this.terminal !== null) {
-      this.terminal.dispose()
+      this.terminal.remove()
       this.terminal = null
     }
     this.ifc.removeAllListeners('data')

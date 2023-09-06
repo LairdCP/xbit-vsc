@@ -17,7 +17,6 @@ let usbDevicesProvider: UsbDevicesProvider
 export function activate (context: vscode.ExtensionContext): void {
   // Use the console to output diagnostic information (console.log) and errors (console.error)
   // This line of code will only be executed once when your extension is activated
-  // console.log('Congratulations, your extension "xbit-vsc" is now active!')
 
   const memFs = new MemFS()
   memFs.createDirectory(vscode.Uri.parse('memfs:/serial/'))
@@ -91,7 +90,6 @@ export function activate (context: vscode.ExtensionContext): void {
       await vscode.commands.executeCommand('usbDevices.connectUsbDevice', usbDeviceFile.parentDevice)
     }
     outputChannel.appendLine(`Opening File ${usbDeviceFile.label}\n`)
-    outputChannel.show()
 
     try {
       // if file is already open, switch to it
@@ -117,41 +115,41 @@ export function activate (context: vscode.ExtensionContext): void {
 
     // open file
     const result: string = await usbDeviceFile.readFileFromDevice()
-    console.log('result', result)
     const fileData = Buffer.from(result, 'ascii')
 
     try {
-      console.log('write', usbDeviceFile.uri, fileData)
       memFs.writeFile(usbDeviceFile.uri, fileData, { create: true, overwrite: true })
-      console.log('showTextDocument', usbDeviceFile.uri)
       await vscode.window.showTextDocument(usbDeviceFile.uri)
       outputChannel.appendLine(`Opened File ${usbDeviceFile.name}\n`)
     } catch (error: any) {
-      console.log(error)
       outputChannel.appendLine(`Error Opening File ${String(error.message)}\n`)
     }
   }))
 
   context.subscriptions.push(vscode.commands.registerCommand('usbDevices.writeHexFile', (usbDevice: UsbDevice) => {
-    // console.log('write hex file', context, selectedContext)
     // selectedContext[0] is the file selected
     // if not connected to a device, return error
     outputChannel.appendLine(`write hex file ${usbDevice.name}\n`)
-    outputChannel.show()
   }))
 
   context.subscriptions.push(vscode.commands.registerCommand('usbDevices.connectUsbDevice', async (usbDevice: UsbDevice) => {
     if (usbDevice.connected) {
       return
     }
-    // console.log('connect to usb device', context)
     outputChannel.appendLine(`connecting to device ${usbDevice.name}\n`)
-    // outputChannel.show()
     try {
       await usbDevice.connect()
       await usbDevice.createTerminal(context)
       usbDevicesProvider.refresh()
-      await vscode.window.showInformationMessage(`Port Connected: ${String(usbDevice.options.path)}`)
+      void vscode.window.showInformationMessage(`Port Connected: ${String(usbDevice.options.path)}`)
+      if (usbDeviceWebViewProvider.webview !== undefined) {
+        await usbDeviceWebViewProvider.webview.postMessage({
+          command: 'connected',
+          device: {
+            connected: true
+          }
+        })
+      }
     } catch (error: any) {
       await vscode.window.showInformationMessage(`Error Connection to Port: ${String(error.message)}`)
     }
@@ -164,12 +162,19 @@ export function activate (context: vscode.ExtensionContext): void {
 
     // console.log('disconnect from usb device', context)
     outputChannel.appendLine(`disconnecting from device ${usbDevice.name}\n`)
-    // outputChannel.show()
     try {
       await usbDevice.disconnect()
       await usbDevice.destroyTerminal()
       usbDevicesProvider.refresh()
       void vscode.window.showInformationMessage('Port Disconnected')
+      if (usbDeviceWebViewProvider.webview !== undefined) {
+        await usbDeviceWebViewProvider.webview.postMessage({
+          command: 'connected',
+          device: {
+            connected: false
+          }
+        })
+      }
     } catch (error: any) {
       await vscode.window.showInformationMessage(`Error closing port: ${String(error.message)}`)
     }
@@ -184,26 +189,26 @@ export function activate (context: vscode.ExtensionContext): void {
   tree.onDidChangeSelection(async (e: vscode.TreeViewSelectionChangeEvent<any>) => {
     // console.log('onDidChangeSelection', e) // breakpoint here for debug
     console.log('onDidChangeSelection', e.selection[0])
-    // if (usbDeviceWebViewProvider.webview !== undefined) {
-    //   if (e.selection.length > 0) {
-    //     await usbDeviceWebViewProvider.webview.postMessage({
-    //       command: 'setSelected',
-    //       device: {
-    //         serialNumber: e.selection[0].serialNumber,
-    //         path: e.selection[0].options.path,
-    //         name: e.selection[0].name,
-    //         manufacturer: e.selection[0].options.manufacturer,
-    //         baudRate: e.selection[0].baudRate,
-    //         connected: e.selection[0].connected
-    //       }
-    //     })
-    //   } else {
-    //     await usbDeviceWebViewProvider.webview.postMessage({
-    //       command: 'setSelected',
-    //       device: null
-    //     })
-    //   }
-    //  }
+    if (usbDeviceWebViewProvider.webview !== undefined) {
+      if (e.selection.length > 0) {
+        await usbDeviceWebViewProvider.webview.postMessage({
+          command: 'setSelected',
+          device: {
+            serialNumber: e.selection[0].serialNumber,
+            path: e.selection[0].options.path,
+            name: e.selection[0].name,
+            manufacturer: e.selection[0].options.manufacturer,
+            baudRate: e.selection[0].baudRate,
+            connected: e.selection[0].connected
+          }
+        })
+      } else {
+        await usbDeviceWebViewProvider.webview.postMessage({
+          command: 'setSelected',
+          device: null
+        })
+      }
+    }
   })
 
   tree.onDidCollapseElement(e => {
@@ -223,7 +228,7 @@ export function activate (context: vscode.ExtensionContext): void {
 
   const usbDeviceWebViewProvider = new UsbDeviceWebViewProvider(context.extensionUri, 'usbDevice.optionsView')
   context.subscriptions.push(
-    vscode.window.registerWebviewViewProvider(usbDeviceWebViewProvider.viewType, usbDeviceWebViewProvider))
+    vscode.window.registerWebviewViewProvider(UsbDeviceWebViewProvider.viewType, usbDeviceWebViewProvider))
 
   vscode.workspace.onDidChangeTextDocument(() => {
     // console.log('Changed.', e);
@@ -234,7 +239,6 @@ export function activate (context: vscode.ExtensionContext): void {
   })
 
   vscode.workspace.onDidSaveTextDocument(async (textDocument: vscode.TextDocument) => {
-    console.log('Saved.', textDocument)
     let usbDeviceFile: UsbDeviceFile | undefined
     // find the deviceFile by uri
 
@@ -256,11 +260,8 @@ export function activate (context: vscode.ExtensionContext): void {
       // OK result
       console.log('writeResult', writeResult)
       outputChannel.appendLine('Saved\n')
-      outputChannel.show()
     } catch (error) {
-      console.log(error)
       outputChannel.appendLine('Error saving\n')
-      outputChannel.show()
     }
   })
 
@@ -275,9 +276,4 @@ export function deactivate (): void {
   usbDevicesProvider.disconnectAll().catch((error: any) => {
     console.log('error disconnecting all', error)
   })
-}
-
-module.exports = {
-  activate,
-  deactivate
 }

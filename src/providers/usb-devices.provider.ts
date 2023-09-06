@@ -259,7 +259,7 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
     if (oldFilePath === '' || newFileName === '') {
       return await Promise.reject(new Error('invalid file path for rename'))
     }
-    const key = element.uri.path
+    const key = element.parentDevice.uri.path
     try {
       await element.parentDevice.renameFile(oldFilePath, newFileName)
       void vscode.window.showInformationMessage(`Renamed File: ${newFileName ?? ''}`)
