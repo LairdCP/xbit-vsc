@@ -140,6 +140,7 @@ export function activate (context: vscode.ExtensionContext): void {
     try {
       await usbDevice.connect()
       await usbDevice.createTerminal(context)
+      usbDevice.setIconPath()
       usbDevicesProvider.refresh()
       void vscode.window.showInformationMessage(`Port Connected: ${String(usbDevice.options.path)}`)
       if (usbDeviceWebViewProvider.webview !== undefined) {
@@ -165,6 +166,7 @@ export function activate (context: vscode.ExtensionContext): void {
     try {
       await usbDevice.disconnect()
       await usbDevice.destroyTerminal()
+      usbDevice.setIconPath()
       usbDevicesProvider.refresh()
       void vscode.window.showInformationMessage('Port Disconnected')
       if (usbDeviceWebViewProvider.webview !== undefined) {
@@ -188,25 +190,11 @@ export function activate (context: vscode.ExtensionContext): void {
 
   tree.onDidChangeSelection(async (e: vscode.TreeViewSelectionChangeEvent<any>) => {
     // console.log('onDidChangeSelection', e) // breakpoint here for debug
-    console.log('onDidChangeSelection', e.selection[0])
     if (usbDeviceWebViewProvider.webview !== undefined) {
       if (e.selection.length > 0) {
-        await usbDeviceWebViewProvider.webview.postMessage({
-          command: 'setSelected',
-          device: {
-            serialNumber: e.selection[0].serialNumber,
-            path: e.selection[0].options.path,
-            name: e.selection[0].name,
-            manufacturer: e.selection[0].options.manufacturer,
-            baudRate: e.selection[0].baudRate,
-            connected: e.selection[0].connected
-          }
-        })
+        await usbDeviceWebViewProvider.onSelected(e.selection[0])
       } else {
-        await usbDeviceWebViewProvider.webview.postMessage({
-          command: 'setSelected',
-          device: null
-        })
+        await usbDeviceWebViewProvider.onDeselected()
       }
     }
   })

@@ -100,8 +100,12 @@ export class ProbeInfo {
       throw new Error('path is undefined')
     }
 
-    if (this.options.name === undefined) {
+    if (this.options.name === undefined || this.options.name === '') {
       this.name = this.path
+    } else {
+      this.name = this.options.name
     }
+
+    this.name = this.name.replace(/\/(dev|cu)\//, '')
   }
 }

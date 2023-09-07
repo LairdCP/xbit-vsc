@@ -98,7 +98,7 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
         tempPort.write(command)
         setTimeout(() => {
           closePort()
-        }, 100)
+        }, 500)
       })
 
       tempPort.on('error', (error) => {
@@ -128,24 +128,29 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
   async _getUsbDevices (): Promise<UsbDevice[]> {
     return await new Promise((resolve, reject) => {
       // Pyocd.exec(['--list']).then((result) => {
-      let ports: ProbeInfo[]
-      const deviceIds: string[] = []
-      SerialPort.list().then((result: any[]) => {
-        ports = result.map((port: PortInfo) => {
-          return new ProbeInfo(port)
-        })
-        return this.pyocdInterface.listDevices()
-      }).then((result) => {
+      const ports: ProbeInfo[] = []
+      const deviceIds: Set<string> = new Set()
+
+      this.pyocdInterface.listDevices().then(async (result: any) => {
         result.forEach((p: any) => {
           p._ports.forEach((port: PortInfo) => {
             const portInfo = new ProbeInfo(port)
-            if (!deviceIds.includes(portInfo.serialNumber)) {
-              ports.push(portInfo)
-              deviceIds.push(portInfo.serialNumber)
-            }
+            deviceIds.add(portInfo.path)
+            ports.push(portInfo)
           })
         })
+        return await SerialPort.list()
+      }).then((result: any) => {
+        result.forEach((port: any) => {
+          const portInfo = new ProbeInfo(port)
+          // if this is a port that the probe didn't find
+          if (!deviceIds.has(portInfo.path)) {
+            deviceIds.add(portInfo.path)
+            ports.push(portInfo)
+          }
+        })
 
+        console.log('found ports', ports)
         // for each port, check if it's already known.
         // if not, connect and detect if repl capable
         async.eachSeries(ports, (port, next) => {
@@ -177,6 +182,9 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
             } else if (result.includes('uart:~$')) {
               const portItem = new UsbDevice(uri, vscode.TreeItemCollapsibleState.None, port, 'uart')
               this.usbDeviceNodes.push(portItem)
+            } else if (result.includes('00')) {
+              const portItem = new UsbDevice(uri, vscode.TreeItemCollapsibleState.None, port, 'smartbasic')
+              this.usbDeviceNodes.push(portItem)
             } else if (result !== '') {
               const portItem = new UsbDevice(uri, vscode.TreeItemCollapsibleState.None, port, 'unknown')
               this.usbDeviceNodes.push(portItem)
@@ -195,11 +203,14 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
           }
           // remove items that are no longer in the list
           this.usbDeviceNodes = this.usbDeviceNodes.filter((item) => {
-            return deviceIds.includes(item.serialNumber)
+            return deviceIds.has(item.options.path)
           })
+          console.log(this.usbDeviceNodes)
+          console.log(this.hiddenUsbDeviceNodes)
+
           resolve(this.usbDeviceNodes)
         })
-      }).catch((error) => {
+      }).catch((error: any) => {
         reject(error)
       })
     })

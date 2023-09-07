@@ -20,7 +20,12 @@ export class ReplTerminal {
     let line = ''
     const pty = {
       onDidWrite: this.writeEmitter.event,
-      open: () => this.writeEmitter.fire('Hello\r\n'),
+      open: () => {
+        setTimeout(() => {
+          this.writeEmitter.fire('Connected, Press Enter:\r\n')
+        }
+        , 100)
+      },
       close: () => { /* noop */ },
       handleInput: (data: string) => {
         if (this.inputCallback !== null) {

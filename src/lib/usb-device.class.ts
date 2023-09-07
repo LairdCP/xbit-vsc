@@ -7,6 +7,8 @@ import { UsbDeviceInterface } from './usb-device-interface.class'
 import { ProbeInfo } from '../providers/hardware-probe-info'
 import { ReplTerminal } from './repl-terminal.class'
 
+const config = vscode.workspace.getConfiguration('xbit-vsc')
+
 type File = [string, string, number]
 
 export class UsbDevice extends vscode.TreeItem {
@@ -43,7 +45,7 @@ export class UsbDevice extends vscode.TreeItem {
     this.command = command // default vs code command when clicking on item
     this.baudRate = 115200
 
-    this.name = this.options.name === '' ? this.options.path : this.options.name
+    this.name = this.options.name
     // if has serialPort
     this.ifc = new UsbDeviceInterface({
       path: this.options.path,
@@ -52,29 +54,17 @@ export class UsbDevice extends vscode.TreeItem {
 
     this.serialNumber = this.options.serialNumber
 
+    // get the config for the device
+    const baudRate: number | undefined = config.get(`${String(this.serialNumber)}.baudRate`)
+    if (baudRate !== undefined) {
+      this.baudRate = baudRate
+    }
+
     // expose serial port methods
     this.connect = this.ifc.connect.bind(this.ifc)
     this.disconnect = this.ifc.disconnect.bind(this.ifc)
     this.write = this.ifc.write.bind(this.ifc)
-
-    if (this.type === 'repl') {
-      this.iconPath = {
-        light: path.join(__filename, '../../..', 'resources', 'light', 'repl-device.svg'),
-        dark: path.join(__filename, '../../..', 'resources', 'dark', 'repl-device.svg')
-      }
-    } else if (this.type === 'uart') {
-      this.iconPath = {
-        light: path.join(__filename, '../../..', 'resources', 'light', 'uart-device.svg'),
-        dark: path.join(__filename, '../../..', 'resources', 'dark', 'uart-device.svg')
-      }
-    } else {
-      this.iconPath = {
-        light: path.join(__filename, '../../..', 'resources', 'light', 'usb-device.svg'),
-        dark: path.join(__filename, '../../..', 'resources', 'dark', 'usb-device.svg')
-      }
-    }
-
-    console.log(this)
+    this.setIconPath()
   }
 
   get uriString (): string {
@@ -92,6 +82,29 @@ export class UsbDevice extends vscode.TreeItem {
   get connected (): boolean {
     // if no terminal, it's a temporary connection
     return this.ifc.connected === true && this.terminal !== null
+  }
+
+  setIconPath (): void {
+    console.log('setIconPath', this.connected)
+    let type = 'usb'
+    let connected = ''
+
+    if (this.connected) {
+      connected = '-connected'
+    }
+
+    if (this.type === 'repl') {
+      type = 'repl'
+    }
+
+    if (this.type === 'uart') {
+      type = 'uart'
+    }
+
+    this.iconPath = {
+      light: path.join(__filename, '../../..', 'resources', 'light', `${type}-device${connected}.svg`),
+      dark: path.join(__filename, '../../..', 'resources', 'dark', `${type}-device${connected}.svg`)
+    }
   }
 
   // Returns a promise

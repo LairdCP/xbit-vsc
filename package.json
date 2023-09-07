@@ -52,7 +52,7 @@
           "contextualTitle": "USB Devices"
         },
         {
-          "id": "usbDevice.optionsView",
+          "id": "usbDevices.optionsView",
           "name": "Selected Device",
           "type": "webview"
         }
@@ -121,13 +121,11 @@
       "view/item/context": [
         {
           "command": "usbDevices.connectUsbDevice",
-          "when": "viewItem == usbDevice",
-          "group": "inline"
+          "when": "viewItem == usbDevice"
         },
         {
           "command": "usbDevices.disconnectUsbDevice",
-          "when": "viewItem == usbDeviceConnected",
-          "group": "inline"
+          "when": "viewItem == usbDeviceConnected"
         },
         {
           "command": "usbDevices.createDeviceFile",

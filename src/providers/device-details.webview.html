@@ -1,16 +1,37 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script type="module" src="https://cdnjs.cloudflare.com/ajax/libs/vscode-webview-ui-toolkit/1.2.2/toolkit.min.js" integrity="sha512-GQVvN7HpO/vv/HL/BmDpahCaQu+Sh8HrvLrXO8fZGhNtSzluO421GIbN1Kix5a81V4VAm4GIeLPRPBgLmPsF4Q==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <style type="text/css">
+      .details-section {
+        margin-bottom: 10px
+      }
+    </style>
   </head>
   <body>
     <div class="device-selected" style="display: none">
       <p><span id="serial-number"></span></p>
-      <vscode-button class="connect-button">Connect</vscode-button>
-      <vscode-button class="disconnect-button">Disconnect</vscode-button>
-      <p>Baud Rate: <input type="text" id="baud-rate" /></p>
-      <vscode-button class="save-button">Save</vscode-button>
+      <section class="details-section">
+        <vscode-button appearance="primary" id="connect-button">Connect</vscode-button>
+        <vscode-button appearance="primary" id="disconnect-button">Disconnect</vscode-button>
+      </section>
+      <vscode-divider role="separator"></vscode-divider>
+      <h3>Options</h3>
+      <section class="details-section">
+        <vscode-text-field type="text" id="baud-rate">Baud Rate</vscode-text-field>
+      </section>
+      <section class="details-section">
+        <vscode-button appearance="secondary" id="save-button">Save</vscode-button>
+      </section>
+      <vscode-divider role="separator"></vscode-divider>
+      <!-- if this is a device that pyocd can flash -->
+      <h3>Flash</h3>
+      <section class="details-section">
+        <input type="file"/>
+        <vscode-button appearance="secondary" id="write-hex-button">Write</vscode-button>
+      </section>
     </div>
     <script>
       const serialNumber = document.getElementById('serial-number')
@@ -19,17 +40,29 @@
       let currentDevice = null
       let connected = false
 
-      document.querySelector('.save-button').addEventListener('click', () => {
-        vscode.postMessage({ type: 'saveSettings', value: baudRate.value })
+      document.getElementById('save-button').addEventListener('click', () => {
+        vscode.postMessage({ command: 'save', value: baudRate.value })
+      })
+
+      document.getElementById('connect-button').addEventListener('click', () => {
+        vscode.postMessage({ command: 'connect' })
+      })
+
+      document.getElementById('disconnect-button').addEventListener('click', () => {
+        vscode.postMessage({ command: 'disconnect' })
+      })
+
+      document.getElementById('write-hex-button').addEventListener('click', () => {
+        vscode.postMessage({ command: 'writeHex' })
       })
 
       const handledConnected = () => {
         if (connected) {
-          document.querySelector('.connect-button').style.display = 'none'
-          document.querySelector('.disconnect-button').style.display = 'block'
+          document.getElementById('connect-button').style.display = 'none'
+          document.getElementById('disconnect-button').style.display = 'inline-block'
         } else {
-          document.querySelector('.connect-button').style.display = 'block'
-          document.querySelector('.disconnect-button').style.display = 'none'
+          document.getElementById('connect-button').style.display = 'inline-block'
+          document.getElementById('disconnect-button').style.display = 'none'
         }
       }
 
@@ -45,7 +78,7 @@
               baudRate.value = message.device.baudRate
               connected = message.device.connected || false
               handledConnected()
-              document.querySelector('.device-selected').style.display = 'block'
+              document.querySelector('.device-selected').style.display = 'inline-block'
             } else {
               serialNumber.textContent = 'None'
               baudRate.value = ''
