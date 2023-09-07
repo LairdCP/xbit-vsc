@@ -29,6 +29,9 @@ export class UsbDeviceWebViewProvider implements vscode.WebviewViewProvider {
       ]
     }
     try {
+      // const onDiskPath = vscode.Uri.joinPath(context.extensionUri, 'src', 'script.js')
+      // const scriptSrc = webviewView.webview.asWebviewUri(onDiskPath)
+
       const path = vscode.Uri.joinPath(this._extensionUri, 'src/providers', 'device-details.webview.html')
       const html = fs.readFileSync(path.fsPath, 'utf8')
       // const src = webviewView.webview.asWebviewUri(path)

@@ -112,24 +112,26 @@
           "group": "navigation"
         }
       ],
-      "explorer/context": [
-        {
-          "command": "usbDevices.writeHexFile",
-          "when": "resourceLangId == hex"
-        }
-      ],
       "view/item/context": [
         {
           "command": "usbDevices.connectUsbDevice",
-          "when": "viewItem == usbDevice"
+          "when": "viewItem == usbDevice",
+          "group": "navigation@1"
         },
         {
           "command": "usbDevices.disconnectUsbDevice",
-          "when": "viewItem == usbDeviceConnected"
+          "when": "viewItem == usbDeviceConnected",
+          "group": "navigation@1"
+        },
+        {
+          "command": "usbDevices.writeHexFile",
+          "when": "viewItem == usbDevice || viewItem == usbDeviceConnected",
+          "group": "commands"
         },
         {
           "command": "usbDevices.createDeviceFile",
-          "when": "viewItem == usbDevice || viewItem == usbDeviceConnected"
+          "when": "viewItem == usbDevice || viewItem == usbDeviceConnected",
+          "group": "navigation@3"
         },
         {
           "command": "usbDevices.deleteDeviceFile",

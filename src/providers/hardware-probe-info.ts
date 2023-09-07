@@ -27,6 +27,8 @@ export interface DvkProbeInterface {
   hwid: string
   product: string
   interface: number | null
+
+  board_name: string
 }
 
 // this is spat out of the Serial.list() function

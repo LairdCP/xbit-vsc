@@ -25,6 +25,7 @@ export class UsbDevice extends vscode.TreeItem {
   serialNumber: string
   terminal: any = null
   lastSentHex: any
+  targetType?: string
 
   // overrides
   public iconPath: any
@@ -42,28 +43,37 @@ export class UsbDevice extends vscode.TreeItem {
     this.options = options
     // this.tooltip = this.label
     this.type = type
+    if (this.type === 'repl') {
+      this.targetType = 'nrf52833'
+    }
     this.command = command // default vs code command when clicking on item
-    this.baudRate = 115200
+    this.serialNumber = this.options.serialNumber
 
+    // get the baud rate for the device
+    this.baudRate = 115200
+    const baudRate: number | undefined = config.get(`${String(this.serialNumber)}.${this.options.path}.baudRate`)
+    if (baudRate !== undefined) {
+      this.baudRate = baudRate
+    }
+
+    // get a custom name if set
     this.name = this.options.name
+    const name: string | undefined = config.get(`${String(this.serialNumber)}.${this.options.path}.name`)
+    if (name !== undefined) {
+      this.name = name
+    }
+
     // if has serialPort
     this.ifc = new UsbDeviceInterface({
       path: this.options.path,
       baudRate: this.baudRate
     })
 
-    this.serialNumber = this.options.serialNumber
-
-    // get the config for the device
-    const baudRate: number | undefined = config.get(`${String(this.serialNumber)}.baudRate`)
-    if (baudRate !== undefined) {
-      this.baudRate = baudRate
-    }
-
     // expose serial port methods
     this.connect = this.ifc.connect.bind(this.ifc)
     this.disconnect = this.ifc.disconnect.bind(this.ifc)
     this.write = this.ifc.write.bind(this.ifc)
+
     this.setIconPath()
   }
 

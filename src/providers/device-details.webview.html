@@ -23,14 +23,10 @@
         <vscode-text-field type="text" id="baud-rate">Baud Rate</vscode-text-field>
       </section>
       <section class="details-section">
-        <vscode-button appearance="secondary" id="save-button">Save</vscode-button>
+        <vscode-text-field type="text" id="custom-name">Custom Name</vscode-text-field>
       </section>
-      <vscode-divider role="separator"></vscode-divider>
-      <!-- if this is a device that pyocd can flash -->
-      <h3>Flash</h3>
       <section class="details-section">
-        <input type="file"/>
-        <vscode-button appearance="secondary" id="write-hex-button">Write</vscode-button>
+        <vscode-button appearance="secondary" id="save-button">Save</vscode-button>
       </section>
     </div>
     <script>
@@ -41,7 +37,7 @@
       let connected = false
 
       document.getElementById('save-button').addEventListener('click', () => {
-        vscode.postMessage({ command: 'save', value: baudRate.value })
+        vscode.postMessage({ command: 'save', baudRate: baudRate.value, customName: document.getElementById('custom-name').value })
       })
 
       document.getElementById('connect-button').addEventListener('click', () => {
@@ -50,10 +46,6 @@
 
       document.getElementById('disconnect-button').addEventListener('click', () => {
         vscode.postMessage({ command: 'disconnect' })
-      })
-
-      document.getElementById('write-hex-button').addEventListener('click', () => {
-        vscode.postMessage({ command: 'writeHex' })
       })
 
       const handledConnected = () => {

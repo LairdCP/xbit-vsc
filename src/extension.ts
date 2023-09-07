@@ -126,10 +126,31 @@ export function activate (context: vscode.ExtensionContext): void {
     }
   }))
 
-  context.subscriptions.push(vscode.commands.registerCommand('usbDevices.writeHexFile', (usbDevice: UsbDevice) => {
+  context.subscriptions.push(vscode.commands.registerCommand('usbDevices.writeHexFile', async (usbDevice: UsbDevice) => {
     // selectedContext[0] is the file selected
     // if not connected to a device, return error
-    outputChannel.appendLine(`write hex file ${usbDevice.name}\n`)
+    if (usbDevice.targetType === 'nrf52833') {
+      outputChannel.appendLine(`write hex file ${usbDevice.name}\n`)
+      const onFulfilled = await vscode.window.showOpenDialog({
+        canSelectMany: false,
+        canSelectFolders: false,
+        canSelectFiles: true,
+        title: 'Select HEX file to write',
+        openLabel: 'Select'
+      })
+      if (onFulfilled !== null && onFulfilled !== undefined && onFulfilled.length > 0) {
+        const pyocdCommand = ['flash', `--target=${usbDevice.targetType}`, '-e', 'chip', onFulfilled[0].fsPath]
+        console.log('pyocdCommand', pyocdCommand)
+        try {
+          // await pyocdInterface.runCommand('pyocd', pyocdCommand)
+        } catch (error) {
+          console.log('error', error)
+        }
+      } else {
+        // cancelled
+        // throw new Error('No file selected')
+      }
+    }
   }))
 
   context.subscriptions.push(vscode.commands.registerCommand('usbDevices.connectUsbDevice', async (usbDevice: UsbDevice) => {
