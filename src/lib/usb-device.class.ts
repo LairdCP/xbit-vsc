@@ -43,25 +43,15 @@ export class UsbDevice extends vscode.TreeItem {
     this.options = options
     // this.tooltip = this.label
     this.type = type
-    if (this.type === 'repl') {
-      this.targetType = 'nrf52833'
-    }
     this.command = command // default vs code command when clicking on item
     this.serialNumber = this.options.serialNumber
-
-    // get the baud rate for the device
     this.baudRate = 115200
-    const baudRate: number | undefined = config.get(`${String(this.serialNumber)}.${this.options.path}.baudRate`)
-    if (baudRate !== undefined) {
-      this.baudRate = baudRate
-    }
-
-    // get a custom name if set
     this.name = this.options.name
-    const name: string | undefined = config.get(`${String(this.serialNumber)}.${this.options.path}.name`)
-    if (name !== undefined) {
-      this.name = name
+
+    if (this.options.board_name !== 'Unknown') {
+      this.name = this.options.board_name
     }
+    this.description = this.options.path
 
     // if has serialPort
     this.ifc = new UsbDeviceInterface({
@@ -74,6 +64,18 @@ export class UsbDevice extends vscode.TreeItem {
     this.disconnect = this.ifc.disconnect.bind(this.ifc)
     this.write = this.ifc.write.bind(this.ifc)
 
+    // TODO this is hacky, but it works
+    // Set any custom configuration for this device
+    const deviceConfigurations: any = config.get('device-configurations')
+    const key = `${this.serialNumber}.${String(this.label)}`
+    if (deviceConfigurations !== undefined) {
+      if (deviceConfigurations[key] !== undefined) {
+        if (deviceConfigurations[key]?.baudRate !== undefined) {
+          this.baudRate = deviceConfigurations[key].baudRate
+        }
+        this.name = deviceConfigurations[key]?.name === '' ? this.name : deviceConfigurations[key]?.name
+      }
+    }
     this.setIconPath()
   }
 
@@ -92,6 +94,10 @@ export class UsbDevice extends vscode.TreeItem {
   get connected (): boolean {
     // if no terminal, it's a temporary connection
     return this.ifc.connected === true && this.terminal !== null
+  }
+
+  get dvkProbe (): boolean {
+    return this.options.board_name !== 'Unknown'
   }
 
   setIconPath (): void {

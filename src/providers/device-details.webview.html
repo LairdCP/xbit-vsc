@@ -32,12 +32,18 @@
     <script>
       const serialNumber = document.getElementById('serial-number')
       const baudRate = document.getElementById('baud-rate')
+      const customName = document.getElementById('custom-name')
+
       const vscode = acquireVsCodeApi()
       let currentDevice = null
       let connected = false
 
       document.getElementById('save-button').addEventListener('click', () => {
-        vscode.postMessage({ command: 'save', baudRate: baudRate.value, customName: document.getElementById('custom-name').value })
+        vscode.postMessage({
+          command: 'save',
+          baudRate: baudRate.value,
+          name: customName.value
+        })
       })
 
       document.getElementById('connect-button').addEventListener('click', () => {
@@ -69,6 +75,8 @@
               serialNumber.textContent = message.device.serialNumber
               baudRate.value = message.device.baudRate
               connected = message.device.connected || false
+              customName.value = message.device.name
+              baudRate.value = message.device.baudRate
               handledConnected()
               document.querySelector('.device-selected').style.display = 'inline-block'
             } else {

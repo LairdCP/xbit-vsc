@@ -22,7 +22,7 @@ export class ReplTerminal {
       onDidWrite: this.writeEmitter.event,
       open: () => {
         setTimeout(() => {
-          this.writeEmitter.fire('Connected, Press Enter:\r\n')
+          this.writeEmitter.fire('Terminal Connected, Press Enter to Interact:\r\n')
         }
         , 100)
       },

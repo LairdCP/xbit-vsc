@@ -1,3 +1,11 @@
+// UsbDevice
+// - Probe
+// - Port
+// - - File
+// - - File
+// - - File
+// - Port
+
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode'
@@ -13,6 +21,8 @@ import { UsbDevice } from './lib/usb-device.class'
 import { UsbDeviceWebViewProvider } from './providers/usb-device-webview.provider'
 
 let usbDevicesProvider: UsbDevicesProvider
+
+const config = vscode.workspace.getConfiguration('xbit-vsc')
 
 export function activate (context: vscode.ExtensionContext): void {
   // Use the console to output diagnostic information (console.log) and errors (console.error)
@@ -129,28 +139,28 @@ export function activate (context: vscode.ExtensionContext): void {
   context.subscriptions.push(vscode.commands.registerCommand('usbDevices.writeHexFile', async (usbDevice: UsbDevice) => {
     // selectedContext[0] is the file selected
     // if not connected to a device, return error
-    if (usbDevice.targetType === 'nrf52833') {
-      outputChannel.appendLine(`write hex file ${usbDevice.name}\n`)
-      const onFulfilled = await vscode.window.showOpenDialog({
-        canSelectMany: false,
-        canSelectFolders: false,
-        canSelectFiles: true,
-        title: 'Select HEX file to write',
-        openLabel: 'Select'
-      })
-      if (onFulfilled !== null && onFulfilled !== undefined && onFulfilled.length > 0) {
-        const pyocdCommand = ['flash', `--target=${usbDevice.targetType}`, '-e', 'chip', onFulfilled[0].fsPath]
-        console.log('pyocdCommand', pyocdCommand)
-        try {
-          // await pyocdInterface.runCommand('pyocd', pyocdCommand)
-        } catch (error) {
-          console.log('error', error)
-        }
-      } else {
-        // cancelled
-        // throw new Error('No file selected')
+    // if (usbDevice.targetType === 'nrf52833') {
+    outputChannel.appendLine(`write hex file ${usbDevice.name}\n`)
+    const onFulfilled = await vscode.window.showOpenDialog({
+      canSelectMany: false,
+      canSelectFolders: false,
+      canSelectFiles: true,
+      title: 'Select HEX file to write',
+      openLabel: 'Select'
+    })
+    if (onFulfilled !== null && onFulfilled !== undefined && onFulfilled.length > 0) {
+      const pyocdCommand = ['flash', '--target=nrf52833', '-u', usbDevice.serialNumber, '-e', 'chip', onFulfilled[0].fsPath]
+      console.log('pyocdCommand', pyocdCommand)
+      try {
+        await pyocdInterface.runCommand('pyocd', pyocdCommand)
+      } catch (error) {
+        console.log('error', error)
       }
+    } else {
+      // cancelled
+      // throw new Error('No file selected')
     }
+    // }
   }))
 
   context.subscriptions.push(vscode.commands.registerCommand('usbDevices.connectUsbDevice', async (usbDevice: UsbDevice) => {
@@ -200,6 +210,26 @@ export function activate (context: vscode.ExtensionContext): void {
       }
     } catch (error: any) {
       await vscode.window.showInformationMessage(`Error closing port: ${String(error.message)}`)
+    }
+  }))
+
+  context.subscriptions.push(vscode.commands.registerCommand('usbDevices.updateUsbDeviceSettings', async (usbDevice: UsbDevice, message) => {
+    // save
+    if (usbDevice !== undefined && usbDevice !== null) {
+      const deviceConfigurations: any = config.get('device-configurations')
+      const key = `${usbDevice.serialNumber}.${String(usbDevice.label)}`
+
+      console.log('updating device config', key)
+      deviceConfigurations[key] = {
+        baudRate: message.baudRate,
+        name: message.name === '' ? usbDevice.options.board_name : message.name
+      }
+
+      await config.update('device-configurations', deviceConfigurations, vscode.ConfigurationTarget.Global)
+      usbDevice.name = message.name
+      usbDevice.baudRate = message.baudRate
+      usbDevicesProvider.refresh()
+      // refresh?
     }
   }))
 

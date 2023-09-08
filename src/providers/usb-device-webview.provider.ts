@@ -3,7 +3,6 @@ import * as vscode from 'vscode'
 import * as fs from 'fs'
 
 import { UsbDevice } from '../lib/usb-device.class'
-const config = vscode.workspace.getConfiguration('xbit-vsc')
 
 export class UsbDeviceWebViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType: string = 'usbDevices.optionsView'
@@ -59,11 +58,7 @@ export class UsbDeviceWebViewProvider implements vscode.WebviewViewProvider {
           await vscode.commands.executeCommand('usbDevices.disconnectUsbDevice', this._selectedDevice)
         }
       } else if (message.command === 'save') {
-        // save
-        if (this._selectedDevice !== undefined) {
-          console.log('updating device config')
-          await config.update(`${String(this._selectedDevice?.serialNumber)}.${String(this._selectedDevice?.name)}.baudRate`, message.baudRate, vscode.ConfigurationTarget.Global)
-        }
+        await vscode.commands.executeCommand('usbDevices.updateUsbDeviceSettings', this._selectedDevice, message)
       }
     })
   }

@@ -111,7 +111,8 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
   getTreeItem (element: vscode.TreeItem): vscode.TreeItem {
     if (element instanceof UsbDevice) {
       return {
-        label: element.label,
+        label: element.name,
+        description: element.description,
         collapsibleState: element.collapsibleState,
         command: element.command,
         contextValue: element.ifc?.connected === true ? 'usbDeviceConnected' : 'usbDevice',
@@ -134,11 +135,15 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
       this.pyocdInterface.listDevices().then(async (result: any) => {
         result.forEach((p: any) => {
           p._ports.forEach((port: PortInfo) => {
+            port.board_name = p._board_name
             const portInfo = new ProbeInfo(port)
             deviceIds.add(portInfo.path)
+            deviceIds.add(portInfo.path.replace('/dev/cu.', '/dev/tty.'))
             ports.push(portInfo)
           })
         })
+
+        console.log('listing serialPorts', deviceIds)
         return await SerialPort.list()
       }).then((result: any) => {
         result.forEach((port: any) => {
@@ -150,7 +155,6 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
           }
         })
 
-        console.log('found ports', ports)
         // for each port, check if it's already known.
         // if not, connect and detect if repl capable
         async.eachSeries(ports, (port, next) => {
@@ -185,7 +189,7 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
             } else if (result.includes('00')) {
               const portItem = new UsbDevice(uri, vscode.TreeItemCollapsibleState.None, port, 'smartbasic')
               this.usbDeviceNodes.push(portItem)
-            } else if (result !== '') {
+            } else if (result !== '' || 'board_name' in port) {
               const portItem = new UsbDevice(uri, vscode.TreeItemCollapsibleState.None, port, 'unknown')
               this.usbDeviceNodes.push(portItem)
             } else {
@@ -195,6 +199,7 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
             }
             next()
           }).catch((error) => {
+            console.log('error connecting to port', error)
             next(error)
           })
         }, (error) => {

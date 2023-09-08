@@ -27,7 +27,6 @@ export interface DvkProbeInterface {
   hwid: string
   product: string
   interface: number | null
-
   board_name: string
 }
 
@@ -64,6 +63,7 @@ export class ProbeInfo {
   productId = 0
   vendorId = 0
   name = ''
+  board_name: string
 
   constructor (options: PortInfo) {
     this.options = options
@@ -109,5 +109,6 @@ export class ProbeInfo {
     }
 
     this.name = this.name.replace(/\/(dev|cu)\//, '')
+    this.board_name = this.options.board_name ?? 'Unknown'
   }
 }
