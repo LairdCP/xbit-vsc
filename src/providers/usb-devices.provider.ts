@@ -110,12 +110,20 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
 
   getTreeItem (element: vscode.TreeItem): vscode.TreeItem {
     if (element instanceof UsbDevice) {
+      let contextValue = 'usbDevice'
+      if (element.ifc?.connected === true) {
+        contextValue = 'usbDeviceConnected'
+      }
+      if (element.dvkProbe) {
+        contextValue = contextValue + 'DvkProbe'
+      }
+
       return {
         label: element.name,
         description: element.description,
         collapsibleState: element.collapsibleState,
         command: element.command,
-        contextValue: element.ifc?.connected === true ? 'usbDeviceConnected' : 'usbDevice',
+        contextValue,
         iconPath: element.iconPath
       }
     } else {

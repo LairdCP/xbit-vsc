@@ -140,6 +140,7 @@ export function activate (context: vscode.ExtensionContext): void {
     // selectedContext[0] is the file selected
     // if not connected to a device, return error
     // if (usbDevice.targetType === 'nrf52833') {
+    outputChannel.show()
     outputChannel.appendLine(`write hex file ${usbDevice.name}\n`)
     const onFulfilled = await vscode.window.showOpenDialog({
       canSelectMany: false,
@@ -150,9 +151,26 @@ export function activate (context: vscode.ExtensionContext): void {
     })
     if (onFulfilled !== null && onFulfilled !== undefined && onFulfilled.length > 0) {
       const pyocdCommand = ['flash', '--target=nrf52833', '-u', usbDevice.serialNumber, '-e', 'chip', onFulfilled[0].fsPath]
-      console.log('pyocdCommand', pyocdCommand)
       try {
-        await pyocdInterface.runCommand('pyocd', pyocdCommand)
+        return await vscode.window.withProgress({
+          location: vscode.ProgressLocation.Notification,
+          title: `Loading ${onFulfilled[0].fsPath}`,
+          cancellable: false
+        }, async (progress) => {
+          let c = 0
+          await pyocdInterface.runCommand('pyocd', pyocdCommand, (data: string) => {
+            // on progress
+            if (data === '=') {
+              c++
+              progress.report({ increment: 2.5, message: 'Loading File...' })
+              console.log(c)
+            }
+            if (data === '=]') {
+              // done
+              progress.report({ increment: 2.5, message: 'Complete' })
+            }
+          })
+        })
       } catch (error) {
         console.log('error', error)
       }

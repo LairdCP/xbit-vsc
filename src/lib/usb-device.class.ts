@@ -101,7 +101,6 @@ export class UsbDevice extends vscode.TreeItem {
   }
 
   setIconPath (): void {
-    console.log('setIconPath', this.connected)
     let type = 'usb'
     let connected = ''
 
@@ -214,7 +213,6 @@ export class UsbDevice extends vscode.TreeItem {
         // treeNode.parentDevice = element.parentDevice
         // } else
         if (type === 'file') {
-          console.log(file)
           treeNode = new UsbDeviceFile(uri, type, size, this)
         } else {
           return

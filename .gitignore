@@ -2,3 +2,5 @@
 root/server/__pycache__/
 
 out/
+
+*.pyc

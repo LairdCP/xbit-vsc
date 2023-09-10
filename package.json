@@ -20,6 +20,11 @@
           "type": "string",
           "default": "",
           "description": "Specifies the path to the python virtual env to install required tools."
+        },
+        "xbit-vsc.device-configurations": {
+          "type": "object",
+          "default": {},
+          "description": "Specifies the device configuration objects"
         }
       }
     },
@@ -102,6 +107,10 @@
       {
         "command": "usbDevices.clearTerminal",
         "title": "Extension Terminal: Clear"
+      },
+      {
+        "command": "usbDevices.updateUsbDeviceSettings",
+        "title": "Update Device Settings"
       }
     ],
     "menus": {
@@ -115,22 +124,22 @@
       "view/item/context": [
         {
           "command": "usbDevices.connectUsbDevice",
-          "when": "viewItem == usbDevice",
+          "when": "viewItem == usbDevice || viewItem == usbDeviceDvkProbe",
           "group": "navigation@1"
         },
         {
           "command": "usbDevices.disconnectUsbDevice",
-          "when": "viewItem == usbDeviceConnected",
+          "when": "viewItem == usbDeviceConnected || viewItem == usbDeviceConnectedDvkProbe",
           "group": "navigation@1"
         },
         {
           "command": "usbDevices.writeHexFile",
-          "when": "viewItem == usbDevice || viewItem == usbDeviceConnected",
+          "when": "viewItem == usbDeviceDvkProbe || viewItem == usbDeviceConnectedDvkProbe",
           "group": "commands"
         },
         {
           "command": "usbDevices.createDeviceFile",
-          "when": "viewItem == usbDevice || viewItem == usbDeviceConnected",
+          "when": "viewItem == usbDevice || viewItem == usbDeviceConnected || viewItem == usbDeviceDvkProbe || viewItem == usbDeviceConnectedDvkProbe",
           "group": "navigation@3"
         },
         {

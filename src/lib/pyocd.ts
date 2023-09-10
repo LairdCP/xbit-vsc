@@ -2,6 +2,7 @@ import * as path from 'path'
 import * as vscode from 'vscode'
 import { ChildProcess, spawn } from 'child_process'
 import * as fs from 'fs/promises'
+import { EventEmitter } from 'events'
 
 const config = vscode.workspace.getConfiguration('xbit-vsc')
 
@@ -12,6 +13,7 @@ export class PyocdInterface {
   venv: string
   ready: boolean
   listDevicesPromise: Promise<any> | null = null
+  events: EventEmitter
 
   constructor (context: vscode.ExtensionContext, outputChannel: vscode.OutputChannel) {
     this.context = context
@@ -19,6 +21,7 @@ export class PyocdInterface {
     this.executable = ''
     this.venv = ''
     this.ready = false
+    this.events = new EventEmitter()
 
     findPythonExecutable(this.outputChannel).then((pythonExecutable: string) => {
       if (pythonExecutable !== '') {
@@ -105,7 +108,8 @@ export class PyocdInterface {
 
   // runs a command in the venv
   // runCommand(context, OUTPUT_CHANNEL, venv, 'pyocd', ['list'])
-  async runCommand (command: string, args: string[] = []): Promise<string> {
+  // eslint-disable-next-line @typescript-eslint/ban-types
+  async runCommand (command: string, args: string[] = [], callback?: Function, errorCallback?: Function): Promise<string> {
     if (this.venv === '') {
       return await Promise.reject(new Error('No venv selected'))
     }
@@ -123,10 +127,16 @@ export class PyocdInterface {
       child.stdout.on('data', (data: Buffer) => {
         result += data.toString()
         this.outputChannel.appendLine(data.toString())
+        if (callback !== undefined) {
+          callback(data.toString())
+        }
       })
       child.stderr.on('data', (data: Buffer) => {
         error += data.toString()
         this.outputChannel.appendLine(data.toString())
+        if (errorCallback !== undefined) {
+          errorCallback(data.toString())
+        }
       })
       child.on('close', (code) => {
         if (code !== 0) {

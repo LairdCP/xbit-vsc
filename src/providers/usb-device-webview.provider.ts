@@ -75,21 +75,25 @@ export class UsbDeviceWebViewProvider implements vscode.WebviewViewProvider {
   }
 
   async onSelected (usbDevice: UsbDevice): Promise<void> {
-    console.log(usbDevice)
-    this._selectedDevice = usbDevice
+    if (usbDevice instanceof UsbDevice) {
+      console.log(usbDevice)
+      this._selectedDevice = usbDevice
 
-    // tell the webview the device was selected
-    await this.webview?.postMessage({
-      command: 'setSelected',
-      device: {
-        serialNumber: usbDevice.serialNumber,
-        path: usbDevice.options.path,
-        name: usbDevice.name,
-        manufacturer: usbDevice.options.manufacturer,
-        baudRate: usbDevice.baudRate,
-        connected: usbDevice.connected
-      }
-      // device: usbDevice
-    })
+      // tell the webview the device was selected
+      await this.webview?.postMessage({
+        command: 'setSelected',
+        device: {
+          serialNumber: usbDevice.serialNumber,
+          path: usbDevice.options.path,
+          name: usbDevice.name,
+          manufacturer: usbDevice.options.manufacturer,
+          baudRate: usbDevice.baudRate,
+          connected: usbDevice.connected
+        }
+        // device: usbDevice
+      })
+    } else {
+      // file selected
+    }
   }
 }

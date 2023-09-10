@@ -105,7 +105,6 @@ export class UsbDeviceFile extends vscode.TreeItem {
         } else {
           const fileData: string = await read()
           await this.parentDevice.ifc.writeWait('f.close()\r', 1000)
-          console.log('resolve data', fileData)
           return await Promise.resolve(fileData)
         }
       } catch (error) {
@@ -116,11 +115,9 @@ export class UsbDeviceFile extends vscode.TreeItem {
 
   async writeFileToDevice (data: string): Promise<string> {
     let offset = 0
-    console.log('writeFileToDevice', data)
     const write = async (): Promise<Error | string> => {
       try {
         const bytesToWrite = Buffer.from(data, 'ascii').toString('hex').slice(offset, offset + 128)
-        console.log('bytesToWrite', bytesToWrite)
         if (bytesToWrite === null) {
           return await Promise.resolve('OK')
         }
@@ -130,7 +127,6 @@ export class UsbDeviceFile extends vscode.TreeItem {
         return await Promise.reject(error)
       }
       offset += 128
-      console.log(offset, data.length)
       if (offset < data.length * 2) {
         return await write()
       } else {
@@ -145,8 +141,6 @@ export class UsbDeviceFile extends vscode.TreeItem {
     } else {
       // start writing chunks
       await write()
-      // console.log('write result', result)
-      console.log('close')
       return this.parentDevice.ifc.writeWait('f.close()\r', 1000)
     }
   }
