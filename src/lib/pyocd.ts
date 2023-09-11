@@ -37,6 +37,7 @@ export class PyocdInterface {
         }).catch(() => {
           return vscode.window.showWarningMessage('This extension uses a python virtual enviroment to install dependencies. Please select a location for the venv.', 'Select', 'Cancel')
         }).then(async (selection) => {
+          console.log(selection)
           if (selection === 'Select') {
             return await this.initVenv()
           } else if (this.venv !== null) {
@@ -47,25 +48,29 @@ export class PyocdInterface {
         }).then(async () => {
           // check for pyocd
           // catch
+          // display wait ?
+          this.outputChannel.show()
           return await this.installDeps()
         }).then(() => {
           this.ready = true
         }).catch((error) => {
           console.log('venv error', error)
+          this.outputChannel.appendLine(`venv error ${String(error.message)}`)
         })
       } else {
         console.log('pythonExecutable not found')
+        this.outputChannel.appendLine('pythonExecutable not found')
         // show notifcation to install the python extension as recommended
         // does this happene automatically?
       }
     }).catch(() => {
-      console.log('findPythonExecutable error')
+      this.outputChannel.appendLine('pythonExecutable not found')
     })
   }
 
   private async _listDevices (): Promise<any> {
     // ask pyocd for the list of devices
-    return await this.runCommand('python', [this.context.asAbsolutePath('./src/server/probe.py')])
+    return await this.runCommand('python', [this.context.asAbsolutePath('./pytools/probe.py')])
       .then((result: string) => {
         let probeResult = []
         try {
@@ -149,6 +154,7 @@ export class PyocdInterface {
   }
 
   async initVenv (): Promise<string> {
+    console.log('initVenv', this.executable)
     if (this.executable === '') {
       return await Promise.reject(new Error('No python executable found'))
     }
@@ -176,6 +182,7 @@ export class PyocdInterface {
             reject(new Error(error))
           } else {
             const venvFolder = path.join(targetLocation, 'xbit.venv')
+            this.venv = venvFolder
             config.update('python-venv', venvFolder, vscode.ConfigurationTarget.Global).then(() => {
               resolve(venvFolder)
             }, (error) => {
