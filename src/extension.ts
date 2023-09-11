@@ -37,20 +37,20 @@ export function activate (context: vscode.ExtensionContext): void {
   const pyocdInterface = new PyocdInterface(context, outputChannel)
   usbDevicesProvider = new UsbDevicesProvider(context, pyocdInterface)
 
-  vscode.window.registerTreeDataProvider('usbDevices', usbDevicesProvider)
-  context.subscriptions.push(vscode.commands.registerCommand('usbDevices.refreshEntry', async () => {
+  vscode.window.registerTreeDataProvider('xbitVsc', usbDevicesProvider)
+  context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.refreshEntry', async () => {
     // clear the cached devices list to hard refresh
     for (const usbDevice of usbDevicesProvider.usbDeviceNodes) {
-      await vscode.commands.executeCommand('usbDevices.disconnectUsbDevice', usbDevice)
+      await vscode.commands.executeCommand('xbitVsc.disconnectUsbDevice', usbDevice)
     }
     usbDevicesProvider.usbDeviceNodes.length = 0
     usbDevicesProvider.hiddenUsbDeviceNodes.length = 0
     usbDevicesProvider.refresh()
   }))
 
-  context.subscriptions.push(vscode.commands.registerCommand('usbDevices.createDeviceFile', async (usbDevice: UsbDevice) => {
+  context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.createDeviceFile', async (usbDevice: UsbDevice) => {
     if (!usbDevice.connected) {
-      await vscode.commands.executeCommand('usbDevices.connectUsbDevice', usbDevice)
+      await vscode.commands.executeCommand('xbitVsc.connectUsbDevice', usbDevice)
     }
 
     // create a new file object with unamed file
@@ -63,9 +63,9 @@ export function activate (context: vscode.ExtensionContext): void {
     }
   }))
 
-  context.subscriptions.push(vscode.commands.registerCommand('usbDevices.renameDeviceFile', async (usbDeviceFile: UsbDeviceFile) => {
+  context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.renameDeviceFile', async (usbDeviceFile: UsbDeviceFile) => {
     if (!usbDeviceFile.parentDevice.connected) {
-      await vscode.commands.executeCommand('usbDevices.connectUsbDevice', usbDeviceFile.parentDevice)
+      await vscode.commands.executeCommand('xbitVsc.connectUsbDevice', usbDeviceFile.parentDevice)
     }
 
     // create a new file object with unamed file
@@ -77,10 +77,10 @@ export function activate (context: vscode.ExtensionContext): void {
     }
   }))
 
-  context.subscriptions.push(vscode.commands.registerCommand('usbDevices.deleteDeviceFile', async (usbDeviceFile: UsbDeviceFile) => {
+  context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.deleteDeviceFile', async (usbDeviceFile: UsbDeviceFile) => {
     // delete the file
     if (!usbDeviceFile.parentDevice.connected) {
-      await vscode.commands.executeCommand('usbDevices.connectUsbDevice', usbDeviceFile.parentDevice)
+      await vscode.commands.executeCommand('xbitVsc.connectUsbDevice', usbDeviceFile.parentDevice)
     }
     await usbDevicesProvider.deleteFile(usbDeviceFile)
     try {
@@ -92,12 +92,12 @@ export function activate (context: vscode.ExtensionContext): void {
   }))
 
   // called when a python file on a connected device is selected
-  context.subscriptions.push(vscode.commands.registerCommand('usbDevices.openDeviceFile', async (usbDeviceFile: UsbDeviceFile) => {
+  context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.openDeviceFile', async (usbDeviceFile: UsbDeviceFile) => {
     // e.command.arguments[0].label is the file selected
     // e.command.arguments[1].main is the device selected
     // if not connected, connect
     if (!usbDeviceFile.parentDevice.connected) {
-      await vscode.commands.executeCommand('usbDevices.connectUsbDevice', usbDeviceFile.parentDevice)
+      await vscode.commands.executeCommand('xbitVsc.connectUsbDevice', usbDeviceFile.parentDevice)
     }
     outputChannel.appendLine(`Opening File ${usbDeviceFile.label}\n`)
 
@@ -136,7 +136,7 @@ export function activate (context: vscode.ExtensionContext): void {
     }
   }))
 
-  context.subscriptions.push(vscode.commands.registerCommand('usbDevices.writeHexFile', async (usbDevice: UsbDevice) => {
+  context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.writeHexFile', async (usbDevice: UsbDevice) => {
     // selectedContext[0] is the file selected
     // if not connected to a device, return error
     // if (usbDevice.targetType === 'nrf52833') {
@@ -181,7 +181,7 @@ export function activate (context: vscode.ExtensionContext): void {
     // }
   }))
 
-  context.subscriptions.push(vscode.commands.registerCommand('usbDevices.connectUsbDevice', async (usbDevice: UsbDevice) => {
+  context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.connectUsbDevice', async (usbDevice: UsbDevice) => {
     if (usbDevice.connected) {
       return
     }
@@ -205,7 +205,7 @@ export function activate (context: vscode.ExtensionContext): void {
     }
   }))
 
-  context.subscriptions.push(vscode.commands.registerCommand('usbDevices.disconnectUsbDevice', async (usbDevice: UsbDevice) => {
+  context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.disconnectUsbDevice', async (usbDevice: UsbDevice) => {
     if (!usbDevice.connected) {
       return
     }
@@ -231,7 +231,7 @@ export function activate (context: vscode.ExtensionContext): void {
     }
   }))
 
-  context.subscriptions.push(vscode.commands.registerCommand('usbDevices.updateUsbDeviceSettings', async (usbDevice: UsbDevice, message) => {
+  context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.updateUsbDeviceSettings', async (usbDevice: UsbDevice, message) => {
     // save
     if (usbDevice !== undefined && usbDevice !== null) {
       const deviceConfigurations: any = config.get('device-configurations')
@@ -255,7 +255,7 @@ export function activate (context: vscode.ExtensionContext): void {
     treeDataProvider: usbDevicesProvider,
     showCollapseAll: true
   }
-  const tree = vscode.window.createTreeView('usbDevices', options)
+  const tree = vscode.window.createTreeView('xbitVsc', options)
 
   tree.onDidChangeSelection(async (e: vscode.TreeViewSelectionChangeEvent<any>) => {
     // console.log('onDidChangeSelection', e) // breakpoint here for debug
@@ -322,7 +322,7 @@ export function activate (context: vscode.ExtensionContext): void {
     }
   })
 
-  // context.subscriptions.push(vscode.commands.registerCommand('usbDevices.writeHex', (usbDevice, file) => {
+  // context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.writeHex', (usbDevice, file) => {
   // if (usbDevice.ifc.connected) { usbDevice.ifc.disconnect() }
   // make pyocd write hex file based on the usbDevice and file info
   // })

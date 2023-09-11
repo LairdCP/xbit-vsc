@@ -5,7 +5,7 @@ import * as fs from 'fs'
 import { UsbDevice } from '../lib/usb-device.class'
 
 export class UsbDeviceWebViewProvider implements vscode.WebviewViewProvider {
-  public static readonly viewType: string = 'usbDevices.optionsView'
+  public static readonly viewType: string = 'xbitVsc.optionsView'
   public webview?: vscode.Webview
   private _view?: vscode.WebviewView
   private _selectedDevice?: UsbDevice | null
@@ -50,15 +50,15 @@ export class UsbDeviceWebViewProvider implements vscode.WebviewViewProvider {
       if (message.command === 'connect') {
         // connect
         if (this._selectedDevice !== null) {
-          await vscode.commands.executeCommand('usbDevices.connectUsbDevice', this._selectedDevice)
+          await vscode.commands.executeCommand('xbitVsc.connectUsbDevice', this._selectedDevice)
         }
       } else if (message.command === 'disconnect') {
         // disconnect
         if (this._selectedDevice !== null) {
-          await vscode.commands.executeCommand('usbDevices.disconnectUsbDevice', this._selectedDevice)
+          await vscode.commands.executeCommand('xbitVsc.disconnectUsbDevice', this._selectedDevice)
         }
       } else if (message.command === 'save') {
-        await vscode.commands.executeCommand('usbDevices.updateUsbDeviceSettings', this._selectedDevice, message)
+        await vscode.commands.executeCommand('xbitVsc.updateUsbDeviceSettings', this._selectedDevice, message)
       }
     })
   }

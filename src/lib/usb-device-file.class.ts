@@ -32,7 +32,7 @@ export class UsbDeviceFile extends vscode.TreeItem {
     this.size = size
     this.type = type
     this.command = {
-      command: 'usbDevices.openDeviceFile',
+      command: 'xbitVsc.openDeviceFile',
       arguments: [this]
     }
     this.name = this.label

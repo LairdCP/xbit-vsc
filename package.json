@@ -1,8 +1,8 @@
 {
-  "name": "usb-device",
-  "displayName": "usb-devices tool",
+  "name": "xbit-vsc",
+  "displayName": "xbit vsc tool",
   "description": "",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "engines": {
     "vscode": "^1.78.0"
   },
@@ -51,13 +51,13 @@
     "views": {
       "xbit-devices": [
         {
-          "id": "usbDevices",
+          "id": "xbitVsc",
           "name": "USB devices",
           "icon": "resources/dark/usb-device.svg",
           "contextualTitle": "USB Devices"
         },
         {
-          "id": "usbDevices.optionsView",
+          "id": "xbitVsc.optionsView",
           "name": "Selected Device",
           "type": "webview"
         }
@@ -65,89 +65,89 @@
     },
     "commands": [
       {
-        "command": "usbDevices.refreshEntry",
+        "command": "xbitVsc.refreshEntry",
         "title": "Refresh",
         "icon": "$(refresh)"
       },
       {
-        "command": "usbDevices.openDeviceFile",
+        "command": "xbitVsc.openDeviceFile",
         "title": "Open File"
       },
       {
-        "command": "usbDevices.deleteDeviceFile",
+        "command": "xbitVsc.deleteDeviceFile",
         "title": "Delete File",
         "icon": "$(trash)"
       },
       {
-        "command": "usbDevices.renameDeviceFile",
+        "command": "xbitVsc.renameDeviceFile",
         "title": "Rename File",
         "icon": "$(edit)"
       },
       {
-        "command": "usbDevices.createDeviceFile",
+        "command": "xbitVsc.createDeviceFile",
         "title": "Create File",
         "icon": "$(add)"
       },
       {
-        "command": "usbDevices.writeHexFile",
+        "command": "xbitVsc.writeHexFile",
         "title": "Write Hex File"
       },
       {
-        "command": "usbDevices.connectUsbDevice",
+        "command": "xbitVsc.connectUsbDevice",
         "title": "Connect"
       },
       {
-        "command": "usbDevices.disconnectUsbDevice",
+        "command": "xbitVsc.disconnectUsbDevice",
         "title": "Disconnect"
       },
       {
-        "command": "usbDevices.createTerminal",
+        "command": "xbitVsc.createTerminal",
         "title": "Extension Terminal: Create"
       },
       {
-        "command": "usbDevices.clearTerminal",
+        "command": "xbitVsc.clearTerminal",
         "title": "Extension Terminal: Clear"
       },
       {
-        "command": "usbDevices.updateUsbDeviceSettings",
+        "command": "xbitVsc.updatexbitVscettings",
         "title": "Update Device Settings"
       }
     ],
     "menus": {
       "view/title": [
         {
-          "command": "usbDevices.refreshEntry",
-          "when": "view == usbDevices",
+          "command": "xbitVsc.refreshEntry",
+          "when": "view == xbitVsc",
           "group": "navigation"
         }
       ],
       "view/item/context": [
         {
-          "command": "usbDevices.connectUsbDevice",
+          "command": "xbitVsc.connectUsbDevice",
           "when": "viewItem == usbDevice || viewItem == usbDeviceDvkProbe",
           "group": "navigation@1"
         },
         {
-          "command": "usbDevices.disconnectUsbDevice",
+          "command": "xbitVsc.disconnectUsbDevice",
           "when": "viewItem == usbDeviceConnected || viewItem == usbDeviceConnectedDvkProbe",
           "group": "navigation@1"
         },
         {
-          "command": "usbDevices.writeHexFile",
+          "command": "xbitVsc.writeHexFile",
           "when": "viewItem == usbDeviceDvkProbe || viewItem == usbDeviceConnectedDvkProbe",
           "group": "commands"
         },
         {
-          "command": "usbDevices.createDeviceFile",
+          "command": "xbitVsc.createDeviceFile",
           "when": "viewItem == usbDevice || viewItem == usbDeviceConnected || viewItem == usbDeviceDvkProbe || viewItem == usbDeviceConnectedDvkProbe",
           "group": "navigation@3"
         },
         {
-          "command": "usbDevices.deleteDeviceFile",
+          "command": "xbitVsc.deleteDeviceFile",
           "when": "viewItem == usbDeviceFile"
         },
         {
-          "command": "usbDevices.renameDeviceFile",
+          "command": "xbitVsc.renameDeviceFile",
           "when": "viewItem == usbDeviceFile"
         }
       ]
