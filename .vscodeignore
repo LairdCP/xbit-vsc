@@ -12,3 +12,4 @@ src/**
 **/.eslintrc.json
 **/*.map
 **/*.ts
+*.vsix

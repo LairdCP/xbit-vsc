@@ -22,23 +22,21 @@ export class PyocdInterface {
     this.venv = ''
     this.ready = false
     this.events = new EventEmitter()
+    this.outputChannel.show()
 
     findPythonExecutable(this.outputChannel).then((pythonExecutable: string) => {
       if (pythonExecutable !== '') {
-        console.log('found pythonExecutable', pythonExecutable)
+        this.outputChannel.appendLine(`found pythonExecutable ${pythonExecutable}`)
         this.executable = pythonExecutable
-        // Pyocd(outputChannel, pythonExecutable[0]).then((pyocd) => {
-        //   if (pyocd) {
-        //     console.log('found pyocd', pyocd)
-        //   }
-        // })
         this.getVenv().then(() => {
+          this.outputChannel.appendLine(`found venv ${this.venv}`)
           return null
         }).catch(() => {
+          this.outputChannel.appendLine('no venv, prompting')
           return vscode.window.showWarningMessage('This extension uses a python virtual enviroment to install dependencies. Please select a location for the venv.', 'Select', 'Cancel')
         }).then(async (selection) => {
-          console.log(selection)
           if (selection === 'Select') {
+            this.outputChannel.appendLine('initializing venv')
             return await this.initVenv()
           } else if (this.venv !== null) {
             return null
@@ -49,7 +47,7 @@ export class PyocdInterface {
           // check for pyocd
           // catch
           // display wait ?
-          this.outputChannel.show()
+          this.outputChannel.appendLine('installing dependencies')
           return await this.installDeps()
         }).then(() => {
           this.ready = true
@@ -58,7 +56,6 @@ export class PyocdInterface {
           this.outputChannel.appendLine(`venv error ${String(error.message)}`)
         })
       } else {
-        console.log('pythonExecutable not found')
         this.outputChannel.appendLine('pythonExecutable not found')
         // show notifcation to install the python extension as recommended
         // does this happene automatically?
@@ -123,8 +120,14 @@ export class PyocdInterface {
       return await Promise.reject(new Error('No command specified'))
     }
 
+    let scripts = 'bin'
+    if (process.platform === 'win32') {
+      scripts = 'Scripts'
+    }
+
     return await new Promise((resolve, reject) => {
-      const pip = path.join(this.venv, 'bin', command)
+      this.outputChannel.appendLine(`running command ${path.join(this.venv, scripts, command)} ${args.join(' ')}`)
+      const pip = path.join(this.venv, scripts, command)
       const child = spawn(pip, args)
       let error = ''
       let result = ''
@@ -154,7 +157,6 @@ export class PyocdInterface {
   }
 
   async initVenv (): Promise<string> {
-    console.log('initVenv', this.executable)
     if (this.executable === '') {
       return await Promise.reject(new Error('No python executable found'))
     }
@@ -162,6 +164,7 @@ export class PyocdInterface {
       this.selectVenv().then((targetLocation) => {
         let error = ''
         process.chdir(targetLocation)
+        this.outputChannel.appendLine(`spawn ${this.executable} -m venv ./xbit.venv`)
 
         const child: ChildProcess = spawn(this.executable, ['-m', 'venv', './xbit.venv'])
         if (child === null || child.stdout === null || child.stderr === null) {

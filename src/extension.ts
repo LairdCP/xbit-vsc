@@ -108,7 +108,7 @@ export function activate (context: vscode.ExtensionContext): void {
       outputChannel.appendLine(`Opened File ${usbDeviceFile.name}\n`)
       return
     } catch (error: any) {
-      // outputChannel.appendLine(`Error Opening File ${String(error.message)}\n`)
+      outputChannel.appendLine(`File Does Not Exist ${String(error.message)}\n`)
     }
 
     const pathParts = usbDeviceFile.parentDevice.uri.path.split('/')
@@ -119,6 +119,7 @@ export function activate (context: vscode.ExtensionContext): void {
       // check if directory exists in memfs
         memFs.stat(vscode.Uri.parse(pathToCreate))
       } catch (error) {
+        outputChannel.appendLine(`Creating Path ${pathToCreate}`)
         memFs.createDirectory(vscode.Uri.parse(pathToCreate))
       }
     }

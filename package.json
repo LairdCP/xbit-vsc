@@ -109,7 +109,7 @@
         "title": "Extension Terminal: Clear"
       },
       {
-        "command": "xbitVsc.updatexbitVscettings",
+        "command": "xbitVsc.updateUsbDeviceSettings",
         "title": "Update Device Settings"
       }
     ],

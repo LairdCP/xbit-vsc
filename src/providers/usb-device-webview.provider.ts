@@ -31,7 +31,7 @@ export class UsbDeviceWebViewProvider implements vscode.WebviewViewProvider {
       // const onDiskPath = vscode.Uri.joinPath(context.extensionUri, 'src', 'script.js')
       // const scriptSrc = webviewView.webview.asWebviewUri(onDiskPath)
 
-      const path = vscode.Uri.joinPath(this._extensionUri, 'src/providers', 'device-details.webview.html')
+      const path = vscode.Uri.joinPath(this._extensionUri, 'resources/device-details.webview.html')
       const html = fs.readFileSync(path.fsPath, 'utf8')
       // const src = webviewView.webview.asWebviewUri(path)
       // console.log(src)
@@ -47,24 +47,23 @@ export class UsbDeviceWebViewProvider implements vscode.WebviewViewProvider {
     webviewView.webview.onDidReceiveMessage(async (message: any) => {
       console.log('webviewView received message', message)
 
-      if (message.command === 'connect') {
-        // connect
-        if (this._selectedDevice !== null) {
-          await vscode.commands.executeCommand('xbitVsc.connectUsbDevice', this._selectedDevice)
-        }
-      } else if (message.command === 'disconnect') {
-        // disconnect
-        if (this._selectedDevice !== null) {
-          await vscode.commands.executeCommand('xbitVsc.disconnectUsbDevice', this._selectedDevice)
-        }
+      if (message.command === 'connect' &&
+        this._selectedDevice !== null) {
+        await vscode.commands.executeCommand('xbitVsc.connectUsbDevice', this._selectedDevice)
+      } else if (message.command === 'disconnect' &&
+        this._selectedDevice !== null) {
+        await vscode.commands.executeCommand('xbitVsc.disconnectUsbDevice', this._selectedDevice)
       } else if (message.command === 'save') {
         await vscode.commands.executeCommand('xbitVsc.updateUsbDeviceSettings', this._selectedDevice, message)
+      } else if (message.command === 'break') {
+        this._selectedDevice?.ifc.write('\x03')
+      } else if (message.command === 'eof') {
+        this._selectedDevice?.ifc.write('\x04')
       }
     })
   }
 
   async onDeselected (): Promise<void> {
-    console.log('onDeselected')
     this._selectedDevice = null
 
     // tell the webview the device was deselected
@@ -76,7 +75,6 @@ export class UsbDeviceWebViewProvider implements vscode.WebviewViewProvider {
 
   async onSelected (usbDevice: UsbDevice): Promise<void> {
     if (usbDevice instanceof UsbDevice) {
-      console.log(usbDevice)
       this._selectedDevice = usbDevice
 
       // tell the webview the device was selected

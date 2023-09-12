@@ -25,7 +25,6 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
     this.parser = null
     this.lastSentHex = null
     this.treeCache = new Map() // cache the file tree for each device and sub folder. Key is the device.path/folder/...
-
     this.pyocdInterface = ifc
   }
 
@@ -172,7 +171,12 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
           if (port.serialNumber === '') {
             return next()
           }
-          const uri = vscode.Uri.parse(`memfs:/serial/${port.serialNumber}${port.path}`)
+          // if windows, we need a slash here
+          let slash = ''
+          if (process.platform === 'win32') {
+            slash = '/'
+          }
+          const uri = vscode.Uri.parse(`memfs:/serial/${port.serialNumber}${slash}${port.path}`)
           if (this.hiddenUsbDeviceNodes.includes(uri.toString())) {
             return next()
           }

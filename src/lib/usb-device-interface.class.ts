@@ -31,7 +31,7 @@ export class UsbDeviceInterface extends EventEmitter {
     }
     // if connected, return promise
     try {
-      this.serialPort = await new SerialPort({
+      this.serialPort = new SerialPort({
         path: this.path,
         baudRate: this.baudRate
       })

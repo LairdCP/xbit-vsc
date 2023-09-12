@@ -51,7 +51,7 @@ export class UsbDevice extends vscode.TreeItem {
     if (this.options.board_name !== 'Unknown') {
       this.name = this.options.board_name
     }
-    this.description = this.options.path
+    this.description = this.options.path.replace(/^\//, '')
 
     // if has serialPort
     this.ifc = new UsbDeviceInterface({
@@ -205,6 +205,7 @@ export class UsbDevice extends vscode.TreeItem {
 
         // memfs:/serial/id/tty.usbmodem1411/blink.py
         const uri = vscode.Uri.parse('memfs:' + this.uri.path + path)
+        console.log('file uri', uri)
         //
         // Omit folders from the tree for now
         // if (type === 'dir') {
