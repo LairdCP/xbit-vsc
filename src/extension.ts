@@ -115,12 +115,13 @@ export function activate (context: vscode.ExtensionContext): void {
     let pathToCreate = ''
     while (pathParts.length !== 0) {
       pathToCreate = path.join(pathToCreate, pathParts.shift() as string)
+      const pathUri = vscode.Uri.parse('memfs:/' + pathToCreate)
       try {
       // check if directory exists in memfs
-        memFs.stat(vscode.Uri.parse(pathToCreate))
+        memFs.stat(pathUri)
       } catch (error) {
         outputChannel.appendLine(`Creating Path ${pathToCreate}`)
-        memFs.createDirectory(vscode.Uri.parse(pathToCreate))
+        memFs.createDirectory(pathUri)
       }
     }
 
@@ -129,10 +130,13 @@ export function activate (context: vscode.ExtensionContext): void {
     const fileData = Buffer.from(result, 'ascii')
 
     try {
+      console.log('writing file', usbDeviceFile)
       memFs.writeFile(usbDeviceFile.uri, fileData, { create: true, overwrite: true })
+      console.log('showing document')
       await vscode.window.showTextDocument(usbDeviceFile.uri)
       outputChannel.appendLine(`Opened File ${usbDeviceFile.name}\n`)
     } catch (error: any) {
+      console.log('error', error)
       outputChannel.appendLine(`Error Opening File ${String(error.message)}\n`)
     }
   }))
