@@ -253,8 +253,6 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
           this.usbDeviceNodes = this.usbDeviceNodes.filter((item) => {
             return deviceIds.has(item.options.path)
           })
-          console.log(this.usbDeviceNodes)
-          console.log(this.hiddenUsbDeviceNodes)
 
           resolve(this.usbDeviceNodes)
         })

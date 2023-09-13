@@ -8,6 +8,22 @@
       .details-section {
         margin-bottom: 10px
       }
+      .dropdown-container {
+        box-sizing: border-box;
+        display: flex;
+        flex-flow: column nowrap;
+        align-items: flex-start;
+        justify-content: flex-start;
+      }
+
+      .dropdown-container label {
+        display: block;
+        color: var(--vscode-foreground);
+        cursor: pointer;
+        font-size: var(--vscode-font-size);
+        line-height: normal;
+        margin-bottom: 2px;
+      }
     </style>
   </head>
   <body>
@@ -18,15 +34,34 @@
         <vscode-button appearance="primary" id="disconnect-button">Disconnect</vscode-button>
       </section>
       <vscode-divider role="separator"></vscode-divider>
-      <h3>Tools</h3>
-      <section class="details-section">
-        <vscode-button appearance="secondary" id="break-button">Break</vscode-button>
-        <vscode-button appearance="secondary" id="eof-button">EOF</vscode-button>
-      </section>
-      <vscode-divider role="separator"></vscode-divider>
+      <div id="tools">
+        <h3>Tools</h3>
+        <section class="details-section">
+          <vscode-button appearance="secondary" id="break-button">Break</vscode-button>
+          <vscode-button appearance="secondary" id="eof-button">EOF</vscode-button>
+        </section>
+        <!-- <section class="details-section">
+          <div class="dropdown-container">
+            <label for="applets">Select Applet:</label>
+            <vscode-dropdown id="applets">
+            </vscode-dropdown>
+          </div>
+        </section> -->
+        <vscode-divider role="separator"></vscode-divider>
+      </div>
       <h3>Options</h3>
       <section class="details-section">
-        <vscode-text-field type="text" id="baud-rate">Baud Rate</vscode-text-field>
+        <div class="dropdown-container">
+          <label for="baud-rate">Baud Rate</label>
+          <vscode-dropdown id="baud-rate">
+            <vscode-option>14400</vscode-option>
+            <vscode-option>19200</vscode-option>
+            <vscode-option>28800</vscode-option>
+            <vscode-option>38400</vscode-option>
+            <vscode-option>57600</vscode-option>
+            <vscode-option>115200</vscode-option>
+          </vscode-dropdown>
+        </div>
       </section>
       <section class="details-section">
         <vscode-text-field type="text" id="custom-name">Custom Name</vscode-text-field>
@@ -39,6 +74,7 @@
       const serialNumber = document.getElementById('serial-number')
       const baudRate = document.getElementById('baud-rate')
       const customName = document.getElementById('custom-name')
+      // const appletDropdown = document.getElementById('applets')
 
       const vscode = acquireVsCodeApi()
       let currentDevice = null
@@ -47,7 +83,7 @@
       document.getElementById('save-button').addEventListener('click', () => {
         vscode.postMessage({
           command: 'save',
-          baudRate: baudRate.value,
+          baudRate: parseInt(baudRate.value),
           name: customName.value
         })
       })
@@ -68,13 +104,19 @@
         vscode.postMessage({ command: 'eof' })
       })
 
+      // appletDropdown.addEventListener('change', () => {
+      //   vscode.postMessage({ command: 'use-for-applet', applet: appletDropdown.value })
+      // })
+
       const handledConnected = () => {
         if (connected) {
           document.getElementById('connect-button').style.display = 'none'
           document.getElementById('disconnect-button').style.display = 'inline-block'
+          document.getElementById('tools').style.display = 'block'
         } else {
           document.getElementById('connect-button').style.display = 'inline-block'
           document.getElementById('disconnect-button').style.display = 'none'
+          document.getElementById('tools').style.display = 'none'
         }
       }
 
@@ -89,7 +131,7 @@
               baudRate.value = message.device.baudRate
               connected = message.device.connected || false
               customName.value = message.device.name
-              baudRate.value = message.device.baudRate
+              baudRate.value = message.device.baudRate.toString()
               handledConnected()
               document.querySelector('.device-selected').style.display = 'inline-block'
             } else {
@@ -110,7 +152,20 @@
             connected = message.device.connected
             handledConnected()
             break;
+          // case 'applets':
+          //   appletDropdown.innerHTML = ''
+          //   const option = document.createElement('vscode-option')
+          //   option.textContent = 'None'
+          //   option.value = 'none'
+          //   appletDropdown.appendChild(option)
 
+          //   message.applets.forEach(applet => {
+          //     const option = document.createElement('vscode-option')
+          //     option.textContent = applet
+          //     option.value = applet
+          //     appletDropdown.appendChild(option)
+          //   })
+          //   break;
         }
       });
     </script>

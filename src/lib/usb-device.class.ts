@@ -7,8 +7,6 @@ import { UsbDeviceInterface } from './usb-device-interface.class'
 import { ProbeInfo } from '../providers/hardware-probe-info'
 import { ReplTerminal } from './repl-terminal.class'
 
-const config = vscode.workspace.getConfiguration('xbit-vsc')
-
 type File = [string, string, number]
 
 export class UsbDevice extends vscode.TreeItem {
@@ -26,10 +24,13 @@ export class UsbDevice extends vscode.TreeItem {
   terminal: any = null
   lastSentHex: any
   targetType?: string
+  enableApplet = false
 
   // overrides
   public iconPath: any
   public description?: string
+
+  private readonly _dataHandlers: Map<string, any> = new Map()
 
   constructor (
     uri: vscode.Uri,
@@ -59,6 +60,19 @@ export class UsbDevice extends vscode.TreeItem {
       baudRate: this.baudRate
     })
 
+    // when disconnected, the listener is not removed
+    this.ifc.on('data', (data: Buffer) => {
+      if (this.terminal !== null) {
+        this._handleTerminalData(data)
+      }
+
+      // if panel webview attached,
+      // post the data there
+      this._dataHandlers.forEach((cb: any, key: string) => {
+        cb(data)
+      })
+    })
+
     // expose serial port methods
     this.connect = this.ifc.connect.bind(this.ifc)
     this.disconnect = this.ifc.disconnect.bind(this.ifc)
@@ -66,8 +80,10 @@ export class UsbDevice extends vscode.TreeItem {
 
     // TODO this is hacky, but it works
     // Set any custom configuration for this device
+    const config = vscode.workspace.getConfiguration('xbit-vsc')
     const deviceConfigurations: any = config.get('device-configurations')
     const key = `${this.serialNumber}.${String(this.label)}`
+    console.log('deviceConfigurations', key, deviceConfigurations[key])
     if (deviceConfigurations !== undefined) {
       if (deviceConfigurations[key] !== undefined) {
         if (deviceConfigurations[key]?.baudRate !== undefined) {
@@ -206,7 +222,6 @@ export class UsbDevice extends vscode.TreeItem {
 
         // memfs:/serial/id/tty.usbmodem1411/blink.py
         const uri = vscode.Uri.parse('memfs:' + this.uri.path + path)
-        console.log('file uri', uri)
         //
         // Omit folders from the tree for now
         // if (type === 'dir') {
@@ -228,7 +243,6 @@ export class UsbDevice extends vscode.TreeItem {
   }
 
   async createFile (filePath: string): Promise<string> {
-    console.log('createFile2', filePath)
     try {
       await this.ifc.writeWait(`f = open('${filePath}', 'w')\r`, 1000)
       await this.ifc.writeWait('f.close()\r', 1000)
@@ -264,6 +278,14 @@ export class UsbDevice extends vscode.TreeItem {
     }
   }
 
+  dataHandler (key: string, cb: any): void {
+    this._dataHandlers.set(key, cb)
+  }
+
+  removeDataHandler (key: string): void {
+    this._dataHandlers.delete(key)
+  }
+
   async createTerminal (context: vscode.ExtensionContext): Promise<void> {
     this.terminal = new ReplTerminal(context, {
       name: this.options.path
@@ -276,8 +298,6 @@ export class UsbDevice extends vscode.TreeItem {
         this.write(data)
       }
     })
-    // when disconnected, the listener is not removed
-    this.ifc.on('data', this._handleTerminalData.bind(this))
   }
 
   async destroyTerminal (): Promise<void> {
@@ -285,6 +305,5 @@ export class UsbDevice extends vscode.TreeItem {
       this.terminal.remove()
       this.terminal = null
     }
-    this.ifc.removeAllListeners('data')
   }
 }
