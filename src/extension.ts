@@ -114,14 +114,17 @@ export function activate (context: vscode.ExtensionContext): void {
     const pathParts = usbDeviceFile.parentDevice.uri.path.split('/')
     let pathToCreate = ''
     while (pathParts.length !== 0) {
-      pathToCreate = path.join(pathToCreate, pathParts.shift() as string)
-      const pathUri = vscode.Uri.parse('memfs:/' + pathToCreate)
-      try {
-      // check if directory exists in memfs
-        memFs.stat(pathUri)
-      } catch (error) {
-        outputChannel.appendLine(`Creating Path ${pathToCreate}`)
-        memFs.createDirectory(pathUri)
+      const nextPath = pathParts.shift()
+      if (nextPath !== undefined) {
+        pathToCreate = pathToCreate + '/' + nextPath
+        const pathUri = vscode.Uri.parse('memfs:/' + pathToCreate)
+        try {
+        // check if directory exists in memfs
+          memFs.stat(pathUri)
+        } catch (error) {
+          outputChannel.appendLine(`Creating Path ${pathToCreate}`)
+          memFs.createDirectory(pathUri)
+        }
       }
     }
 
@@ -130,9 +133,7 @@ export function activate (context: vscode.ExtensionContext): void {
     const fileData = Buffer.from(result, 'ascii')
 
     try {
-      console.log('writing file', usbDeviceFile)
       memFs.writeFile(usbDeviceFile.uri, fileData, { create: true, overwrite: true })
-      console.log('showing document')
       await vscode.window.showTextDocument(usbDeviceFile.uri)
       outputChannel.appendLine(`Opened File ${usbDeviceFile.name}\n`)
     } catch (error: any) {
@@ -205,6 +206,7 @@ export function activate (context: vscode.ExtensionContext): void {
           }
         })
       }
+      usbDevice.ifc.sendBreak()
     } catch (error: any) {
       await vscode.window.showInformationMessage(`Error Connection to Port: ${String(error.message)}`)
     }
@@ -318,19 +320,12 @@ export function activate (context: vscode.ExtensionContext): void {
     }
     const dataToWrite = textDocument.getText()
     try {
-      const writeResult = await usbDeviceFile.writeFileToDevice(dataToWrite)
-      // OK result
-      console.log('writeResult', writeResult)
+      await usbDeviceFile.writeFileToDevice(dataToWrite)
       outputChannel.appendLine('Saved\n')
     } catch (error) {
       outputChannel.appendLine('Error saving\n')
     }
   })
-
-  // context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.writeHex', (usbDevice, file) => {
-  // if (usbDevice.ifc.connected) { usbDevice.ifc.disconnect() }
-  // make pyocd write hex file based on the usbDevice and file info
-  // })
 }
 
 // This method is called when your extension is deactivated

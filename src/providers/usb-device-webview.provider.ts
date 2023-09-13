@@ -56,9 +56,9 @@ export class UsbDeviceWebViewProvider implements vscode.WebviewViewProvider {
       } else if (message.command === 'save') {
         await vscode.commands.executeCommand('xbitVsc.updateUsbDeviceSettings', this._selectedDevice, message)
       } else if (message.command === 'break') {
-        this._selectedDevice?.ifc.write('\x03')
+        this._selectedDevice?.ifc.sendBreak()
       } else if (message.command === 'eof') {
-        this._selectedDevice?.ifc.write('\x04')
+        this._selectedDevice?.ifc.sendEof()
       }
     })
   }

@@ -98,6 +98,14 @@ export class UsbDeviceInterface extends EventEmitter {
     })
   }
 
+  sendBreak (): void {
+    this.write('\x03')
+  }
+
+  sendEof (): void {
+    this.write('\x04')
+  }
+
   // writeWaitFor
 
   // readWait

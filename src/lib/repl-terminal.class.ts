@@ -21,10 +21,7 @@ export class ReplTerminal {
     const pty = {
       onDidWrite: this.writeEmitter.event,
       open: () => {
-        setTimeout(() => {
-          this.writeEmitter.fire('Terminal Connected, Press Enter to Interact:\r\n')
-        }
-        , 100)
+        this.writeEmitter.fire('Terminal Connected')
       },
       close: () => { /* noop */ },
       handleInput: (data: string) => {
