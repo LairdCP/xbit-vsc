@@ -74,6 +74,8 @@ export function activate (context: vscode.ExtensionContext): void {
     })
     if (newFileName !== undefined) {
       await usbDevicesProvider.renameFile(usbDeviceFile, newFileName)
+      const newUri = usbDeviceFile.uri.with({ path: path.join(path.dirname(usbDeviceFile.uri.path), newFileName) })
+      memFs.rename(usbDeviceFile.uri, newUri, { overwrite: true })
     }
   }))
 
