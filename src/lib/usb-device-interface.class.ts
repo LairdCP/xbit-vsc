@@ -103,12 +103,22 @@ export class UsbDeviceInterface extends EventEmitter {
     })
   }
 
-  sendBreak (): void {
+  async sendBreak (): Promise<void> {
     this.write('\x03')
+    return await new Promise((resolve) => {
+      setTimeout(() => {
+        resolve()
+      }, 500)
+    })
   }
 
-  sendEof (): void {
+  async sendEof (): Promise<void> {
     this.write('\x04')
+    return await new Promise((resolve) => {
+      setTimeout(() => {
+        resolve()
+      }, 500)
+    })
   }
 
   // writeWaitFor

@@ -139,6 +139,7 @@ export class UsbDevice extends vscode.TreeItem {
     if (!this.connected) {
       tempConnection = true
       await this.connect()
+      await this.ifc.sendBreak()
     }
     if (!(/\/$/.test(dirPath))) {
       dirPath = `${dirPath}/`
