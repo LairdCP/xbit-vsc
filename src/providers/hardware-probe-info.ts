@@ -64,6 +64,7 @@ export class ProbeInfo {
   vendorId = 0
   name = ''
   board_name: string
+  idx = 0
 
   constructor (options: PortInfo) {
     this.options = options

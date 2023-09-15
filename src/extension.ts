@@ -58,8 +58,7 @@ export function activate (context: vscode.ExtensionContext): void {
     // check if the file already exists with the same filename. If it does, append a number to the filename?
     // create a new file object with named file
     if (fileName !== undefined) {
-      const filePath = path.join('/', fileName)
-      await usbDevicesProvider.createFile(usbDevice, filePath)
+      await usbDevicesProvider.createFile(usbDevice, fileName)
     }
   }))
 
@@ -256,7 +255,7 @@ export function activate (context: vscode.ExtensionContext): void {
       usbDevice.name = message.name
       usbDevice.baudRate = message.baudRate
       usbDevicesProvider.refresh()
-      // refresh?
+      // refresh?devPath
     }
   }))
 

@@ -57,6 +57,13 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
   // ----------------------------
   async connectAndExecute (port: any, command: string): Promise<string> {
     // if already connected to the port, disconnect first
+    if (port.ifc?.connected === true) {
+      try {
+        await port.disconnect()
+      } catch (error: any) {
+        console.log('error disconnecting', error)
+      }
+    }
     return await new Promise((resolve, reject) => {
       let timedOut = false
       const portTimeout = setTimeout(() => {
@@ -143,12 +150,12 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
       // Pyocd.exec(['--list']).then((result) => {
       const ports: ProbeInfo[] = []
       const deviceIds: Set<string> = new Set()
-
       this.pyocdInterface.listDevices().then(async (result: any) => {
         result.forEach((p: any) => {
-          p._ports.forEach((port: PortInfo) => {
+          p._ports.forEach((port: PortInfo, idx: number) => {
             port.board_name = p._board_name
             const portInfo = new ProbeInfo(port)
+            portInfo.idx = idx
             deviceIds.add(portInfo.path)
             deviceIds.add(portInfo.path.replace('/dev/cu.', '/dev/tty.'))
             ports.push(portInfo)
@@ -170,8 +177,8 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
         // if not, connect and detect if repl capable
         async.eachSeries(ports, (port, next) => {
           // create a uri from the path
-          // memfs:/serial/dev/tty.usbmodem1411
-          // memfs:/serial/COM3
+          // memfs:/serial/{serialNumber}/dev/tty.usbmodem1411
+          // memfs:/serial/{serialNumber}/COM3
           if (port.serialNumber === '') {
             return next()
           }
@@ -187,13 +194,31 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
 
           // check if the port is already known
           for (let idx = 0; idx < this.usbDeviceNodes.length; idx++) {
-            if (this.usbDeviceNodes[idx].uriString === uri.toString()) {
+            if (this.usbDeviceNodes[idx].uriString === uri.toString() && this.usbDeviceNodes[idx].type !== 'busy') {
               return next()
+            }
+          }
+
+          // for known boards we can skip the serial port query
+          //
+          if (port.board_name !== 'Unknown') {
+            // dap link probe
+            if (port.board_name === 'Sera NX040 DVK') {
+              if (port.idx === 0) {
+                const portItem = new UsbDevice(uri, vscode.TreeItemCollapsibleState.None, port, 'uart')
+                this.usbDeviceNodes.push(portItem)
+                return next()
+              } else if (port.idx === 1) {
+                const portItem = new UsbDevice(uri, vscode.TreeItemCollapsibleState.Collapsed, port, 'repl')
+                this.usbDeviceNodes.push(portItem)
+                return next()
+              }
             }
           }
 
           // if no target_board_name, fallback to serial port query
           // if not, connect and detect if repl capable
+          //
           this.connectAndExecute(port, '\r\n').then((result) => {
             // if data is >>> it is a repl capable device
             if (result.includes('>>>')) {
