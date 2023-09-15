@@ -34,6 +34,10 @@ export class UsbDeviceInterface extends EventEmitter {
       this.serialPort = new SerialPort({
         path: this.path,
         baudRate: this.baudRate
+      }, (error) => {
+        if (error !== null) {
+          console.log('error connecting to serial port', error)
+        }
       })
 
       this.serialPort.on('data', (data: Buffer) => {
@@ -41,6 +45,7 @@ export class UsbDeviceInterface extends EventEmitter {
         this.emit('data', data)
       })
     } catch (error) {
+      console.log('error connecting to serial port', error)
       return await Promise.reject(error)
     }
   }

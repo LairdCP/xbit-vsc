@@ -69,7 +69,7 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
         baudRate: 115200
       }, (err: Error | null) => {
         if (err !== null) {
-          closePort()
+          closePort(err)
         }
       })
 
@@ -117,8 +117,13 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
         contextValue = contextValue + 'DvkProbe'
       }
 
+      let label = element.name
+      if (element.type === 'busy') {
+        label = `${element.name} (busy)`
+        contextValue = 'usbDeviceBusy'
+      }
       return {
-        label: element.name,
+        label,
         description: element.description,
         collapsibleState: element.collapsibleState,
         command: element.command,
@@ -150,7 +155,6 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
           })
         })
 
-        console.log('listing serialPorts', deviceIds)
         return await SerialPort.list()
       }).then((result: any) => {
         result.forEach((port: any) => {
@@ -211,8 +215,10 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
             }
             next()
           }).catch((error) => {
+            const portItem = new UsbDevice(uri, vscode.TreeItemCollapsibleState.None, port, 'busy')
+            this.usbDeviceNodes.push(portItem)
             console.log('error connecting to port', error)
-            next(error)
+            next()
           })
         }, (error) => {
           if (error !== null) {

@@ -7,8 +7,8 @@ import { UsbDevice } from '../lib/usb-device.class'
 export class UsbDeviceWebViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType: string = 'xbitVsc.optionsView'
   public webview?: vscode.Webview
-  private _view?: vscode.WebviewView
-  private _selectedDevice?: UsbDevice | null
+  private _view: vscode.WebviewView | null = null
+  private _selectedDevice: UsbDevice | null = null
 
   constructor (
     private readonly _extensionUri: vscode.Uri
@@ -38,6 +38,13 @@ export class UsbDeviceWebViewProvider implements vscode.WebviewViewProvider {
       webviewView.webview.html = html
       this.webview = webviewView.webview
       this._setWebviewMessageListener(webviewView)
+
+      webviewView.onDidChangeVisibility(async (event) => {
+        // if selected device, call onSelected
+        if (webviewView.visible && this._selectedDevice !== null) {
+          await this.onSelected(this._selectedDevice)
+        }
+      })
     } catch (error) {
       console.log(error)
     }
@@ -74,6 +81,9 @@ export class UsbDeviceWebViewProvider implements vscode.WebviewViewProvider {
   }
 
   async onSelected (usbDevice: UsbDevice): Promise<void> {
+    if (this._view !== null) {
+      this._view.show()
+    }
     if (usbDevice instanceof UsbDevice) {
       this._selectedDevice = usbDevice
 
