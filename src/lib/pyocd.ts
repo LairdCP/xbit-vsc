@@ -47,8 +47,16 @@ export class PyocdInterface {
           // check for pyocd
           // catch
           // display wait ?
-          this.outputChannel.appendLine('installing dependencies')
-          return await this.installDeps()
+          const metaString: string = (await fs.readFile(this.context.asAbsolutePath('./package.json'))).toString()
+          const metaJson: any = JSON.parse(metaString)
+          const lastInstalledVersion = this.context.globalState.get('requirements-version')
+          if (lastInstalledVersion === undefined || lastInstalledVersion !== metaJson.version) {
+            this.outputChannel.appendLine('installing dependencies')
+            await this.installDeps()
+            return await this.context.globalState.update('requirements-version', metaJson.version)
+          } else {
+            return await Promise.resolve()
+          }
         }).then(() => {
           this.ready = true
         }).catch((error) => {
