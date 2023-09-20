@@ -9,6 +9,8 @@ import { ReplTerminal } from './repl-terminal.class'
 
 type File = [string, string, number]
 
+let inFlightCommands: any[] = []
+
 export class UsbDevice extends vscode.TreeItem {
   uri: vscode.Uri
   options: ProbeInfo
@@ -25,6 +27,7 @@ export class UsbDevice extends vscode.TreeItem {
   lastSentHex: any
   targetType?: string
   enableApplet = false
+  receivedLine = ''
 
   // overrides
   public iconPath: any
@@ -48,6 +51,7 @@ export class UsbDevice extends vscode.TreeItem {
     this.serialNumber = this.options.serialNumber
     this.baudRate = 115200
     this.name = this.options.name
+    this.receivedLine = ''
 
     if (this.options.board_name !== 'Unknown') {
       this.name = this.options.board_name
@@ -61,6 +65,7 @@ export class UsbDevice extends vscode.TreeItem {
     })
 
     // when disconnected, the listener is not removed
+    // 5. from device, data = '>>>'
     this.ifc.on('data', (data: Buffer) => {
       if (this.terminal !== null) {
         this._handleTerminalData(data)
@@ -68,9 +73,32 @@ export class UsbDevice extends vscode.TreeItem {
 
       // if panel webview attached,
       // post the data there
-      this._dataHandlers.forEach((cb: any, key: string) => {
-        cb(data)
-      })
+      // for each webview panel...
+      this.receivedLine = this.receivedLine + data.toString()
+      if (/\r\n$/.test(this.receivedLine)) {
+        this._dataHandlers.forEach((cb: any, key: string) => {
+          // for each in-flight command...
+          inFlightCommands = inFlightCommands.filter((command: any, i: number) => {
+            // if the command key matches the panel key...
+            if (command.panelKey === key && this.receivedLine.includes(command.expectedResponse)) {
+              const response = {
+                id: command.message.id,
+                result: this.receivedLine
+              }
+              // call the callback with the response
+              cb(response)
+              return false
+            } else {
+              return true
+            }
+          })
+          // this isn't a command response
+          // but send it to the webview anyway
+          const response = { message: this.receivedLine }
+          cb(response)
+        })
+        this.receivedLine = ''
+      }
     })
 
     // expose serial port methods
@@ -83,7 +111,7 @@ export class UsbDevice extends vscode.TreeItem {
     const config = vscode.workspace.getConfiguration('xbit-vsc')
     const deviceConfigurations: any = config.get('device-configurations')
     const key = `${this.serialNumber}.${String(this.label)}`
-    console.log('deviceConfigurations', key, deviceConfigurations[key])
+
     if (deviceConfigurations !== undefined) {
       if (deviceConfigurations[key] !== undefined) {
         if (deviceConfigurations[key]?.baudRate !== undefined) {
@@ -284,6 +312,40 @@ export class UsbDevice extends vscode.TreeItem {
 
   removeDataHandler (key: string): void {
     this._dataHandlers.delete(key)
+  }
+
+  // 4. to this device, panelKey = A, message = { method: 'foo', params: 'bar' }
+  commandHandler (panelKey: string, message: any): any {
+    let payload = ''
+    let expectedResponse = ''
+    if (message.method === 'write') {
+      payload = message.params.command
+      expectedResponse = '>>>'
+    } else {
+      return
+    }
+
+    // if we expect a response, register the command
+    if (expectedResponse !== '') {
+      // generate a unique id
+      let id = message.id
+      if (id === undefined) {
+        id = Math.floor(Math.random() * 1000000)
+      }
+
+      const cmd = {
+        id,
+        expectedResponse,
+        message,
+        panelKey,
+        payload,
+        timestamp: Date.now()
+      }
+      inFlightCommands.push(cmd)
+      console.log('inFlightCommands', inFlightCommands)
+    }
+    // write to the serial port
+    this.ifc.write(payload)
   }
 
   async createTerminal (context: vscode.ExtensionContext): Promise<void> {

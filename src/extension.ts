@@ -276,11 +276,12 @@ export function activate (context: vscode.ExtensionContext): void {
       const panelKey = `xbitVsc.${String(jsonText.name)}`
 
       // if panelKey already exists in PanelStore, show it
-      if (PanelsStore.has(panelKey)) {
-        const panel = PanelsStore.get(panelKey)
-        panel?.reveal()
-        return
-      }
+      // if (PanelsStore.has(panelKey)) {
+      //   const panel = PanelsStore.get(panelKey)
+      //   console.log('panel', panel)
+      //   panel?.reveal()
+      //   return
+      // }
 
       const panel = vscode.window.createWebviewPanel(
         'xbitVsc',
@@ -304,6 +305,15 @@ export function activate (context: vscode.ExtensionContext): void {
         }
         if (line.includes('src=')) {
           const src = line.split('src=')[1].split('"')[1]
+          // convert to absolute path
+          const absolutePath = path.join(path.dirname(element.path), src)
+          // convert to vscode uri
+          const onDiskPath = vscode.Uri.parse(absolutePath)
+          const webviewPath = panel.webview.asWebviewUri(onDiskPath)
+
+          parsedHtml.push(line.replace(src, webviewPath.toString()))
+        } else if (line.includes('<link rel="stylesheet" href=')) {
+          const src = line.split('href=')[1].split('"')[1]
           // convert to absolute path
           const absolutePath = path.join(path.dirname(element.path), src)
           // convert to vscode uri

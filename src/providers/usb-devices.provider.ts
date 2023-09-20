@@ -216,6 +216,7 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
             }
           }
 
+          console.log('port', port)
           // if no target_board_name, fallback to serial port query
           // if not, connect and detect if repl capable
           //
@@ -240,6 +241,7 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
             }
             next()
           }).catch((error) => {
+            console.log('error', error)
             const portItem = new UsbDevice(uri, vscode.TreeItemCollapsibleState.None, port, 'busy')
             this.usbDeviceNodes.push(portItem)
             console.log('error connecting to port', error)

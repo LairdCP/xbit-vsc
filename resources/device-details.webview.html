@@ -40,13 +40,13 @@
           <vscode-button appearance="secondary" id="break-button">Break</vscode-button>
           <vscode-button appearance="secondary" id="eof-button">EOF</vscode-button>
         </section>
-        <!-- <section class="details-section">
+        <section class="details-section">
           <div class="dropdown-container">
             <label for="applets">Select Applet:</label>
             <vscode-dropdown id="applets">
             </vscode-dropdown>
           </div>
-        </section> -->
+        </section>
         <vscode-divider role="separator"></vscode-divider>
       </div>
       <h3>Options</h3>
@@ -69,12 +69,23 @@
       <section class="details-section">
         <vscode-button appearance="secondary" id="save-button">Save</vscode-button>
       </section>
-    </div>
+      <h3>Details</h3>
+      <section class="details-section">
+        <ul>
+          <li id="productId"></li>
+          <li id="vendorId"></li>
+          <li id="manufacturer"></li>
+        </ul>
+        </section>
+      </div>
     <script>
       const serialNumber = document.getElementById('serial-number')
       const baudRate = document.getElementById('baud-rate')
       const customName = document.getElementById('custom-name')
-      // const appletDropdown = document.getElementById('applets')
+      const appletDropdown = document.getElementById('applets')
+      const productId = document.getElementById('productId')
+      const vendorId = document.getElementById('vendorId')
+      const manufacturer = document.getElementById('manufacturer')
 
       const vscode = acquireVsCodeApi()
       let currentDevice = null
@@ -104,9 +115,9 @@
         vscode.postMessage({ command: 'eof' })
       })
 
-      // appletDropdown.addEventListener('change', () => {
-      //   vscode.postMessage({ command: 'use-for-applet', applet: appletDropdown.value })
-      // })
+      appletDropdown.addEventListener('change', () => {
+        vscode.postMessage({ command: 'use-for-applet', applet: appletDropdown.value })
+      })
 
       const handledConnected = () => {
         if (connected) {
@@ -132,6 +143,10 @@
               connected = message.device.connected || false
               customName.value = message.device.name
               baudRate.value = message.device.baudRate.toString()
+              productId.value = `Product ID: ${message.device.productId}`
+              vendorId.value = `Vendor ID: ${message.device.vendorId}`
+              manufacturer.value = `Manufacturer: ${message.device.manufacturer}`
+
               handledConnected()
               document.querySelector('.device-selected').style.display = 'inline-block'
             } else {
@@ -152,20 +167,20 @@
             connected = message.device.connected
             handledConnected()
             break;
-          // case 'applets':
-          //   appletDropdown.innerHTML = ''
-          //   const option = document.createElement('vscode-option')
-          //   option.textContent = 'None'
-          //   option.value = 'none'
-          //   appletDropdown.appendChild(option)
+          case 'applets':
+            appletDropdown.innerHTML = ''
+            const option = document.createElement('vscode-option')
+            option.textContent = 'None'
+            option.value = 'none'
+            appletDropdown.appendChild(option)
 
-          //   message.applets.forEach(applet => {
-          //     const option = document.createElement('vscode-option')
-          //     option.textContent = applet
-          //     option.value = applet
-          //     appletDropdown.appendChild(option)
-          //   })
-          //   break;
+            message.applets.forEach(applet => {
+              const option = document.createElement('vscode-option')
+              option.textContent = applet
+              option.value = applet
+              appletDropdown.appendChild(option)
+            })
+            break;
         }
       });
     </script>

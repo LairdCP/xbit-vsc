@@ -13,7 +13,21 @@ class AppletsStore {
     this._panels.set(panelKey, panel)
 
     panel.webview.onDidReceiveMessage(async (message: any) => {
+      // 1. from webview, panelKey = A, message = { method: 'foo', params: 'bar' }
       this.handleMessage(panelKey, message)
+    })
+
+    panel.onDidDispose(() => {
+      this._panels.delete(panelKey)
+      if (this._links.has(panelKey)) {
+        const link = this._links.get(panelKey)
+        if (link !== undefined) {
+          link.forEach((usbDevice: UsbDevice) => {
+            usbDevice.removeDataHandler(panelKey)
+          })
+        }
+        this._links.delete(panelKey)
+      }
     })
   }
 
@@ -30,18 +44,15 @@ class AppletsStore {
   }
 
   handleMessage (panelKey: string, message: any): void {
-    console.log('handle message', panelKey, message)
-    let payload = ''
-    if (message.method === 'write') {
-      payload = message.params.command
-    } else {
-      return
-    }
+    // 2. if panelKey is linked to device(s)...
     if (this._links.has(panelKey)) {
       const link = this._links.get(panelKey)
       if (link !== undefined) {
+        // for each linked device...
         link.forEach((usbDevice: UsbDevice) => {
-          usbDevice.ifc.write(payload)
+          // send the message to the device
+          // panelKey = A, message = { method: 'foo', params: 'bar' }
+          usbDevice.commandHandler(panelKey, message)
         })
       }
     }
@@ -59,16 +70,15 @@ class AppletsStore {
     // register data handler function that is called whenever
     // this device emits serial data
     //
-    usbDevice.dataHandler(panelKey, (data: any) => {
-      console.log('dataHandler called', panelKey, data)
+    usbDevice.dataHandler(panelKey, (message: any) => {
+      // 6. from device, panelKey = A, data = { result: 'bar', id: 12345}
       if (this._panels.has(panelKey)) {
         const panel = this._panels.get(panelKey)
         if (panel !== undefined) {
-          panel.webview.postMessage({ message: data.toString() })
+          panel.webview.postMessage(message)
         }
       }
     })
-    console.log('link', panelKey, usbDevice)
   }
 
   unlink (panelKey: string, usbDevice: UsbDevice): void {
@@ -83,7 +93,6 @@ class AppletsStore {
         usbDevice.removeDataHandler(panelKey)
       }
     }
-    console.log('unlink', panelKey, usbDevice)
   }
 }
 

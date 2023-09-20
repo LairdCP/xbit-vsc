@@ -29,13 +29,9 @@ export class UsbDeviceWebViewProvider implements vscode.WebviewViewProvider {
       ]
     }
     try {
-      // const onDiskPath = vscode.Uri.joinPath(context.extensionUri, 'src', 'script.js')
-      // const scriptSrc = webviewView.webview.asWebviewUri(onDiskPath)
-
       const path = vscode.Uri.joinPath(this._extensionUri, 'resources/device-details.webview.html')
       const html = fs.readFileSync(path.fsPath, 'utf8')
-      // const src = webviewView.webview.asWebviewUri(path)
-      // console.log(src)
+
       webviewView.webview.html = html
       this.webview = webviewView.webview
       this._setWebviewMessageListener(webviewView)
@@ -105,7 +101,9 @@ export class UsbDeviceWebViewProvider implements vscode.WebviewViewProvider {
           name: usbDevice.name,
           manufacturer: usbDevice.options.manufacturer,
           baudRate: usbDevice.baudRate,
-          connected: usbDevice.connected
+          connected: usbDevice.connected,
+          productId: usbDevice.options.productId,
+          vendorId: usbDevice.options.vendorId
         }
         // device: usbDevice
       })
