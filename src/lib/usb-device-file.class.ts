@@ -2,6 +2,10 @@ import * as path from 'path'
 import * as vscode from 'vscode'
 import { UsbDevice } from './usb-device.class'
 
+const sleep = async (ms: number): Promise<void> => {
+  return await new Promise(resolve => setTimeout(resolve, ms))
+}
+
 export class UsbDeviceFile extends vscode.TreeItem {
   label: string
   uri: vscode.Uri
@@ -27,6 +31,7 @@ export class UsbDeviceFile extends vscode.TreeItem {
       fragment = '?'
     }
     super(fragment, vscode.TreeItemCollapsibleState.None)
+
     this.label = fragment
     this.uri = uri
     this.size = size
@@ -35,6 +40,7 @@ export class UsbDeviceFile extends vscode.TreeItem {
       command: 'xbitVsc.openDeviceFile',
       arguments: [this]
     }
+
     this.name = this.label
     this.contextValue = this.type === 'file' ? 'usbDeviceFile' : 'usbDeviceFolder'
     this.tooltip = this.uri.path
@@ -58,6 +64,7 @@ export class UsbDeviceFile extends vscode.TreeItem {
 
   async readFileFromDevice (): Promise<string> {
     const rate = 128
+
     return await vscode.window.withProgress({
       location: vscode.ProgressLocation.Notification,
       title: `Loading ${this.uri.path}`,
@@ -77,13 +84,18 @@ export class UsbDeviceFile extends vscode.TreeItem {
           // loop until returned bytes is less than 64
           const startSlice: number = result.indexOf("'")
           const chunk: string = result.slice(startSlice + 1, result.lastIndexOf("'"))
-          readBuffer.write(chunk, offset, 'hex')
 
-          const increment = Math.round((chunk.length / this.size * 2) * 100)
-          progress.report({ increment, message: 'Loading File...' })
-
+          // if chunk is empty, we're done
+          if (chunk.length !== 0) {
+            readBuffer.write(chunk, offset, 'hex')
+            const increment = Math.round((chunk.length / this.size * 2) * 100)
+            progress.report({ increment, message: 'Loading File...' })
+          } else {
+            offset = this.size
+          }
           if (offset < this.size) {
             offset += chunk.length / 2
+            await sleep(20)
             return await read()
           } else if (cancelled) {
             return await Promise.reject(new Error('cancelled'))
