@@ -1,3 +1,4 @@
+/* global process console */
 import { build } from 'esbuild'
 
 const baseConfig = {

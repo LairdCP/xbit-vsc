@@ -1,7 +1,9 @@
 import * as vscode from 'vscode'
 
 interface ReplOptions {
+  pty?: any
   name?: string
+  iconPath?: any
 }
 
 export class ReplTerminal {
@@ -11,14 +13,14 @@ export class ReplTerminal {
   inputCallback: (data: string) => void
   private readonly terminal: vscode.Terminal | null
 
-  constructor (context: vscode.ExtensionContext, opts: ReplOptions = {}) {
+  constructor (context: vscode.ExtensionContext, opts: ReplOptions) {
     this.writeEmitter = new vscode.EventEmitter()
     this.name = opts.name ?? 'REPL'
     this.inputCallback = () => { /* noop */ }
     this.terminal = null
 
     let line = ''
-    const pty = {
+    opts.pty = {
       onDidWrite: this.writeEmitter.event,
       open: () => {
         this.writeEmitter.fire('Terminal Connected')
@@ -47,7 +49,7 @@ export class ReplTerminal {
         line += data
       }
     }
-    this.terminal = vscode.window.createTerminal({ name: this.name, pty })
+    this.terminal = vscode.window.createTerminal(opts)
     this.terminal.show()
   }
 
@@ -64,7 +66,13 @@ export class ReplTerminal {
     this.writeEmitter.fire(data)
   }
 
-  remove (): void {
+  show (): void {
+    if (this.terminal !== null) {
+      this.terminal.show()
+    }
+  }
+
+  dispose (): void {
     if (this.terminal !== null) {
       this.terminal.dispose()
     }

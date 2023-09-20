@@ -161,8 +161,8 @@ export class UsbDevice extends vscode.TreeItem {
     }
 
     this.iconPath = {
-      light: path.join(__filename, '../../..', 'resources', 'light', `${type}-device${connected}.svg`),
-      dark: path.join(__filename, '../../..', 'resources', 'dark', `${type}-device${connected}.svg`)
+      light: vscode.Uri.parse(path.join(__filename, '..', '..', '..', 'resources', 'light', `${type}-device${connected}.svg`)),
+      dark: vscode.Uri.parse(path.join(__filename, '..', '..', '..', 'resources', 'dark', `${type}-device${connected}.svg`))
     }
   }
 
@@ -350,7 +350,8 @@ export class UsbDevice extends vscode.TreeItem {
 
   async createTerminal (context: vscode.ExtensionContext): Promise<void> {
     this.terminal = new ReplTerminal(context, {
-      name: this.options.path
+      name: `${this.name} - ${this.serialNumber}`,
+      iconPath: this.iconPath
     })
 
     this.terminal.onInput((data: string) => {
@@ -362,9 +363,15 @@ export class UsbDevice extends vscode.TreeItem {
     })
   }
 
+  async showTerminal (): Promise<void> {
+    if (this.terminal !== null) {
+      this.terminal.show()
+    }
+  }
+
   async destroyTerminal (): Promise<void> {
     if (this.terminal !== null) {
-      this.terminal.remove()
+      this.terminal.dispose()
       this.terminal = null
     }
   }

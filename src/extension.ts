@@ -346,6 +346,16 @@ export function activate (context: vscode.ExtensionContext): void {
         await usbDeviceWebViewProvider.onDeselected()
       }
     }
+
+    if (e.selection.length > 0) {
+      const usbDevice = e.selection[0]
+      if (usbDevice instanceof UsbDevice) {
+        if (usbDevice.connected) {
+          // if connected, show the terminal
+          await usbDevice.showTerminal()
+        }
+      }
+    }
   })
 
   tree.onDidCollapseElement(e => {
