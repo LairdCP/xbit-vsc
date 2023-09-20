@@ -29,25 +29,28 @@ export class UsbDeviceInterface extends EventEmitter {
     if (this.serialPort !== null) {
       return await Promise.resolve()
     }
-    // if connected, return promise
-    try {
-      this.serialPort = new SerialPort({
-        path: this.path,
-        baudRate: this.baudRate
-      }, (error) => {
-        if (error !== null) {
-          console.log('error connecting to serial port', error)
-        }
-      })
+    return await new Promise((resolve, reject) => {
+      // if connected, return promise
+      try {
+        this.serialPort = new SerialPort({
+          path: this.path,
+          baudRate: this.baudRate
+        }, (error) => {
+          if (error !== null) {
+            reject(error)
+          } else {
+            resolve()
+          }
+        })
 
-      this.serialPort.on('data', (data: Buffer) => {
-        this.resultBuffer += data.toString()
-        this.emit('data', data)
-      })
-    } catch (error) {
-      console.log('error connecting to serial port', error)
-      return await Promise.reject(error)
-    }
+        this.serialPort.on('data', (data: Buffer) => {
+          this.resultBuffer += data.toString()
+          this.emit('data', data)
+        })
+      } catch (error: any) {
+        reject(error)
+      }
+    })
   }
 
   async disconnect (): Promise<void> {
