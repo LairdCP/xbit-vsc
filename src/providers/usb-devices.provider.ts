@@ -2,7 +2,7 @@ import * as vscode from 'vscode'
 import * as async from 'async'
 
 import { UsbDevice } from '../lib/usb-device.class'
-import { PortInfo, ProbeInfo } from './hardware-probe-info'
+import { PortInfo, ProbeInfo } from '../lib/hardware-probe-info.class'
 import { SerialPort } from 'serialport'
 // import { UsbDeviceFolder } from '../lib/usb-device-folder.class'
 import { UsbDeviceFile } from '../lib/usb-device-file.class'

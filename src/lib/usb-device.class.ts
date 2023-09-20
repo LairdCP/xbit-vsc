@@ -4,7 +4,7 @@ import * as vscode from 'vscode'
 // const UsbDeviceFile = require('../lib/usb-device-file.class')
 import { UsbDeviceFile } from './usb-device-file.class'
 import { UsbDeviceInterface } from './usb-device-interface.class'
-import { ProbeInfo } from '../providers/hardware-probe-info'
+import { ProbeInfo } from './hardware-probe-info.class'
 import { ReplTerminal } from './repl-terminal.class'
 
 type File = [string, string, number]
