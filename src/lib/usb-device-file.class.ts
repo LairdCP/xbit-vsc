@@ -63,7 +63,7 @@ export class UsbDeviceFile extends vscode.TreeItem {
   }
 
   async readFileFromDevice (): Promise<string> {
-    const rate = 128
+    const rate = 512
 
     return await vscode.window.withProgress({
       location: vscode.ProgressLocation.Notification,
@@ -88,10 +88,10 @@ export class UsbDeviceFile extends vscode.TreeItem {
           // if chunk is empty, we're done
           if (chunk.length !== 0) {
             readBuffer.write(chunk, offset, 'hex')
-            const increment = Math.round((chunk.length / this.size * 2) * 100)
+            const increment = Math.ceil(((chunk.length / 2) / this.size) * 100)
             progress.report({ increment, message: 'Loading File...' })
           } else {
-            offset = this.size
+            this.size = offset
           }
           if (offset < this.size) {
             offset += chunk.length / 2
@@ -100,7 +100,10 @@ export class UsbDeviceFile extends vscode.TreeItem {
           } else if (cancelled) {
             return await Promise.reject(new Error('cancelled'))
           } else {
-            return await Promise.resolve(readBuffer.toString('ascii'))
+            // if this is a refresh, the buffer could be too big
+            // so we need to slice it to the actual current file size
+            const returnBuffer = readBuffer.subarray(0, this.size)
+            return await Promise.resolve(returnBuffer.toString('ascii'))
           }
         } catch (error) {
           console.error('error', error)

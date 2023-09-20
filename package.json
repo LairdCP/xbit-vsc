@@ -78,6 +78,10 @@
         "icon": "$(add)"
       },
       {
+        "command": "xbitVsc.refreshFile",
+        "title": "Refresh"
+      },
+      {
         "command": "xbitVsc.writeHexFile",
         "title": "Write Hex File"
       },
@@ -147,6 +151,10 @@
         },
         {
           "command": "xbitVsc.renameDeviceFile",
+          "when": "viewItem == usbDeviceFile"
+        },
+        {
+          "command": "xbitVsc.refreshFile",
           "when": "viewItem == usbDeviceFile"
         }
       ]

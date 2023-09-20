@@ -50,12 +50,15 @@ export function activate (context: vscode.ExtensionContext): void {
     }
     usbDevicesProvider.usbDeviceNodes.length = 0
     usbDevicesProvider.hiddenUsbDeviceNodes.length = 0
-    // close all open files
-    // for each entry in tree cache
-    //  memFs.delete(vscode.Uri.parse('memfs:/serial/'))
-    // clear the tree cache
-    // usbDevicesProvider.treeCache.clear()
     usbDevicesProvider.refresh()
+  }))
+
+  context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.refreshFile', async (usbDeviceFile: UsbDeviceFile) => {
+    memFs.delete(usbDeviceFile.uri)
+    // clear the tree nodes and re-read the files
+    await vscode.window.showTextDocument(usbDeviceFile.uri)
+    await vscode.commands.executeCommand('workbench.action.closeActiveEditor')
+    await vscode.commands.executeCommand('xbitVsc.openDeviceFile', usbDeviceFile)
   }))
 
   context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.createDeviceFile', async (usbDevice: UsbDevice) => {
@@ -116,7 +119,7 @@ export function activate (context: vscode.ExtensionContext): void {
       // if file exists in cache, switch to it
       memFs.stat(usbDeviceFile.uri)
       await vscode.window.showTextDocument(usbDeviceFile.uri)
-      outputChannel.appendLine(`Opened File ${usbDeviceFile.name}\n`)
+      outputChannel.appendLine(`Show File ${usbDeviceFile.name}\n`)
       return
     } catch (error: any) {
       outputChannel.appendLine(`File Does Not Exist ${String(error.message)}\n`)
