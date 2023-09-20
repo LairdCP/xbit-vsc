@@ -91,7 +91,7 @@ export class UsbDeviceFile extends vscode.TreeItem {
             return await Promise.resolve(readBuffer.toString('ascii'))
           }
         } catch (error) {
-          console.log('error', error)
+          console.error('error', error)
           return await Promise.reject(error)
         }
       }
@@ -123,7 +123,7 @@ export class UsbDeviceFile extends vscode.TreeItem {
         }
         await this.parentDevice.ifc.writeWait(`f.write(binascii.unhexlify('${bytesToWrite}'))\r`)
       } catch (error) {
-        console.log('error', error)
+        console.error('error', error)
         return await Promise.reject(error)
       }
       offset += 128

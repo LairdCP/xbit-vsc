@@ -49,7 +49,6 @@ export class UsbDeviceWebViewProvider implements vscode.WebviewViewProvider {
 
   private _setWebviewMessageListener (webviewView: vscode.WebviewView): void {
     webviewView.webview.onDidReceiveMessage(async (message: any) => {
-      console.log('webviewView sent a message', message)
       if (message.command === 'connect' &&
       this._selectedDevice !== null && this._selectedDevice !== undefined) {
         await vscode.commands.executeCommand('xbitVsc.connectUsbDevice', this._selectedDevice)
@@ -89,8 +88,6 @@ export class UsbDeviceWebViewProvider implements vscode.WebviewViewProvider {
     }
     if (usbDevice instanceof UsbDevice) {
       this._selectedDevice = usbDevice
-
-      console.log('AppletsStore', AppletsStore.list())
 
       // tell the webview the device was selected
       await this.webview?.postMessage({

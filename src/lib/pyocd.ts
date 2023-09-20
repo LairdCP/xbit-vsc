@@ -60,7 +60,7 @@ export class PyocdInterface {
         }).then(() => {
           this.ready = true
         }).catch((error) => {
-          console.log('venv error', error)
+          console.error('venv error', error)
           this.outputChannel.appendLine(`venv error ${String(error.message)}`)
         })
       } else {

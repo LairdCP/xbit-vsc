@@ -50,6 +50,11 @@ export function activate (context: vscode.ExtensionContext): void {
     }
     usbDevicesProvider.usbDeviceNodes.length = 0
     usbDevicesProvider.hiddenUsbDeviceNodes.length = 0
+    // close all open files
+    // for each entry in tree cache
+    //  memFs.delete(vscode.Uri.parse('memfs:/serial/'))
+    // clear the tree cache
+    // usbDevicesProvider.treeCache.clear()
     usbDevicesProvider.refresh()
   }))
 
@@ -108,7 +113,7 @@ export function activate (context: vscode.ExtensionContext): void {
     outputChannel.appendLine(`Opening File ${usbDeviceFile.label}\n`)
 
     try {
-      // if file is already open, switch to it
+      // if file exists in cache, switch to it
       memFs.stat(usbDeviceFile.uri)
       await vscode.window.showTextDocument(usbDeviceFile.uri)
       outputChannel.appendLine(`Opened File ${usbDeviceFile.name}\n`)
@@ -143,7 +148,7 @@ export function activate (context: vscode.ExtensionContext): void {
       await vscode.window.showTextDocument(usbDeviceFile.uri)
       outputChannel.appendLine(`Opened File ${usbDeviceFile.name}\n`)
     } catch (error: any) {
-      console.log('error', error)
+      console.error('error', error)
       outputChannel.appendLine(`Error Opening File ${String(error.message)}\n`)
     }
   }))
@@ -169,13 +174,10 @@ export function activate (context: vscode.ExtensionContext): void {
           title: `Loading ${onFulfilled[0].fsPath}`,
           cancellable: false
         }, async (progress) => {
-          let c = 0
           await pyocdInterface.runCommand('pyocd', pyocdCommand, (data: string) => {
             // on progress
             if (data === '=') {
-              c++
               progress.report({ increment: 2.5, message: 'Loading File...' })
-              console.log(c)
             }
             if (data === '=]') {
               // done
@@ -184,7 +186,7 @@ export function activate (context: vscode.ExtensionContext): void {
           })
         })
       } catch (error) {
-        console.log('error', error)
+        console.error('error', error)
       }
     } else {
       // cancelled
@@ -203,7 +205,7 @@ export function activate (context: vscode.ExtensionContext): void {
       await usbDevice.createTerminal(context)
       usbDevice.setIconPath()
       usbDevicesProvider.refresh()
-      void vscode.window.showInformationMessage(`Port Connected: ${String(usbDevice.options.path)}`)
+      // void vscode.window.showInformationMessage(`Port Connected: ${String(usbDevice.options.path)}`)
       if (usbDeviceWebViewProvider.webview !== undefined) {
         await usbDeviceWebViewProvider.webview.postMessage({
           command: 'connected',
@@ -214,7 +216,7 @@ export function activate (context: vscode.ExtensionContext): void {
       }
       usbDevice.ifc.sendBreak()
     } catch (error: any) {
-      await vscode.window.showInformationMessage(`Error Connection to Port: ${String(error.message)}`)
+      await vscode.window.showErrorMessage(`Error Connecting to Port: ${String(error.message)}`)
     }
   }))
 
@@ -223,7 +225,6 @@ export function activate (context: vscode.ExtensionContext): void {
       return
     }
 
-    // console.log('disconnect from usb device', context)
     outputChannel.appendLine(`disconnecting from device ${usbDevice.name}\n`)
     try {
       await usbDevice.disconnect()
@@ -276,12 +277,11 @@ export function activate (context: vscode.ExtensionContext): void {
       const panelKey = `xbitVsc.${String(jsonText.name)}`
 
       // if panelKey already exists in PanelStore, show it
-      // if (PanelsStore.has(panelKey)) {
-      //   const panel = PanelsStore.get(panelKey)
-      //   console.log('panel', panel)
-      //   panel?.reveal()
-      //   return
-      // }
+      if (PanelsStore.has(panelKey)) {
+        const panel = PanelsStore.get(panelKey)
+        panel?.reveal()
+        return
+      }
 
       const panel = vscode.window.createWebviewPanel(
         'xbitVsc',
@@ -327,7 +327,7 @@ export function activate (context: vscode.ExtensionContext): void {
       })
       panel.webview.html = parsedHtml.join('\n')
     } catch (error) {
-      console.log('error', error)
+      console.error('error', error)
     }
   }))
 
@@ -338,7 +338,6 @@ export function activate (context: vscode.ExtensionContext): void {
   const tree = vscode.window.createTreeView('xbitVsc', options)
 
   tree.onDidChangeSelection(async (e: vscode.TreeViewSelectionChangeEvent<any>) => {
-    // console.log('onDidChangeSelection', e) // breakpoint here for debug
     if (usbDeviceWebViewProvider.webview !== undefined) {
       if (e.selection.length > 0) {
         await usbDeviceWebViewProvider.onSelected(e.selection[0])
@@ -401,6 +400,16 @@ export function activate (context: vscode.ExtensionContext): void {
     if (usbDeviceFile === undefined) {
       return
     }
+
+    if (!usbDeviceFile.parentDevice.connected) {
+      try {
+        await vscode.commands.executeCommand('xbitVsc.connectUsbDevice', usbDeviceFile.parentDevice)
+      } catch (error) {
+        // throw an error and mark the file as missing
+        return await vscode.window.showErrorMessage('Error Saving File. Device Not Available')
+      }
+    }
+
     const dataToWrite = textDocument.getText()
     try {
       await usbDeviceFile.writeFileToDevice(dataToWrite)

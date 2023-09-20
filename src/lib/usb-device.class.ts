@@ -200,7 +200,7 @@ export class UsbDevice extends vscode.TreeItem {
     for (const i of lsFunction) {
       const drain = await this.ifc.write(i)
       if (drain === false) {
-        console.log('wait for drain', drain)
+        console.info('wait for drain', drain)
       }
       await timeout(100)
     }

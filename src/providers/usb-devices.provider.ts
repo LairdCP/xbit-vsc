@@ -45,7 +45,7 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
       try {
         await usbDevice.disconnect()
       } catch (error: any) {
-        console.log('error disconnecting', error)
+        console.error('error disconnecting', error)
       }
     }
   }
@@ -61,7 +61,7 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
       try {
         await port.disconnect()
       } catch (error: any) {
-        console.log('error disconnecting', error)
+        console.error('error disconnecting', error)
       }
     }
     return await new Promise((resolve, reject) => {
@@ -86,7 +86,7 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
         try {
           tempPort.close()
         } catch (error) {
-          console.log('error closing port', error)
+          console.error('error closing port', error)
         }
         if (error !== null) {
           reject(error)
@@ -216,7 +216,6 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
             }
           }
 
-          console.log('port', port)
           // if no target_board_name, fallback to serial port query
           // if not, connect and detect if repl capable
           //
@@ -241,10 +240,11 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
             }
             next()
           }).catch((error) => {
-            console.log('error', error)
-            const portItem = new UsbDevice(uri, vscode.TreeItemCollapsibleState.None, port, 'busy')
-            this.usbDeviceNodes.push(portItem)
-            console.log('error connecting to port', error)
+            if (error.message.includes('Resource busy') === true) {
+              const portItem = new UsbDevice(uri, vscode.TreeItemCollapsibleState.None, port, 'busy')
+              this.usbDeviceNodes.push(portItem)
+            }
+            console.error('error connecting to port', error.message)
             next()
           })
         }, (error) => {
