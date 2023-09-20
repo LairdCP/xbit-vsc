@@ -95,6 +95,7 @@ export class PyocdInterface {
         const watcher = setInterval(() => {
           if (this.ready) {
             clearInterval(watcher)
+            this.listDevicesPromise = null
             this._listDevices().then((devices) => {
               resolve(devices)
             }).catch((error) => {
