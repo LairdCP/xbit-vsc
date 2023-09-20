@@ -24,6 +24,15 @@
         line-height: normal;
         margin-bottom: 2px;
       }
+
+      .list-details li {
+        color: var(--vscode-foreground);
+      }
+
+      ul.list-details {
+        list-style: none;
+        padding-left: 0;
+      }
     </style>
   </head>
   <body>
@@ -69,9 +78,10 @@
       <section class="details-section">
         <vscode-button appearance="secondary" id="save-button">Save</vscode-button>
       </section>
+      <vscode-divider role="separator"></vscode-divider>
       <h3>Details</h3>
       <section class="details-section">
-        <ul>
+        <ul class="list-details">
           <li id="productId"></li>
           <li id="vendorId"></li>
           <li id="manufacturer"></li>
@@ -134,6 +144,7 @@
       // Handle the message inside the webview
       window.addEventListener('message', event => {
         const message = event.data; // The JSON data our extension sent
+        console.log(message)
         switch (message.command) {
           case 'setSelected':
             if (message.device) {
@@ -143,9 +154,9 @@
               connected = message.device.connected || false
               customName.value = message.device.name
               baudRate.value = message.device.baudRate.toString()
-              productId.value = `Product ID: ${message.device.productId}`
-              vendorId.value = `Vendor ID: ${message.device.vendorId}`
-              manufacturer.value = `Manufacturer: ${message.device.manufacturer}`
+              productId.textContent = `Product ID: ${message.device.productId}`
+              vendorId.textContent = `Vendor ID: ${message.device.vendorId}`
+              manufacturer.textContent = `Manufacturer: ${message.device.manufacturer}`
 
               handledConnected()
               document.querySelector('.device-selected').style.display = 'inline-block'
