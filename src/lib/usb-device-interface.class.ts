@@ -1,9 +1,12 @@
 import { SerialPort } from 'serialport'
 import * as EventEmitter from 'events'
+import { sleep } from '../util'
 
 interface Options {
   path: string
   baudRate: number
+  eofType: string
+  supportsBreak: boolean
 }
 // provides the interface to the serial port for the usb device
 // could be extended to support other types of devices connections
@@ -12,6 +15,8 @@ export class UsbDeviceInterface extends EventEmitter {
   baudRate: number
   path: string
   resultBuffer: string
+  eofType: string
+  supportsBreak: boolean
 
   constructor (options: Options) {
     super()
@@ -19,6 +24,8 @@ export class UsbDeviceInterface extends EventEmitter {
     this.baudRate = isNaN(options.baudRate) ? options.baudRate : 115200
     this.serialPort = null
     this.resultBuffer = ''
+    this.eofType = options.eofType
+    this.supportsBreak = options.supportsBreak
   }
 
   get connected (): boolean {
@@ -116,12 +123,20 @@ export class UsbDeviceInterface extends EventEmitter {
   }
 
   async sendEof (): Promise<void> {
-    this.write('\x04')
-    return await new Promise((resolve) => {
-      setTimeout(() => {
-        resolve()
-      }, 500)
-    })
+    // if this is a dongle, disconnect and reconnect
+    if (this.eofType === 'disconnect') {
+      console.log('eof')
+      this.write('\x04')
+      await sleep(1500)
+      console.log('disconnect')
+      await this.disconnect()
+      await sleep(1500)
+      console.log('reconnect')
+      await this.connect()
+    } else if (this.eofType === 'restart') {
+      this.write('\x04')
+    }
+    return await sleep(500)
   }
 
   // writeWaitFor

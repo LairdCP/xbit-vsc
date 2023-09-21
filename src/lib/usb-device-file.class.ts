@@ -1,10 +1,7 @@
 import * as path from 'path'
 import * as vscode from 'vscode'
 import { UsbDevice } from './usb-device.class'
-
-const sleep = async (ms: number): Promise<void> => {
-  return await new Promise(resolve => setTimeout(resolve, ms))
-}
+import { sleep } from '../util'
 
 export class UsbDeviceFile extends vscode.TreeItem {
   label: string

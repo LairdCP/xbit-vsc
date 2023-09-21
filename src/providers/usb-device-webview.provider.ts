@@ -100,7 +100,9 @@ export class UsbDeviceWebViewProvider implements vscode.WebviewViewProvider {
           baudRate: usbDevice.baudRate,
           connected: usbDevice.connected,
           productId: usbDevice.options.productId,
-          vendorId: usbDevice.options.vendorId
+          vendorId: usbDevice.options.vendorId,
+          supportsBreak: usbDevice.ifc.supportsBreak,
+          eofType: usbDevice.ifc.eofType
         }
         // device: usbDevice
       })

@@ -7,6 +7,10 @@ import { UsbDeviceInterface } from './usb-device-interface.class'
 import { ProbeInfo } from './hardware-probe-info.class'
 import { ReplTerminal } from './repl-terminal.class'
 
+// read in the device map
+import { DeviceMap } from './device-map'
+const deviceMap = new DeviceMap()
+
 type File = [string, string, number]
 
 let inFlightCommands: any[] = []
@@ -58,11 +62,41 @@ export class UsbDevice extends vscode.TreeItem {
     }
     this.description = this.options.path.replace(/^\//, '')
 
+    // TODO this is hacky, but it works
+    // Set any custom configuration for this device
+    const config = vscode.workspace.getConfiguration('xbit-vsc')
+    const deviceConfigurations: any = config.get('device-configurations')
+    const key = `${this.serialNumber}.${String(this.label)}`
+
+    if (deviceConfigurations !== undefined) {
+      if (deviceConfigurations[key] !== undefined) {
+        if (deviceConfigurations[key]?.baudRate !== undefined) {
+          this.baudRate = deviceConfigurations[key].baudRate
+        }
+        this.name = deviceConfigurations[key]?.name === '' ? this.name : deviceConfigurations[key]?.name
+      }
+    }
+
+    const map = deviceMap.find(this.options)
+    let eofType = 'none'
+    let supportsBreak = false
+    if (map !== undefined) {
+      eofType = map['eof-type']
+      supportsBreak = map['supports-break']
+    }
+
     // if has serialPort
     this.ifc = new UsbDeviceInterface({
       path: this.options.path,
-      baudRate: this.baudRate
+      baudRate: this.baudRate,
+      eofType,
+      supportsBreak
     })
+
+    // expose serial port methods
+    this.connect = this.ifc.connect.bind(this.ifc)
+    this.disconnect = this.ifc.disconnect.bind(this.ifc)
+    this.write = this.ifc.write.bind(this.ifc)
 
     // when disconnected, the listener is not removed
     // 5. from device, data = '>>>'
@@ -101,25 +135,6 @@ export class UsbDevice extends vscode.TreeItem {
       }
     })
 
-    // expose serial port methods
-    this.connect = this.ifc.connect.bind(this.ifc)
-    this.disconnect = this.ifc.disconnect.bind(this.ifc)
-    this.write = this.ifc.write.bind(this.ifc)
-
-    // TODO this is hacky, but it works
-    // Set any custom configuration for this device
-    const config = vscode.workspace.getConfiguration('xbit-vsc')
-    const deviceConfigurations: any = config.get('device-configurations')
-    const key = `${this.serialNumber}.${String(this.label)}`
-
-    if (deviceConfigurations !== undefined) {
-      if (deviceConfigurations[key] !== undefined) {
-        if (deviceConfigurations[key]?.baudRate !== undefined) {
-          this.baudRate = deviceConfigurations[key].baudRate
-        }
-        this.name = deviceConfigurations[key]?.name === '' ? this.name : deviceConfigurations[key]?.name
-      }
-    }
     this.setIconPath()
   }
 

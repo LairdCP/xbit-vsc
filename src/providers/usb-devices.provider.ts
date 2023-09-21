@@ -274,7 +274,6 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
       try {
         const result = await element.getUsbDeviceFolder()
         this.treeCache.set(key, result)
-        this.refresh()
         return await Promise.resolve(result)
       } catch (error) {
         return await Promise.reject(error)
