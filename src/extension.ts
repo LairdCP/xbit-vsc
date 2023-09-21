@@ -122,9 +122,10 @@ export function activate (context: vscode.ExtensionContext): void {
       outputChannel.appendLine(`Show File ${usbDeviceFile.name}\n`)
       return
     } catch (error: any) {
-      outputChannel.appendLine(`File Does Not Exist ${String(error.message)}\n`)
+      outputChannel.appendLine(`File Does Not Exist Yet ${String(error.message)}\n`)
     }
 
+    outputChannel.appendLine('Ensuring Path Exists\n')
     const pathParts = usbDeviceFile.parentDevice.uri.path.split('/')
     let pathToCreate = ''
     while (pathParts.length !== 0) {
@@ -143,16 +144,18 @@ export function activate (context: vscode.ExtensionContext): void {
     }
 
     // open file
-    const result: string = await usbDeviceFile.readFileFromDevice()
-    const fileData = Buffer.from(result, 'ascii')
-
     try {
+      outputChannel.appendLine('Reading file from device ... \n')
+      const result: string = await usbDeviceFile.readFileFromDevice()
+      const fileData = Buffer.from(result, 'ascii')
+
       memFs.writeFile(usbDeviceFile.uri, fileData, { create: true, overwrite: true })
       await vscode.window.showTextDocument(usbDeviceFile.uri)
       outputChannel.appendLine(`Opened File ${usbDeviceFile.name}\n`)
     } catch (error: any) {
       console.error('error', error)
       outputChannel.appendLine(`Error Opening File ${String(error.message)}\n`)
+      await vscode.window.showErrorMessage(`Error opening file: ${String(error.message)}`)
     }
   }))
 
