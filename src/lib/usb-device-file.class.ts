@@ -3,6 +3,8 @@ import * as vscode from 'vscode'
 import { UsbDevice } from './usb-device.class'
 import { sleep } from '../util'
 
+const _rwRrate = 512
+
 export class UsbDeviceFile extends vscode.TreeItem {
   label: string
   uri: vscode.Uri
@@ -60,8 +62,6 @@ export class UsbDeviceFile extends vscode.TreeItem {
   }
 
   async readFileFromDevice (): Promise<string> {
-    const rate = 512
-
     return await vscode.window.withProgress({
       location: vscode.ProgressLocation.Notification,
       title: `Loading ${this.uri.path}`,
@@ -76,7 +76,7 @@ export class UsbDeviceFile extends vscode.TreeItem {
       const readBuffer = Buffer.alloc(this.size)
       const read = async (): Promise<string> => {
         try {
-          const result = await this.parentDevice.ifc.writeWait(`binascii.hexlify(f.read(${rate}))\r`, 1000)
+          const result = await this.parentDevice.ifc.writeWait(`binascii.hexlify(f.read(${_rwRrate}))\r`, 1000)
 
           // loop until returned bytes is less than 64
           const startSlice: number = result.indexOf("'")
@@ -138,10 +138,12 @@ export class UsbDeviceFile extends vscode.TreeItem {
         console.error('error', error)
         return await Promise.reject(error)
       }
-      offset += 128
+
+      offset += _rwRrate
       if (offset < data.length * 2) {
         return await write()
       } else {
+        this.size = data.length
         return await Promise.resolve('OK')
       }
     }
