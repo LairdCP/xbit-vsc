@@ -2,7 +2,12 @@
   "name": "xbit-vsc",
   "displayName": "xbit vsc tool",
   "description": "",
-  "version": "0.0.5",
+  "version": "0.0.6",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/RFPros-Canvas/xbit-vsc"
+  },
+  "icon": "resources/icon.png",
   "engines": {
     "vscode": "^1.78.0"
   },
@@ -23,7 +28,6 @@
         },
         "xbit-vsc.device-configurations": {
           "type": "object",
-          "default": {},
           "description": "Specifies the device configuration objects"
         }
       }
@@ -33,7 +37,7 @@
         {
           "id": "xbit-devices",
           "title": "xbit",
-          "icon": "resources/dark/usb-device.svg"
+          "icon": "resources/xbit.svg"
         }
       ]
     },

@@ -205,11 +205,11 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
             // dap link probe
             if (port.board_name === 'Sera NX040 DVK') {
               if (port.idx === 0) {
-                const portItem = new UsbDevice(uri, vscode.TreeItemCollapsibleState.None, port, 'uart')
+                const portItem = new UsbDevice(this.context, uri, vscode.TreeItemCollapsibleState.None, port, 'uart')
                 this.usbDeviceNodes.push(portItem)
                 return next()
               } else if (port.idx === 1) {
-                const portItem = new UsbDevice(uri, vscode.TreeItemCollapsibleState.Collapsed, port, 'repl')
+                const portItem = new UsbDevice(this.context, uri, vscode.TreeItemCollapsibleState.Collapsed, port, 'repl')
                 this.usbDeviceNodes.push(portItem)
                 return next()
               }
@@ -222,16 +222,16 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
           this.connectAndExecute(port, '\r\n').then((result) => {
             // if data is >>> it is a repl capable device
             if (result.includes('>>>')) {
-              const portItem = new UsbDevice(uri, vscode.TreeItemCollapsibleState.Collapsed, port, 'repl')
+              const portItem = new UsbDevice(this.context, uri, vscode.TreeItemCollapsibleState.Collapsed, port, 'repl')
               this.usbDeviceNodes.push(portItem)
             } else if (result.includes('uart:~$')) {
-              const portItem = new UsbDevice(uri, vscode.TreeItemCollapsibleState.None, port, 'uart')
+              const portItem = new UsbDevice(this.context, uri, vscode.TreeItemCollapsibleState.None, port, 'uart')
               this.usbDeviceNodes.push(portItem)
             } else if (result.includes('00')) {
-              const portItem = new UsbDevice(uri, vscode.TreeItemCollapsibleState.None, port, 'smartbasic')
+              const portItem = new UsbDevice(this.context, uri, vscode.TreeItemCollapsibleState.None, port, 'smartbasic')
               this.usbDeviceNodes.push(portItem)
             } else if (result !== '' || 'board_name' in port) {
-              const portItem = new UsbDevice(uri, vscode.TreeItemCollapsibleState.None, port, 'unknown')
+              const portItem = new UsbDevice(this.context, uri, vscode.TreeItemCollapsibleState.None, port, 'unknown')
               this.usbDeviceNodes.push(portItem)
             } else {
               // if no data, it's probably not a serial device we can use
@@ -241,7 +241,7 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
             next()
           }).catch((error) => {
             if (error.message.includes('Resource busy') === true) {
-              const portItem = new UsbDevice(uri, vscode.TreeItemCollapsibleState.None, port, 'busy')
+              const portItem = new UsbDevice(this.context, uri, vscode.TreeItemCollapsibleState.None, port, 'busy')
               this.usbDeviceNodes.push(portItem)
             }
             console.error('error connecting to port', error.message)

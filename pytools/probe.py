@@ -10,11 +10,13 @@ for inst in result:
   # if inst has function probe, then call it
   inst.open()
   board_name = inst.get_dap_info(8)
+  board_vendor = inst.get_dap_info(7)
   inst.close()
   inst_result = {
     "_id": inst._id,
     "_ports": inst._ports,
-    "_board_name": board_name
+    "_board_name": board_name,
+    "_board_vendor": board_vendor
   }
   json_result.append(inst_result)
 

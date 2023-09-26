@@ -129,7 +129,7 @@ export class UsbDeviceFile extends vscode.TreeItem {
     let offset = 0
     const write = async (): Promise<Error | string> => {
       try {
-        const bytesToWrite = Buffer.from(data, 'ascii').toString('hex').slice(offset, offset + 128)
+        const bytesToWrite = Buffer.from(data, 'ascii').toString('hex').slice(offset, offset + _rwRrate)
         if (bytesToWrite === null) {
           return await Promise.resolve('OK')
         }

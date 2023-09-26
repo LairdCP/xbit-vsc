@@ -85,9 +85,19 @@ export function activate (context: vscode.ExtensionContext): void {
       value: usbDeviceFile.label
     })
     if (newFileName !== undefined) {
-      await usbDevicesProvider.renameFile(usbDeviceFile, newFileName)
-      const newUri = usbDeviceFile.uri.with({ path: path.join(path.dirname(usbDeviceFile.uri.path), newFileName) })
-      memFs.rename(usbDeviceFile.uri, newUri, { overwrite: true })
+      try {
+        await usbDevicesProvider.renameFile(usbDeviceFile, newFileName)
+        const newPath = path.dirname(usbDeviceFile.uri.path) + '/' + newFileName
+        const newUri = usbDeviceFile.uri.with({ path: vscode.Uri.parse(newPath).path })
+        console.log('newUri', newUri)
+        memFs.rename(usbDeviceFile.uri, newUri, { overwrite: true })
+
+        await vscode.window.showTextDocument(usbDeviceFile.uri)
+        await vscode.commands.executeCommand('workbench.action.closeActiveEditor')
+        await vscode.window.showTextDocument(newUri)
+      } catch (error: any) {
+        outputChannel.appendLine(`Error Renaming File ${String(error.message)}\n`)
+      }
     }
   }))
 
@@ -109,10 +119,6 @@ export function activate (context: vscode.ExtensionContext): void {
   context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.openDeviceFile', async (usbDeviceFile: UsbDeviceFile) => {
     // e.command.arguments[0].label is the file selected
     // e.command.arguments[1].main is the device selected
-    // if not connected, connect
-    if (!usbDeviceFile.parentDevice.connected) {
-      await vscode.commands.executeCommand('xbitVsc.connectUsbDevice', usbDeviceFile.parentDevice)
-    }
     outputChannel.appendLine(`Opening File ${usbDeviceFile.label}\n`)
 
     try {
@@ -123,6 +129,11 @@ export function activate (context: vscode.ExtensionContext): void {
       return
     } catch (error: any) {
       outputChannel.appendLine(`File Does Not Exist Yet ${String(error.message)}\n`)
+    }
+
+    // if not connected, connect
+    if (!usbDeviceFile.parentDevice.connected) {
+      await vscode.commands.executeCommand('xbitVsc.connectUsbDevice', usbDeviceFile.parentDevice)
     }
 
     outputChannel.appendLine('Ensuring Path Exists\n')

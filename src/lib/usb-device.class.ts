@@ -1,4 +1,3 @@
-import * as path from 'path'
 import * as vscode from 'vscode'
 
 // const UsbDeviceFile = require('../lib/usb-device-file.class')
@@ -16,6 +15,7 @@ type File = [string, string, number]
 let inFlightCommands: any[] = []
 
 export class UsbDevice extends vscode.TreeItem {
+  context: vscode.ExtensionContext
   uri: vscode.Uri
   options: ProbeInfo
   baudRate: number
@@ -40,6 +40,7 @@ export class UsbDevice extends vscode.TreeItem {
   private readonly _dataHandlers: Map<string, any> = new Map()
 
   constructor (
+    context: vscode.ExtensionContext,
     uri: vscode.Uri,
     collapsibleState: any,
     options: ProbeInfo,
@@ -47,6 +48,7 @@ export class UsbDevice extends vscode.TreeItem {
     command?: any
   ) {
     super(options.name, collapsibleState)
+    this.context = context
     this.uri = uri
     this.options = options
     // this.tooltip = this.label
@@ -176,8 +178,8 @@ export class UsbDevice extends vscode.TreeItem {
     }
 
     this.iconPath = {
-      light: vscode.Uri.parse(path.join(__filename, '..', '..', '..', 'resources', 'light', `${type}-device${connected}.svg`)),
-      dark: vscode.Uri.parse(path.join(__filename, '..', '..', '..', 'resources', 'dark', `${type}-device${connected}.svg`))
+      light: vscode.Uri.joinPath(this.context.extensionUri, `resources/light/${type}-device${connected}.svg`),
+      dark: vscode.Uri.joinPath(this.context.extensionUri, `resources/dark/${type}-device${connected}.svg`)
     }
   }
 
