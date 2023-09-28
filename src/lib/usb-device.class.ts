@@ -102,6 +102,8 @@ export class UsbDevice extends vscode.TreeItem {
 
     // when disconnected, the listener is not removed
     // 5. from device, data = '>>>'
+
+    // TODO consume serialData event
     this.ifc.on('data', (data: Buffer) => {
       if (this.terminal !== null) {
         this._handleTerminalData(data)
@@ -287,6 +289,7 @@ export class UsbDevice extends vscode.TreeItem {
     }
   }
 
+  // TODO change to writeFile command
   async createFile (filePath: string): Promise<string> {
     try {
       await this.ifc.writeWait(`f = open('${filePath}', 'w')\r`, 1000)
@@ -297,6 +300,7 @@ export class UsbDevice extends vscode.TreeItem {
     }
   }
 
+  // TODO change to deleteFile command
   async deleteFile (filePath: string): Promise<void> {
     // write import os
     return this.ifc.writeWait(`import os\ros.unlink('${filePath}')\r`, 1000)

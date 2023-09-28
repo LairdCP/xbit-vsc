@@ -52,6 +52,7 @@ export class UsbDeviceInterface extends EventEmitter {
 
         this.serialPort.on('data', (data: Buffer) => {
           this.resultBuffer += data.toString()
+          // TODO emit serialData event
           this.emit('data', data)
         })
       } catch (error: any) {

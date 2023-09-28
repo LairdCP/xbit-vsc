@@ -84,7 +84,11 @@ export class UsbDeviceWebViewProvider implements vscode.WebviewViewProvider {
 
   async onSelected (usbDevice: UsbDevice): Promise<void> {
     if (this._view !== null) {
-      this._view.show()
+      try {
+        this._view.show()
+      } catch (error) {
+        console.log('error showing webview', error)
+      }
     }
     if (usbDevice instanceof UsbDevice) {
       this._selectedDevice = usbDevice

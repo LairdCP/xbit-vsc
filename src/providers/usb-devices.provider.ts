@@ -120,6 +120,7 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
       if (element.ifc?.connected === true) {
         contextValue = 'usbDeviceConnected'
       }
+
       if (element.dvkProbe) {
         contextValue = contextValue + 'DvkProbe'
       }
@@ -151,9 +152,11 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
       const ports: ProbeInfo[] = []
       const deviceIds: Set<string> = new Set()
       this.pyocdInterface.listDevices().then(async (result: any) => {
+        console.log(result)
+
         result.forEach((p: any) => {
-          p._ports.forEach((port: PortInfo, idx: number) => {
-            port.board_name = p._board_name
+          p.ports.forEach((port: PortInfo, idx: number) => {
+            port.board_name = p.board_name
             const portInfo = new ProbeInfo(port)
             portInfo.idx = idx
             deviceIds.add(portInfo.path)
@@ -161,9 +164,10 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
             ports.push(portInfo)
           })
         })
-
         return await SerialPort.list()
       }).then((result: any) => {
+        console.log(result)
+
         result.forEach((port: any) => {
           const portInfo = new ProbeInfo(port)
           // if this is a port that the probe didn't find
@@ -203,7 +207,7 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
           //
           if (port.board_name !== 'Unknown') {
             // dap link probe
-            if (port.board_name === 'Sera NX040 DVK') {
+            if (port.board_name.toLowerCase().includes('nx040 dvk')) {
               if (port.idx === 0) {
                 const portItem = new UsbDevice(this.context, uri, vscode.TreeItemCollapsibleState.None, port, 'uart')
                 this.usbDeviceNodes.push(portItem)
@@ -284,48 +288,48 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
     }
   }
 
-  async createFile (element: UsbDevice, filePath: string): Promise<void> {
-    const key = element.parentDevice.uri.path
-    try {
-      await element.createFile(filePath)
-      void vscode.window.showInformationMessage(`Created New File: ${filePath}`)
-    } catch (error) {
-      void vscode.window.showInformationMessage('Error Creating File')
-    }
-    this.treeCache.delete(key)
-    this.refresh()
-    return await Promise.resolve()
-  }
+  // async createFile (element: UsbDevice, filePath: string): Promise<void> {
+  //   const key = element.parentDevice.uri.path
+  //   try {
+  //     await element.createFile(filePath)
+  //     void vscode.window.showInformationMessage(`Created New File: ${filePath}`)
+  //   } catch (error) {
+  //     void vscode.window.showInformationMessage('Error Creating File')
+  //   }
+  //   this.treeCache.delete(key)
+  //   this.refresh()
+  //   return await Promise.resolve()
+  // }
 
-  async deleteFile (element: UsbDeviceFile): Promise<void> {
-    // const dirPath = path.dirname(filePath)
-    const key = element.parentDevice.uri.path
-    try {
-      await element.parentDevice.deleteFile(element.devPath)
-      void vscode.window.showInformationMessage(`Deleted File: ${key}`)
-    } catch (error) {
-      void vscode.window.showInformationMessage('Error Deleting File')
-    }
-    // remove from MemFS cache
-    this.treeCache.delete(key)
-    this.refresh()
-  }
+  // async deleteFile (element: UsbDeviceFile): Promise<void> {
+  //   // const dirPath = path.dirname(filePath)
+  //   const key = element.parentDevice.uri.path
+  //   try {
+  //     await element.parentDevice.deleteFile(element.devPath)
+  //     void vscode.window.showInformationMessage(`Deleted File: ${key}`)
+  //   } catch (error) {
+  //     void vscode.window.showInformationMessage('Error Deleting File')
+  //   }
+  //   // remove from MemFS cache
+  //   this.treeCache.delete(key)
+  //   this.refresh()
+  // }
 
-  async renameFile (element: UsbDeviceFile, newFilePath: string): Promise<void> {
-    const oldFilePath = element.devPath.split('/').pop() ?? ''
-    const newFileName = newFilePath.split('/').pop() ?? ''
-    if (oldFilePath === '' || newFileName === '') {
-      return await Promise.reject(new Error('invalid file path for rename'))
-    }
-    const key = element.parentDevice.uri.path
-    try {
-      await element.parentDevice.renameFile(oldFilePath, newFileName)
-      void vscode.window.showInformationMessage(`Renamed File: ${newFileName ?? ''}`)
-    } catch (error) {
-      void vscode.window.showInformationMessage('Error Renaming File')
-    }
-    // remove from MemFS cache
-    this.treeCache.delete(key)
-    this.refresh()
-  }
+  // async renameFile (element: UsbDeviceFile, newFilePath: string): Promise<void> {
+  //   const oldFilePath = element.devPath.split('/').pop() ?? ''
+  //   const newFileName = newFilePath.split('/').pop() ?? ''
+  //   if (oldFilePath === '' || newFileName === '') {
+  //     return await Promise.reject(new Error('invalid file path for rename'))
+  //   }
+  //   const key = element.parentDevice.uri.path
+  //   try {
+  //     await element.parentDevice.renameFile(oldFilePath, newFileName)
+  //     void vscode.window.showInformationMessage(`Renamed File: ${newFileName ?? ''}`)
+  //   } catch (error) {
+  //     void vscode.window.showInformationMessage('Error Renaming File')
+  //   }
+  //   // remove from MemFS cache
+  //   this.treeCache.delete(key)
+  //   this.refresh()
+  // }
 }

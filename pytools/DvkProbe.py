@@ -64,12 +64,10 @@ class DvkProbe:
     GPIO_26 = 26
     GPIO_27 = 27
     GPIO_28 = 28
-    board_name = ''
 
     def __init__(self):
         self._id = None
         self._ports = []
-        self.board_name = 'unknown'
 
     @staticmethod
     def get_connected_probes() -> list['DvkProbe']:

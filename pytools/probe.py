@@ -13,10 +13,10 @@ for inst in result:
   board_vendor = inst.get_dap_info(7)
   inst.close()
   inst_result = {
-    "_id": inst._id,
-    "_ports": inst._ports,
-    "_board_name": board_name,
-    "_board_vendor": board_vendor
+    "id": inst.id,
+    "ports": inst.ports,
+    "board_name": board_name,
+    "board_vendor": board_vendor
   }
   json_result.append(inst_result)
 
