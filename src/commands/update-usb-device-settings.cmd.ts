@@ -1,27 +1,42 @@
 import * as vscode from 'vscode'
 import { UsbDevice } from '../lib/usb-device.class'
+import { DeviceConfigurations, DeviceCommand } from '../lib/util.ifc'
 import ExtensionContextStore from '../stores/extension-context.store'
 const config = vscode.workspace.getConfiguration('xbit-vsc')
 
-interface Message {
-  baudRate: number
-  name: string
-}
-
-export async function UpdateUsbDeviceSettingsCommand (usbDevice: UsbDevice, message: Message): Promise<null | Error> {
+export async function UpdateUsbDeviceSettingsCommand (usbDevice: UsbDevice, message: DeviceCommand): Promise<null | Error> {
   // save
   if (usbDevice !== undefined && usbDevice !== null) {
-    const deviceConfigurations: any = config.get('device-configurations')
+    let deviceConfigurations: DeviceConfigurations | undefined = config.get('device-configurations')
+    if (deviceConfigurations === undefined) {
+      deviceConfigurations = {}
+    }
     const key = `${usbDevice.serialNumber}.${String(usbDevice.label)}`
 
+    let baudRate = usbDevice.baudRate
+    if ('baudRate' in message.params) {
+      baudRate = parseInt(String(message.params.baudRate))
+      if (isNaN(baudRate)) {
+        return await Promise.reject(new Error('Invalid baud rate'))
+      }
+    }
+
+    let name = usbDevice.options.board_name
+    if ('name' in message.params) {
+      name = String(message.params.name)
+      if (name.length === 0) {
+        name = usbDevice.options.board_name
+      }
+    }
+
     deviceConfigurations[key] = {
-      baudRate: message.baudRate,
-      name: message.name === '' ? usbDevice.options.board_name : message.name
+      baudRate,
+      name
     }
 
     await config.update('device-configurations', deviceConfigurations, vscode.ConfigurationTarget.Global)
-    usbDevice.name = deviceConfigurations[key].name
-    usbDevice.baudRate = message.baudRate
+    usbDevice.name = name
+    usbDevice.baudRate = baudRate
     ExtensionContextStore.provider?.refresh()
     // refresh?devPath
   }

@@ -1,5 +1,17 @@
 import { ProbeInfo } from './hardware-probe-info.class'
 
+interface DeviceMapEntry {
+  vendorId: number
+  productId: number
+  manufacturer: string
+  product: string
+  'supports-repl': boolean
+  'eof-type': string
+  'supports-break': boolean
+  pyocd: boolean
+  description: string
+}
+
 const map = [{
   vendorId: 1027,
   productId: 24577,
@@ -43,13 +55,13 @@ const map = [{
 }]
 
 export class DeviceMap {
-  map: any[]
+  map: DeviceMapEntry[]
 
   constructor () {
     this.map = map
   }
 
-  find (options: ProbeInfo): any {
+  find (options: ProbeInfo): DeviceMapEntry | undefined {
     return map.find((mapDef) => {
       return options.vendorId === mapDef.vendorId && options.productId === mapDef.productId
     })

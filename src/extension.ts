@@ -5,7 +5,6 @@ import * as vscode from 'vscode'
 // const SerialPortProvider = require('./serial-port.lib')
 import { UsbDeviceFile } from './lib/usb-device-file.class'
 import { UsbDeviceWebViewProvider } from './providers/usb-device-webview.provider'
-import { SetupTree } from './components/tree.component'
 
 import {
   RunApplet,
@@ -27,11 +26,9 @@ import ExtensionContextStore from './stores/extension-context.store'
 export function activate (context: vscode.ExtensionContext): void {
   // initialize the extension context store with the extension context
   ExtensionContextStore.init(context)
-  // tree is a disposable object so we need to push it to subscriptions
-  const tree = SetupTree(ExtensionContextStore)
-  context.subscriptions.push(tree)
 
-  // listen for usb device connection events
+  // listen for usb device connection events from the connect command
+  // this is used to update the webview state
   ExtensionContextStore.on('connectUsbDevice', () => {
     if (usbDeviceWebViewProvider.webview !== undefined) {
       void usbDeviceWebViewProvider.webview.postMessage({
@@ -43,6 +40,8 @@ export function activate (context: vscode.ExtensionContext): void {
     }
   })
 
+  // listen for usb device disconnect events from the disconnect command
+  // this is used to update the webview state
   ExtensionContextStore.on('disconnectUsbDevice', () => {
     if (usbDeviceWebViewProvider.webview !== undefined) {
       void usbDeviceWebViewProvider.webview.postMessage({
@@ -54,12 +53,30 @@ export function activate (context: vscode.ExtensionContext): void {
     }
   })
 
+  // listen for usb device selected events from the tree select handler
+  // this is used to update the webview state
+  ExtensionContextStore.on('selectedDevice', (device: any) => {
+    if (usbDeviceWebViewProvider.webview !== undefined) {
+      void usbDeviceWebViewProvider.onSelected(device)
+    }
+  })
+
+  // listen for usb device deselected events from the tree select handler
+  // this is used to update the webview state
+  ExtensionContextStore.on('deselectedDevice', () => {
+    if (usbDeviceWebViewProvider.webview !== undefined) {
+      void usbDeviceWebViewProvider.onDeselected()
+    }
+  })
+
+  // Register command handlers for the extension
+  //
   context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.refreshEntry', RefreshEntryCommand))
   context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.refreshFile', RefreshFileCommand))
   context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.createDeviceFile', CreateDeviceFileCommand))
   context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.deleteDeviceFile', DeleteDeviceFileCommand))
   context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.renameDeviceFile', RenameDeviceFileCommand))
-  // called when a python file on a connected device is selected
+  // called when a python file on a connected device is selected in the tree view
   context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.openDeviceFile', OpenDeviceFileCommand))
   context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.writeHexFile', WriteHexFileCommand))
   context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.runApplet', RunApplet))
@@ -121,8 +138,8 @@ export function activate (context: vscode.ExtensionContext): void {
 // This method is called when your extension is deactivated
 export function deactivate (): void {
   if (ExtensionContextStore.provider !== undefined) {
-    ExtensionContextStore.provider.disconnectAll().catch((error: any) => {
-      console.log('error disconnecting all', error)
+    ExtensionContextStore.provider.disconnectAll().catch((error: unknown) => {
+      ExtensionContextStore.error('Error disconnecting devices', error, true)
     })
   }
 }

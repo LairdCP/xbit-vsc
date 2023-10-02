@@ -1,7 +1,9 @@
+import * as vscode from 'vscode'
 import { UsbDevice } from '../lib/usb-device.class'
+import { DeviceCommand, DeviceCommandResponse } from '../lib/util.ifc'
 
 class AppletsStore {
-  private readonly _panels: Map<string, any>
+  private readonly _panels: Map<string, vscode.WebviewPanel>
   private readonly _links: Map<string, UsbDevice[]>
 
   constructor () {
@@ -9,10 +11,10 @@ class AppletsStore {
     this._links = new Map()
   }
 
-  set (panelKey: string, panel: any): void {
+  set (panelKey: string, panel: vscode.WebviewPanel): void {
     this._panels.set(panelKey, panel)
 
-    panel.webview.onDidReceiveMessage(async (message: any) => {
+    panel.webview.onDidReceiveMessage(async (message: DeviceCommand) => {
       // 1. from webview, panelKey = A, message = { method: 'foo', params: 'bar' }
       this.handleMessage(panelKey, message)
     })
@@ -35,7 +37,7 @@ class AppletsStore {
     return this._panels.has(key)
   }
 
-  get (key: string): any {
+  get (key: string): vscode.WebviewPanel | undefined {
     return this._panels.get(key)
   }
 
@@ -43,7 +45,7 @@ class AppletsStore {
     return Array.from(this._panels.keys())
   }
 
-  handleMessage (panelKey: string, message: any): void {
+  handleMessage (panelKey: string, message: DeviceCommand): void {
     // 2. if panelKey is linked to device(s)...
     if (this._links.has(panelKey)) {
       const link = this._links.get(panelKey)
@@ -70,12 +72,12 @@ class AppletsStore {
     // register data handler function that is called whenever
     // this device emits serial data
     //
-    usbDevice.dataHandler(panelKey, (message: any) => {
+    usbDevice.dataHandler(panelKey, (message: DeviceCommand | DeviceCommandResponse) => {
       // 6. from device, panelKey = A, data = { result: 'bar', id: 12345}
       if (this._panels.has(panelKey)) {
         const panel = this._panels.get(panelKey)
         if (panel !== undefined) {
-          panel.webview.postMessage(message)
+          void panel.webview.postMessage(message)
         }
       }
     })

@@ -2,27 +2,28 @@ import * as vscode from 'vscode'
 import * as async from 'async'
 
 import { UsbDevice } from '../lib/usb-device.class'
-import { PortInfo, ProbeInfo } from '../lib/hardware-probe-info.class'
+import { ProbeInfo, DvkProbeInterface, DvkProbeInterfaces } from '../lib/hardware-probe-info.class'
+import { PortInfo } from '@serialport/bindings-interface'
+
 import { SerialPort } from 'serialport'
 // import { UsbDeviceFolder } from '../lib/usb-device-folder.class'
 import { UsbDeviceFile } from '../lib/usb-device-file.class'
+import { PyocdInterface } from '../lib/pyocd'
 
 export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
   context: vscode.ExtensionContext
-  _onDidChangeTreeData: vscode.EventEmitter<any>
+  _onDidChangeTreeData: vscode.EventEmitter<vscode.Event<any> | null>
   usbDeviceNodes: UsbDevice[]
   hiddenUsbDeviceNodes: string[]
-  parser: any
-  lastSentHex: any
+  lastSentHex: string | null
   treeCache: Map<string, UsbDeviceFile[]>
-  pyocdInterface: any
+  pyocdInterface: PyocdInterface
 
-  constructor (context: any, ifc: any) {
+  constructor (context: vscode.ExtensionContext, ifc: PyocdInterface) {
     this.context = context
     this._onDidChangeTreeData = new vscode.EventEmitter()
     this.usbDeviceNodes = []
     this.hiddenUsbDeviceNodes = [] // connected USB devices that don't response to serial query are put here
-    this.parser = null
     this.lastSentHex = null
     this.treeCache = new Map() // cache the file tree for each device and sub folder. Key is the device.path/folder/...
     this.pyocdInterface = ifc
@@ -44,7 +45,7 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
     for (const usbDevice of this.usbDeviceNodes) {
       try {
         await usbDevice.disconnect()
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('error disconnecting', error)
       }
     }
@@ -55,15 +56,18 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
   // params:
   // port is the UsbDeviceClass Instance
   // ----------------------------
-  async connectAndExecute (port: any, command: string): Promise<string> {
+  async connectAndExecute (port: ProbeInfo | UsbDevice, command: string): Promise<string> {
     // if already connected to the port, disconnect first
-    if (port.ifc?.connected === true) {
-      try {
-        await port.disconnect()
-      } catch (error: any) {
-        console.error('error disconnecting', error)
+    if (port instanceof UsbDevice) {
+      if (port.ifc.connected) {
+        try {
+          await port.disconnect()
+        } catch (error: unknown) {
+          console.error('error disconnecting', error)
+        }
       }
     }
+
     return await new Promise((resolve, reject) => {
       let timedOut = false
       const portTimeout = setTimeout(() => {
@@ -80,7 +84,7 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
         }
       })
 
-      const closePort = (error: any = null): void => {
+      const closePort = (error: Error | null = null): void => {
         clearTimeout(portTimeout)
         tempPort.removeAllListeners()
         try {
@@ -117,7 +121,7 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
   getTreeItem (element: vscode.TreeItem): vscode.TreeItem {
     if (element instanceof UsbDevice) {
       let contextValue = 'usbDevice'
-      if (element.ifc?.connected === true) {
+      if (element.ifc?.connected) {
         contextValue = 'usbDeviceConnected'
       }
 
@@ -151,11 +155,9 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
       // Pyocd.exec(['--list']).then((result) => {
       const ports: ProbeInfo[] = []
       const deviceIds: Set<string> = new Set()
-      this.pyocdInterface.listDevices().then(async (result: any) => {
-        console.log(result)
-
-        result.forEach((p: any) => {
-          p.ports.forEach((port: PortInfo, idx: number) => {
+      this.pyocdInterface.listDevices().then(async (result: DvkProbeInterfaces[]) => {
+        result.forEach((p: DvkProbeInterfaces) => {
+          p.ports.forEach((port: DvkProbeInterface, idx: number) => {
             port.board_name = p.board_name
             const portInfo = new ProbeInfo(port)
             portInfo.idx = idx
@@ -165,10 +167,8 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
           })
         })
         return await SerialPort.list()
-      }).then((result: any) => {
-        console.log(result)
-
-        result.forEach((port: any) => {
+      }).then((result: PortInfo[]) => {
+        result.forEach((port: PortInfo) => {
           const portInfo = new ProbeInfo(port)
           // if this is a port that the probe didn't find
           if (!deviceIds.has(portInfo.path)) {
@@ -262,7 +262,7 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
 
           resolve(this.usbDeviceNodes)
         })
-      }).catch((error: any) => {
+      }).catch((error: unknown) => {
         reject(error)
       })
     })
@@ -287,49 +287,4 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
       return await this._getUsbDevices()
     }
   }
-
-  // async createFile (element: UsbDevice, filePath: string): Promise<void> {
-  //   const key = element.parentDevice.uri.path
-  //   try {
-  //     await element.createFile(filePath)
-  //     void vscode.window.showInformationMessage(`Created New File: ${filePath}`)
-  //   } catch (error) {
-  //     void vscode.window.showInformationMessage('Error Creating File')
-  //   }
-  //   this.treeCache.delete(key)
-  //   this.refresh()
-  //   return await Promise.resolve()
-  // }
-
-  // async deleteFile (element: UsbDeviceFile): Promise<void> {
-  //   // const dirPath = path.dirname(filePath)
-  //   const key = element.parentDevice.uri.path
-  //   try {
-  //     await element.parentDevice.deleteFile(element.devPath)
-  //     void vscode.window.showInformationMessage(`Deleted File: ${key}`)
-  //   } catch (error) {
-  //     void vscode.window.showInformationMessage('Error Deleting File')
-  //   }
-  //   // remove from MemFS cache
-  //   this.treeCache.delete(key)
-  //   this.refresh()
-  // }
-
-  // async renameFile (element: UsbDeviceFile, newFilePath: string): Promise<void> {
-  //   const oldFilePath = element.devPath.split('/').pop() ?? ''
-  //   const newFileName = newFilePath.split('/').pop() ?? ''
-  //   if (oldFilePath === '' || newFileName === '') {
-  //     return await Promise.reject(new Error('invalid file path for rename'))
-  //   }
-  //   const key = element.parentDevice.uri.path
-  //   try {
-  //     await element.parentDevice.renameFile(oldFilePath, newFileName)
-  //     void vscode.window.showInformationMessage(`Renamed File: ${newFileName ?? ''}`)
-  //   } catch (error) {
-  //     void vscode.window.showInformationMessage('Error Renaming File')
-  //   }
-  //   // remove from MemFS cache
-  //   this.treeCache.delete(key)
-  //   this.refresh()
-  // }
 }

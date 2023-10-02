@@ -55,7 +55,7 @@ export class UsbDeviceInterface extends EventEmitter {
           // TODO emit serialData event
           this.emit('data', data)
         })
-      } catch (error: any) {
+      } catch (error: unknown) {
         reject(error)
       }
     })

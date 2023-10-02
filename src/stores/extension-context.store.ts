@@ -3,8 +3,9 @@ import { UsbDevicesProvider } from '../providers/usb-devices.provider'
 import { PyocdInterface } from '../lib/pyocd'
 import { MemFS } from '../providers/file-system.provider'
 import { EventEmitter } from 'events'
+import { SetupTree } from '../components/tree.component'
 
-class ExtensionContextStore extends EventEmitter {
+export class ExtensionContextStore extends EventEmitter {
   context: vscode.ExtensionContext | undefined
   provider: UsbDevicesProvider | undefined
   pyocdInterface: PyocdInterface | undefined
@@ -23,8 +24,28 @@ class ExtensionContextStore extends EventEmitter {
     this.pyocdInterface = new PyocdInterface(context, this.outputChannel)
     this.provider = new UsbDevicesProvider(context, this.pyocdInterface)
     this.context = context
-    vscode.window.registerTreeDataProvider('xbitVsc', this.provider)
+    SetupTree(this)
     context.subscriptions.push(vscode.workspace.registerFileSystemProvider('memfs', this.memFs, { isCaseSensitive: true }))
+  }
+
+  inform (message: string, window = false): void {
+    this.outputChannel.appendLine(message)
+    if (window) void vscode.window.showInformationMessage(message)
+  }
+
+  warn (message: string, window = false): void {
+    this.outputChannel.appendLine(message)
+    if (window) void vscode.window.showWarningMessage(message)
+  }
+
+  error (message: string, error: unknown, window = false): void {
+    if (error instanceof Error) {
+      this.outputChannel.appendLine(`${message}: ${String(error.message)}`)
+      if (window) void vscode.window.showErrorMessage(`${message}: ${String(error.message)}`)
+    } else {
+      this.outputChannel.appendLine(message)
+      if (window) void vscode.window.showErrorMessage(message)
+    }
   }
 }
 

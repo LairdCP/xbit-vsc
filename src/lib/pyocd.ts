@@ -3,6 +3,7 @@ import * as vscode from 'vscode'
 import { ChildProcess, spawn } from 'child_process'
 import * as fs from 'fs/promises'
 import { EventEmitter } from 'events'
+import { DvkProbeInterfaces } from './hardware-probe-info.class'
 
 const config = vscode.workspace.getConfiguration('xbit-vsc')
 
@@ -12,7 +13,7 @@ export class PyocdInterface {
   executable: string
   venv: string
   ready: boolean
-  listDevicesPromise: Promise<any> | null = null
+  listDevicesPromise: Promise<DvkProbeInterfaces[]> | null = null
   events: EventEmitter
 
   constructor (context: vscode.ExtensionContext, outputChannel: vscode.OutputChannel) {
@@ -48,6 +49,7 @@ export class PyocdInterface {
           // catch
           // display wait ?
           const metaString: string = (await fs.readFile(this.context.asAbsolutePath('./package.json'))).toString()
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const metaJson: any = JSON.parse(metaString)
           const lastInstalledVersion = this.context.globalState.get('requirements-version')
           if (lastInstalledVersion === undefined || lastInstalledVersion !== metaJson.version) {
@@ -73,11 +75,11 @@ export class PyocdInterface {
     })
   }
 
-  private async _listDevices (): Promise<any> {
+  private async _listDevices (): Promise<DvkProbeInterfaces[]> {
     // ask pyocd for the list of devices
     return await this.runCommand('python', [this.context.asAbsolutePath('./pytools/probe.py')])
       .then((result: string) => {
-        let probeResult = []
+        let probeResult: DvkProbeInterfaces[] = []
         try {
           probeResult = JSON.parse(result)
         } catch (error) {
@@ -87,7 +89,7 @@ export class PyocdInterface {
       })
   }
 
-  async listDevices (): Promise<any[]> {
+  async listDevices (): Promise<DvkProbeInterfaces[]> {
     // there is initialization that takes n time to complete
     // this will block listing devices until it's ready
     if (!this.ready) {
@@ -96,7 +98,7 @@ export class PyocdInterface {
           if (this.ready) {
             clearInterval(watcher)
             this.listDevicesPromise = null
-            this._listDevices().then((devices) => {
+            this._listDevices().then((devices: DvkProbeInterfaces[]) => {
               resolve(devices)
             }).catch((error) => {
               reject(error)

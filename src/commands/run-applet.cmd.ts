@@ -2,15 +2,16 @@ import * as vscode from 'vscode'
 import * as path from 'path'
 import PanelsStore from '../stores/applets.store'
 import { promises } from 'fs'
-
+import { XbitAppletJson } from '../lib/xbit-applet-json.ifc'
 const fs = promises
 
 // any is a vscode.TreeItem of xbit-applet.json
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function RunApplet (element: any): Promise<null | Error> {
   try {
     // read the json manifest from element.path
     const jsonFile: Buffer = await fs.readFile(element.path)
-    const jsonText: any = JSON.parse(jsonFile.toString())
+    const jsonText: XbitAppletJson = JSON.parse(jsonFile.toString())
     // load the html file from element.path
     const htmlBuffer: Buffer = await fs.readFile(path.join(path.dirname(element.path), jsonText.main))
     const htmlText: string = htmlBuffer.toString()

@@ -1,4 +1,3 @@
-import * as vscode from 'vscode'
 import { UsbDevice } from '../lib/usb-device.class'
 import ExtensionContextStore from '../stores/extension-context.store'
 
@@ -7,25 +6,24 @@ export async function ConnectUsbDeviceCommand (usbDevice: UsbDevice): Promise<nu
     return await Promise.reject(new Error('ExtensionContextStore is not yet inited'))
   }
 
-  const outputChannel = ExtensionContextStore.outputChannel
   const usbDevicesProvider = ExtensionContextStore.provider
 
   if (usbDevice.connected) {
     return await Promise.resolve(null)
   }
 
-  outputChannel.appendLine(`connecting to device ${String(usbDevice.name)}\n`)
+  ExtensionContextStore.inform(`connecting to device ${String(usbDevice.name)}\n`)
   try {
     await usbDevice.connect()
     await usbDevice.createTerminal(ExtensionContextStore.context)
     usbDevice.setIconPath()
     usbDevicesProvider.refresh()
     ExtensionContextStore.emit('command', 'connectUsbDevice', usbDevice)
-    void vscode.window.showInformationMessage(`Port Connected: ${String(usbDevice.options.path)}`)
-    usbDevice.ifc.sendBreak()
+    await usbDevice.ifc.sendBreak()
+    ExtensionContextStore.inform('Connected')
     return await Promise.resolve(null)
-  } catch (error: any) {
-    void vscode.window.showErrorMessage(`Error Connecting to Port: ${String(error.message)}`)
+  } catch (error: unknown) {
+    ExtensionContextStore.error('Error Opening Port', error, true)
     return await Promise.reject(error)
   }
 }

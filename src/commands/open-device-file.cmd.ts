@@ -5,18 +5,16 @@ import ExtensionContextStore from '../stores/extension-context.store'
 export async function OpenDeviceFileCommand (usbDeviceFile: UsbDeviceFile): Promise<null | Error> {
   // e.command.arguments[0].label is the file selected
   // e.command.arguments[1].main is the device selected
-  const outputChannel = ExtensionContextStore.outputChannel
   const memFs = ExtensionContextStore.memFs
-  outputChannel.appendLine(`Opening File ${usbDeviceFile.label}\n`)
-
+  ExtensionContextStore.inform(`Opening File ${usbDeviceFile.label}`)
   try {
     // if file exists in cache, switch to it
     memFs.stat(usbDeviceFile.uri)
     await vscode.window.showTextDocument(usbDeviceFile.uri)
-    outputChannel.appendLine(`Show File ${usbDeviceFile.name}\n`)
+    ExtensionContextStore.inform(`Show File ${usbDeviceFile.name}`)
     return await Promise.resolve(null)
-  } catch (error: any) {
-    outputChannel.appendLine(`File Does Not Exist Yet ${String(error.message)}\n`)
+  } catch (error: unknown) {
+    ExtensionContextStore.warn('File Does Not Exist Yet')
   }
 
   // if not connected, connect
@@ -24,7 +22,7 @@ export async function OpenDeviceFileCommand (usbDeviceFile: UsbDeviceFile): Prom
     await vscode.commands.executeCommand('xbitVsc.connectUsbDevice', usbDeviceFile.parentDevice)
   }
 
-  outputChannel.appendLine('Ensuring Path Exists\n')
+  ExtensionContextStore.inform(`Ensuring Path Exists ${usbDeviceFile.parentDevice.uri.path}`)
   const pathParts = usbDeviceFile.parentDevice.uri.path.split('/')
   let pathToCreate = ''
   while (pathParts.length !== 0) {
@@ -36,7 +34,7 @@ export async function OpenDeviceFileCommand (usbDeviceFile: UsbDeviceFile): Prom
       // check if directory exists in memfs
         memFs.stat(pathUri)
       } catch (error) {
-        outputChannel.appendLine(`Creating Path ${pathToCreate}`)
+        ExtensionContextStore.inform(`Creating Path ${pathToCreate}`)
         memFs.createDirectory(pathUri)
       }
     }
@@ -44,18 +42,16 @@ export async function OpenDeviceFileCommand (usbDeviceFile: UsbDeviceFile): Prom
 
   // open file
   try {
-    outputChannel.appendLine('Reading file from device ... \n')
+    ExtensionContextStore.inform(`Reading File ${usbDeviceFile.name}`)
     const result: string = await usbDeviceFile.readFileFromDevice()
     const fileData = Buffer.from(result, 'ascii')
 
     memFs.writeFile(usbDeviceFile.uri, fileData, { create: true, overwrite: true })
     await vscode.window.showTextDocument(usbDeviceFile.uri)
-    outputChannel.appendLine(`Opened File ${usbDeviceFile.name}\n`)
+    ExtensionContextStore.inform(`Opened File ${usbDeviceFile.name}\n`)
     return await Promise.resolve(null)
-  } catch (error: any) {
-    console.error('error', error)
-    outputChannel.appendLine(`Error Opening File ${String(error.message)}\n`)
-    await vscode.window.showErrorMessage(`Error opening file: ${String(error.message)}`)
+  } catch (error: unknown) {
+    ExtensionContextStore.error('Error Opening File', error, true)
     return await Promise.reject(error)
   }
 }

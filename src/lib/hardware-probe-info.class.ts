@@ -1,4 +1,13 @@
+import { PortInfo } from '@serialport/bindings-interface'
+
 // this is spat out of the pyocd probe command
+export interface DvkProbeInterfaces {
+  id: string
+  ports: DvkProbeInterface[]
+  board_name: string
+  board_vendor: string
+}
+
 /*
 {
   "device": "/dev/cu.usbmodem2102",
@@ -42,20 +51,10 @@ export interface DvkProbeInterface {
   "vendorId": "2e8a"
 }
 */
-export interface PortInfo extends DvkProbeInterface {
-  locationId: string
-  manufacturer: string
-  path: string
-  pnpId: string | undefined
-  productId: string
-  serialNumber: string
-  vendorId: string
-}
-
 // unified interface for the probe info
 // from either the serial port list or the dvk probe script
 export class ProbeInfo {
-  options: PortInfo
+  options: any
   serialNumber = ''
   locationId = ''
   manufacturer = ''
@@ -66,7 +65,7 @@ export class ProbeInfo {
   board_name: string
   idx = 0
 
-  constructor (options: PortInfo) {
+  constructor (options: PortInfo | DvkProbeInterface) {
     this.options = options
 
     // set the serial number

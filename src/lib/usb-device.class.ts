@@ -5,47 +5,41 @@ import { UsbDeviceFile } from './usb-device-file.class'
 import { UsbDeviceInterface } from './usb-device-interface.class'
 import { ProbeInfo } from './hardware-probe-info.class'
 import { ReplTerminal } from './repl-terminal.class'
+import { InFlightCommand, DeviceCommand, DeviceCommandResponse, TreeItemIconPath, DeviceConfigurations, pythonLsStatElement } from './util.ifc'
 
 // read in the device map
 import { DeviceMap } from './device-map'
 const deviceMap = new DeviceMap()
 
-type File = [string, string, number]
-
-let inFlightCommands: any[] = []
+let inFlightCommands: InFlightCommand[] = []
 
 export class UsbDevice extends vscode.TreeItem {
   context: vscode.ExtensionContext
   uri: vscode.Uri
   options: ProbeInfo
   baudRate: number
-  command: any
+  command: vscode.Command | undefined
   type: string
-  ifc: any
-  connect: any
-  disconnect: any
-  write: any
+  ifc: UsbDeviceInterface
   name = 'Unknown'
   serialNumber: string
-  terminal: any = null
-  lastSentHex: any
+  terminal: ReplTerminal | null = null
+  lastSentHex?: string
   targetType?: string
   enableApplet = false
   receivedLine = ''
 
   // overrides
-  public iconPath: any
-  public description?: string
-
-  private readonly _dataHandlers: Map<string, any> = new Map()
+  private readonly _dataHandlers: Map<string, (msg: DeviceCommandResponse) => void> = new Map()
+  iconPath?: TreeItemIconPath | undefined
 
   constructor (
     context: vscode.ExtensionContext,
     uri: vscode.Uri,
-    collapsibleState: any,
+    collapsibleState: vscode.TreeItemCollapsibleState,
     options: ProbeInfo,
     type: string,
-    command?: any
+    command?: vscode.Command
   ) {
     super(options.name, collapsibleState)
     this.context = context
@@ -67,7 +61,7 @@ export class UsbDevice extends vscode.TreeItem {
     // TODO this is hacky, but it works
     // Set any custom configuration for this device
     const config = vscode.workspace.getConfiguration('xbit-vsc')
-    const deviceConfigurations: any = config.get('device-configurations')
+    const deviceConfigurations: DeviceConfigurations | undefined = config.get('device-configurations')
     const key = `${this.serialNumber}.${String(this.label)}`
 
     if (deviceConfigurations !== undefined) {
@@ -95,11 +89,6 @@ export class UsbDevice extends vscode.TreeItem {
       supportsBreak
     })
 
-    // expose serial port methods
-    this.connect = this.ifc.connect.bind(this.ifc)
-    this.disconnect = this.ifc.disconnect.bind(this.ifc)
-    this.write = this.ifc.write.bind(this.ifc)
-
     // when disconnected, the listener is not removed
     // 5. from device, data = '>>>'
 
@@ -114,9 +103,9 @@ export class UsbDevice extends vscode.TreeItem {
       // for each webview panel...
       this.receivedLine = this.receivedLine + data.toString()
       if (/\r\n$/.test(this.receivedLine)) {
-        this._dataHandlers.forEach((cb: any, key: string) => {
+        this._dataHandlers.forEach((cb: (msg: DeviceCommandResponse) => void, key: string) => {
           // for each in-flight command...
-          inFlightCommands = inFlightCommands.filter((command: any, i: number) => {
+          inFlightCommands = inFlightCommands.filter((command: InFlightCommand) => {
             // if the command key matches the panel key...
             if (command.panelKey === key && this.receivedLine.includes(command.expectedResponse)) {
               const response = {
@@ -132,7 +121,7 @@ export class UsbDevice extends vscode.TreeItem {
           })
           // this isn't a command response
           // but send it to the webview anyway
-          const response = { message: this.receivedLine }
+          const response = { result: this.receivedLine }
           cb(response)
         })
         this.receivedLine = ''
@@ -156,11 +145,27 @@ export class UsbDevice extends vscode.TreeItem {
 
   get connected (): boolean {
     // if no terminal, it's a temporary connection
-    return this.ifc.connected === true && this.terminal !== null
+    return this.ifc.connected && this.terminal !== null
   }
 
   get dvkProbe (): boolean {
     return this.options.board_name !== 'Unknown'
+  }
+
+  get path (): string {
+    return this.options.path
+  }
+
+  async connect (): Promise<void> {
+    return await this.ifc.connect()
+  }
+
+  async disconnect (): Promise<void> {
+    return await this.ifc.disconnect()
+  }
+
+  async write (data: string): Promise<void> {
+    return this.ifc.write(data)
   }
 
   setIconPath (): void {
@@ -171,12 +176,8 @@ export class UsbDevice extends vscode.TreeItem {
       connected = '-connected'
     }
 
-    if (this.type === 'repl') {
-      type = 'repl'
-    }
-
-    if (this.type === 'uart') {
-      type = 'uart'
+    if (this.type === 'repl' || this.type === 'uart') {
+      type = this.type
     }
 
     this.iconPath = {
@@ -191,7 +192,7 @@ export class UsbDevice extends vscode.TreeItem {
   // Call the function with the current dir
   // Parse the result and populate an array
   // return the array in the promise
-  async readDirFromDevice (dirPath: string): Promise<any[]> {
+  async readDirFromDevice (dirPath: string): Promise<pythonLsStatElement[]> {
     const timeout = async (ms: number): Promise<void> => {
       return await new Promise(resolve => setTimeout(resolve, ms))
     }
@@ -217,10 +218,7 @@ export class UsbDevice extends vscode.TreeItem {
     ]
 
     for (const i of lsFunction) {
-      const drain = await this.ifc.write(i)
-      if (drain === false) {
-        console.info('wait for drain', drain)
-      }
+      await this.ifc.write(i)
       await timeout(100)
     }
 
@@ -230,23 +228,27 @@ export class UsbDevice extends vscode.TreeItem {
       .map((r: string) => r.trim()
         .split(' ')
       )
-      .filter((r: string) => {
+      .filter((r: string[]) => {
         return r.length > 1
       })
 
-    const fileResult = []
-    for (let i = 0; i < resultMap.length; i++) {
-      const element: Array<string | number> = resultMap[i]
-      if (element[1] === '32768') {
-        element[1] = 'file'
-      } else if (element[1] === '16384') {
-        element[1] = 'dir'
+    const fileResult: pythonLsStatElement[] = resultMap.map((r: string[]) => {
+      const element: pythonLsStatElement = {
+        type: '',
+        size: parseInt(r[2], 10),
+        path: r[0]
       }
-      if (typeof element[2] === 'string') {
-        element[2] = parseInt(element[2], 10)
+
+      if (r[1] === '32768') {
+        element.type = 'file'
+      } else if (r[1] === '16384') {
+        element.type = 'dir'
       }
-      fileResult.push(element)
-    }
+      element.type = r[1]
+
+      return element
+    })
+
     if (tempConnection) {
       await this.disconnect()
     }
@@ -254,16 +256,16 @@ export class UsbDevice extends vscode.TreeItem {
   }
 
   // list the child nodes (files) on the USB Device
-  async getUsbDeviceFolder (dir = '/'): Promise<any[]> {
+  async getUsbDeviceFolder (dir = '/'): Promise<UsbDeviceFile[]> {
     if (!this.replCapable) {
       return await Promise.resolve([])
     }
     try {
-      const files: File[] = await this.readDirFromDevice(dir)
+      const files: pythonLsStatElement[] = await this.readDirFromDevice(dir)
 
       const treeNodes: UsbDeviceFile[] = []
-      files.forEach((file: File) => {
-        const [path, type, size] = file
+      files.forEach((file: pythonLsStatElement) => {
+        const { path, type, size } = file
         // populate tree items from the read file information
         let treeNode
 
@@ -277,7 +279,7 @@ export class UsbDevice extends vscode.TreeItem {
         // treeNode.parentDevice = element.parentDevice
         // } else
         if (type === 'file') {
-          treeNode = new UsbDeviceFile(uri, type, size, this)
+          treeNode = new UsbDeviceFile(this.context, uri, type, size, this)
         } else {
           return
         }
@@ -303,12 +305,12 @@ export class UsbDevice extends vscode.TreeItem {
   // TODO change to deleteFile command
   async deleteFile (filePath: string): Promise<void> {
     // write import os
-    return this.ifc.writeWait(`import os\ros.unlink('${filePath}')\r`, 1000)
+    await this.ifc.writeWait(`import os\ros.unlink('${filePath}')\r`, 1000)
   }
 
   async renameFile (oldFilePath: string, newFilePath: string): Promise<void> {
     // write import os
-    return this.ifc.writeWait(`import os\ros.rename('${oldFilePath}', '${newFilePath}')\r`, 1000)
+    await this.ifc.writeWait(`import os\ros.rename('${oldFilePath}', '${newFilePath}')\r`, 1000)
   }
 
   private _handleTerminalData (data: Buffer): void {
@@ -327,19 +329,22 @@ export class UsbDevice extends vscode.TreeItem {
     }
   }
 
-  dataHandler (key: string, cb: any): void {
+  // these are used to receive data from applets
+  dataHandler (key: string, cb: (msg: DeviceCommand | DeviceCommandResponse) => void): void {
     this._dataHandlers.set(key, cb)
   }
 
+  // these are used to receive data from applets
   removeDataHandler (key: string): void {
     this._dataHandlers.delete(key)
   }
 
-  // 4. to this device, panelKey = A, message = { method: 'foo', params: 'bar' }
-  commandHandler (panelKey: string, message: any): any {
+  // when a command is sent from the webview panel, it is handled here
+  // and sent to the device. Such as 'connect'
+  commandHandler (panelKey: string, message: DeviceCommand): void {
     let payload = ''
     let expectedResponse = ''
-    if (message.method === 'write') {
+    if (message.method === 'write' && message.params.command !== undefined) {
       payload = message.params.command
       expectedResponse = '>>>'
     } else {
@@ -354,7 +359,7 @@ export class UsbDevice extends vscode.TreeItem {
         id = Math.floor(Math.random() * 1000000)
       }
 
-      const cmd = {
+      const cmd: InFlightCommand = {
         id,
         expectedResponse,
         message,
@@ -363,7 +368,6 @@ export class UsbDevice extends vscode.TreeItem {
         timestamp: Date.now()
       }
       inFlightCommands.push(cmd)
-      console.log('inFlightCommands', inFlightCommands)
     }
     // write to the serial port
     this.ifc.write(payload)
@@ -373,14 +377,6 @@ export class UsbDevice extends vscode.TreeItem {
     this.terminal = new ReplTerminal(context, {
       name: `${this.name} - ${this.serialNumber}`,
       iconPath: this.iconPath
-    })
-
-    this.terminal.onInput((data: string) => {
-      // send line to the serial port
-      if (this.connected) {
-        this.lastSentHex = Buffer.from(data).toString('hex')
-        this.write(data)
-      }
     })
   }
 

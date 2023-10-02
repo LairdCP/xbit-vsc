@@ -17,13 +17,12 @@ export async function CreateDeviceFileCommand (usbDevice: UsbDevice): Promise<nu
     const key = usbDevice.parentDevice.uri.path
     try {
       await usbDevice.createFile(fileName)
-      void vscode.window.showInformationMessage(`Created New File: ${fileName}`)
-      // await usbDevicesProvider.createFile(usbDevice, fileName)
       ExtensionContextStore.provider?.treeCache.delete(key)
       ExtensionContextStore.provider?.refresh()
+      ExtensionContextStore.inform(`Created New File: ${fileName}`)
       return await Promise.resolve(null)
-    } catch (error) {
-      void vscode.window.showInformationMessage('Error Creating File')
+    } catch (error: unknown) {
+      ExtensionContextStore.error('Error Creating File', error, true)
       return await Promise.reject(error)
     }
   }

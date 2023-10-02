@@ -35,12 +35,10 @@ export async function RenameDeviceFileCommand (usbDeviceFile: UsbDeviceFile): Pr
       await vscode.window.showTextDocument(usbDeviceFile.uri)
       await vscode.commands.executeCommand('workbench.action.closeActiveEditor')
       await vscode.window.showTextDocument(newUri)
-      void vscode.window.showInformationMessage(`Renamed File: ${newFileName ?? ''}`)
-      ExtensionContextStore.outputChannel.appendLine(`Renamed File ${usbDeviceFile.label} to ${newFileName}\n`)
+      ExtensionContextStore.inform(`Renamed File ${usbDeviceFile.label} to ${newFileName}\n`)
       return await Promise.resolve(null)
-    } catch (error: any) {
-      void vscode.window.showInformationMessage('Error Renaming File')
-      ExtensionContextStore.outputChannel.appendLine(`Error Renaming File ${String(error.message)}\n`)
+    } catch (error: unknown) {
+      ExtensionContextStore.error('Error Renaming File', error, true)
       return await Promise.reject(error)
     }
   }

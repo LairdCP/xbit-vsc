@@ -2,24 +2,27 @@ import * as path from 'path'
 import * as vscode from 'vscode'
 import { UsbDevice } from './usb-device.class'
 import { sleep } from '../util'
+import { TreeItemIconPath } from '../lib/util.ifc'
 
 const _rwRrate = 512
 
 export class UsbDeviceFile extends vscode.TreeItem {
   label: string
+  context: vscode.ExtensionContext
   uri: vscode.Uri
   type: string
   size: number
-  command: any
+  command: vscode.Command
   name: string
   parentDevice: UsbDevice
 
   // overrides
   public readonly contextValue: string
   public readonly tooltip: string
-  public readonly iconPath: any
+  public readonly iconPath: TreeItemIconPath
 
   constructor (
+    context: vscode.ExtensionContext,
     uri: vscode.Uri,
     type: string,
     size: number,
@@ -30,12 +33,13 @@ export class UsbDeviceFile extends vscode.TreeItem {
       fragment = '?'
     }
     super(fragment, vscode.TreeItemCollapsibleState.None)
-
+    this.context = context
     this.label = fragment
     this.uri = uri
     this.size = size
     this.type = type
     this.command = {
+      title: 'Open File',
       command: 'xbitVsc.openDeviceFile',
       arguments: [this]
     }
@@ -44,8 +48,8 @@ export class UsbDeviceFile extends vscode.TreeItem {
     this.contextValue = this.type === 'file' ? 'usbDeviceFile' : 'usbDeviceFolder'
     this.tooltip = this.uri.path
     this.iconPath = {
-      light: path.join(__filename, '../../..', 'resources', 'light', 'gen-file.svg'),
-      dark: path.join(__filename, '../../..', 'resources', 'dark', 'gen-file.svg')
+      light: vscode.Uri.joinPath(this.context.extensionUri, 'resources/light/gen-file.svg'),
+      dark: vscode.Uri.joinPath(this.context.extensionUri, 'resources/dark/gen-file.svg')
     }
     this.parentDevice = parentDevice
   }
@@ -150,12 +154,12 @@ export class UsbDeviceFile extends vscode.TreeItem {
 
     await this.parentDevice.ifc.writeWait('import binascii\r', 1000)
     const result = await this.parentDevice.ifc.writeWait(`f = open('${this.devPath}', 'wb')\r`, 1000)
-    if (result.indexOf('>>>') === -1) {
+    if (!result.includes('>>>')) {
       return await Promise.reject(result)
     } else {
       // start writing chunks
       await write()
-      return this.parentDevice.ifc.writeWait('f.close()\r', 1000)
+      return await this.parentDevice.ifc.writeWait('f.close()\r', 1000)
     }
   }
 }

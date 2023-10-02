@@ -4,6 +4,7 @@ import * as fs from 'fs'
 
 import { UsbDevice } from '../lib/usb-device.class'
 import AppletsStore from '../stores/applets.store'
+import { DeviceCommand } from '../lib/util.ifc'
 
 export class UsbDeviceWebViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType: string = 'xbitVsc.optionsView'
@@ -36,7 +37,7 @@ export class UsbDeviceWebViewProvider implements vscode.WebviewViewProvider {
       this.webview = webviewView.webview
       this._setWebviewMessageListener(webviewView)
 
-      webviewView.onDidChangeVisibility(async (event) => {
+      webviewView.onDidChangeVisibility(async () => {
         // if selected device, call onSelected
         if (webviewView.visible && this._selectedDevice !== null) {
           await this.onSelected(this._selectedDevice)
@@ -48,25 +49,25 @@ export class UsbDeviceWebViewProvider implements vscode.WebviewViewProvider {
   }
 
   private _setWebviewMessageListener (webviewView: vscode.WebviewView): void {
-    webviewView.webview.onDidReceiveMessage(async (message: any) => {
-      if (message.command === 'connect' &&
+    webviewView.webview.onDidReceiveMessage(async (message: DeviceCommand) => {
+      if (message.method === 'connect' &&
       this._selectedDevice !== null && this._selectedDevice !== undefined) {
         await vscode.commands.executeCommand('xbitVsc.connectUsbDevice', this._selectedDevice)
-      } else if (message.command === 'disconnect' &&
+      } else if (message.method === 'disconnect' &&
         this._selectedDevice !== null) {
         await vscode.commands.executeCommand('xbitVsc.disconnectUsbDevice', this._selectedDevice)
-      } else if (message.command === 'save') {
+      } else if (message.method === 'save') {
         await vscode.commands.executeCommand('xbitVsc.updateUsbDeviceSettings', this._selectedDevice, message)
-      } else if (message.command === 'break') {
-        this._selectedDevice?.ifc.sendBreak()
-      } else if (message.command === 'eof') {
-        this._selectedDevice?.ifc.sendEof()
-      } else if (message.command === 'use-for-applet' &&
+      } else if (message.method === 'break') {
+        await this._selectedDevice?.ifc.sendBreak()
+      } else if (message.method === 'eof') {
+        await this._selectedDevice?.ifc.sendEof()
+      } else if (message.method === 'useForApplet' &&
         this._selectedDevice !== null && this._selectedDevice !== undefined) {
-        if (message.applet !== 'none') {
-          AppletsStore.link(message.applet, this._selectedDevice)
+        if (message.params.applet !== 'none') {
+          AppletsStore.link(String(message.params.applet), this._selectedDevice)
         } else {
-          AppletsStore.unlink(message.applet, this._selectedDevice)
+          AppletsStore.unlink(String(message.params.applet), this._selectedDevice)
         }
       }
     })
@@ -77,8 +78,10 @@ export class UsbDeviceWebViewProvider implements vscode.WebviewViewProvider {
 
     // tell the webview the device was deselected
     await this.webview?.postMessage({
-      command: 'setSelected',
-      device: null
+      method: 'setSelected',
+      params: {
+        device: null
+      }
     })
   }
 
@@ -95,25 +98,28 @@ export class UsbDeviceWebViewProvider implements vscode.WebviewViewProvider {
 
       // tell the webview the device was selected
       await this.webview?.postMessage({
-        command: 'setSelected',
-        device: {
-          serialNumber: usbDevice.serialNumber,
-          path: usbDevice.options.path,
-          name: usbDevice.name,
-          manufacturer: usbDevice.options.manufacturer,
-          baudRate: usbDevice.baudRate,
-          connected: usbDevice.connected,
-          productId: usbDevice.options.productId,
-          vendorId: usbDevice.options.vendorId,
-          supportsBreak: usbDevice.ifc.supportsBreak,
-          eofType: usbDevice.ifc.eofType
+        method: 'setSelected',
+        params: {
+          device: {
+            serialNumber: usbDevice.serialNumber,
+            path: usbDevice.options.path,
+            name: usbDevice.name,
+            manufacturer: usbDevice.options.manufacturer,
+            baudRate: usbDevice.baudRate,
+            connected: usbDevice.connected,
+            productId: usbDevice.options.productId,
+            vendorId: usbDevice.options.vendorId,
+            supportsBreak: usbDevice.ifc.supportsBreak,
+            eofType: usbDevice.ifc.eofType
+          }
         }
-        // device: usbDevice
       })
 
       await this.webview?.postMessage({
-        command: 'applets',
-        applets: AppletsStore.list()
+        method: 'applets',
+        params: {
+          applets: AppletsStore.list()
+        }
       })
     } else {
       // file selected

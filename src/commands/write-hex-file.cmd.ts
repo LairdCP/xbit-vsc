@@ -23,7 +23,7 @@ export async function WriteHexFileCommand (usbDevice: UsbDevice): Promise<null |
 
   if (onFulfilled !== null && onFulfilled !== undefined && onFulfilled.length > 0) {
     try {
-      let _progress: any = null
+      let _progress: vscode.Progress<{ message: string, increment: number }> | null = null
       let _increment = 0
       void vscode.window.withProgress({
         location: vscode.ProgressLocation.Notification,
@@ -51,10 +51,8 @@ export async function WriteHexFileCommand (usbDevice: UsbDevice): Promise<null |
       })
 
       return await Promise.resolve(null)
-    } catch (error: any) {
-      console.error('error', error)
-      outputChannel.appendLine(`Error Writing File ${String(error.message)}\n`)
-      await vscode.window.showErrorMessage(`Error writing file: ${String(error.message)}`)
+    } catch (error: unknown) {
+      ExtensionContextStore.error('Error Writing File', error, true)
       return await Promise.reject(error)
     }
   } else {
