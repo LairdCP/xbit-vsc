@@ -51,11 +51,13 @@ export class PyocdInterface {
           const metaString: string = (await fs.readFile(this.context.asAbsolutePath('./package.json'))).toString()
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const metaJson: any = JSON.parse(metaString)
-          const lastInstalledVersion = this.context.globalState.get('requirements-version')
+          const lastInstalledVersion: string | undefined = config.get('requirements-version')
+
           if (lastInstalledVersion === undefined || lastInstalledVersion !== metaJson.version) {
             this.outputChannel.appendLine('installing dependencies')
             await this.installDeps()
-            return await this.context.globalState.update('requirements-version', metaJson.version)
+            console.log('install deps success, setting requirements-version')
+            return await config.update('requirements-version', metaJson.version)
           } else {
             return await Promise.resolve()
           }
@@ -116,7 +118,11 @@ export class PyocdInterface {
   }
 
   async installDeps (): Promise<string> {
-    return await this.runCommand('pip', ['install', '-r', this.context.asAbsolutePath('./requirements.in')])
+    try {
+      return await this.runCommand('pip', ['install', '-r', this.context.asAbsolutePath('./requirements.in')])
+    } catch (error) {
+      return await Promise.reject(error)
+    }
   }
 
   // runs a command in the venv

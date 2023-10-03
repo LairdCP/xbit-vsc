@@ -26,6 +26,11 @@
           "default": "",
           "description": "Specifies the path to the python virtual env to install required tools."
         },
+        "xbit-vsc.requirements-version": {
+          "type": "string",
+          "default": "",
+          "description": "Stores the version during which python requirements were installed last."
+        },
         "xbit-vsc.device-configurations": {
           "type": "object",
           "description": "Specifies the device configuration objects"
