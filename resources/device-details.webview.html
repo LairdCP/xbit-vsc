@@ -105,30 +105,32 @@
 
       document.getElementById('save-button').addEventListener('click', () => {
         vscode.postMessage({
-          command: 'save',
-          baudRate: parseInt(baudRate.value),
-          name: customName.value
+          method: 'save',
+          params: {
+            baudRate: parseInt(baudRate.value),
+            name: customName.value
+          }
         })
       })
 
       document.getElementById('connect-button').addEventListener('click', () => {
-        vscode.postMessage({ command: 'connect' })
+        vscode.postMessage({ method: 'connect' })
       })
 
       document.getElementById('disconnect-button').addEventListener('click', () => {
-        vscode.postMessage({ command: 'disconnect' })
+        vscode.postMessage({ method: 'disconnect' })
       })
 
       breakButton.addEventListener('click', () => {
-        vscode.postMessage({ command: 'break' })
+        vscode.postMessage({ method: 'break' })
       })
 
       eofButton.addEventListener('click', () => {
-        vscode.postMessage({ command: 'eof' })
+        vscode.postMessage({ method: 'eof' })
       })
 
       appletDropdown.addEventListener('change', () => {
-        vscode.postMessage({ command: 'use-for-applet', applet: appletDropdown.value })
+        vscode.postMessage({ method: 'use-for-applet', params: { applet: appletDropdown.value }})
       })
 
       const handledConnected = () => {
@@ -146,21 +148,21 @@
       // Handle the message inside the webview
       window.addEventListener('message', event => {
         const message = event.data; // The JSON data our extension sent
-        console.log(message)
-        switch (message.command) {
+        console.log('message', message)
+        switch (message.method) {
           case 'setSelected':
-            if (message.device) {
-              currentDevice = message.device
-              serialNumber.textContent = message.device.serialNumber
-              baudRate.value = message.device.baudRate
-              connected = message.device.connected || false
-              customName.value = message.device.name
-              baudRate.value = message.device.baudRate.toString()
-              productId.textContent = `Product ID: ${message.device.productId}`
-              vendorId.textContent = `Vendor ID: ${message.device.vendorId}`
-              manufacturer.textContent = `Manufacturer: ${message.device.manufacturer}`
-              breakButton.disabled = message.device.supportsBreak !== true
-              eofButton.disabled = message.device.eofType === 'none'
+            if (message.params.device) {
+              currentDevice = message.params.device
+              serialNumber.textContent = message.params.device.serialNumber
+              baudRate.value = message.params.device.baudRate
+              connected = message.params.device.connected || false
+              customName.value = message.params.device.name
+              baudRate.value = message.params.device.baudRate.toString()
+              productId.textContent = `Product ID: ${message.params.device.productId}`
+              vendorId.textContent = `Vendor ID: ${message.params.device.vendorId}`
+              manufacturer.textContent = `Manufacturer: ${message.params.device.manufacturer}`
+              breakButton.disabled = message.params.device.supportsBreak !== true
+              eofButton.disabled = message.params.device.eofType === 'none'
 
               handledConnected()
               document.querySelector('.device-selected').style.display = 'inline-block'
@@ -174,12 +176,12 @@
             break;
           case 'connected':
             // hide the connect button
-            connected = message.device.connected
+            connected = message.params.device.connected
             handledConnected()
             break;
           case 'disconnected':
             // hide the connect button
-            connected = message.device.connected
+            connected = message.params.device.connected
             handledConnected()
             break;
           case 'applets':
@@ -189,7 +191,7 @@
             option.value = 'none'
             appletDropdown.appendChild(option)
 
-            message.applets.forEach(applet => {
+            message.params.applets.forEach(applet => {
               const option = document.createElement('vscode-option')
               option.textContent = applet
               option.value = applet

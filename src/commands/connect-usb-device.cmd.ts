@@ -18,7 +18,7 @@ export async function ConnectUsbDeviceCommand (usbDevice: UsbDevice): Promise<nu
     await usbDevice.createTerminal(ExtensionContextStore.context)
     usbDevice.setIconPath()
     usbDevicesProvider.refresh()
-    ExtensionContextStore.emit('command', 'connectUsbDevice', usbDevice)
+    ExtensionContextStore.emit('connectUsbDevice', usbDevice)
     await usbDevice.ifc.sendBreak()
     ExtensionContextStore.inform('Connected')
     return await Promise.resolve(null)

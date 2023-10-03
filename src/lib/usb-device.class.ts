@@ -196,6 +196,7 @@ export class UsbDevice extends vscode.TreeItem {
     const timeout = async (ms: number): Promise<void> => {
       return await new Promise(resolve => setTimeout(resolve, ms))
     }
+
     let tempConnection = false
     if (!this.replCapable) {
       return await Promise.resolve([])
@@ -243,8 +244,9 @@ export class UsbDevice extends vscode.TreeItem {
         element.type = 'file'
       } else if (r[1] === '16384') {
         element.type = 'dir'
+      } else {
+        element.type = r[1]
       }
-      element.type = r[1]
 
       return element
     })
@@ -262,7 +264,6 @@ export class UsbDevice extends vscode.TreeItem {
     }
     try {
       const files: pythonLsStatElement[] = await this.readDirFromDevice(dir)
-
       const treeNodes: UsbDeviceFile[] = []
       files.forEach((file: pythonLsStatElement) => {
         const { path, type, size } = file
@@ -377,6 +378,14 @@ export class UsbDevice extends vscode.TreeItem {
     this.terminal = new ReplTerminal(context, {
       name: `${this.name} - ${this.serialNumber}`,
       iconPath: this.iconPath
+    })
+
+    this.terminal.onInput((data: string) => {
+      // send line to the serial port
+      if (this.connected) {
+        this.lastSentHex = Buffer.from(data).toString('hex')
+        this.ifc.write(data)
+      }
     })
   }
 

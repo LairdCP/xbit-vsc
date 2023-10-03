@@ -15,10 +15,21 @@ export async function DeleteDeviceFileCommand (usbDeviceFile: UsbDeviceFile): Pr
     ExtensionContextStore.provider?.treeCache.delete(key)
     ExtensionContextStore.provider?.refresh()
 
-    await ExtensionContextStore.memFs.delete(usbDeviceFile.uri)
+    // deleting a file that's never been opened will throw an error
+    try {
+      await ExtensionContextStore.memFs.delete(usbDeviceFile.uri)
+    } catch (error: unknown) {
+      if (error instanceof vscode.FileSystemError && error.code === 'FileNotFound') {
+        // ignore
+      } else {
+        throw error
+      }
+    }
+
     ExtensionContextStore.inform(`Deleted File: ${usbDeviceFile.name}`)
     return await Promise.resolve(null)
   } catch (error: unknown) {
+    console.error(error)
     ExtensionContextStore.error('Error Deleting File', error, true)
     return await Promise.reject(error)
   }

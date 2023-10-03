@@ -10,8 +10,8 @@ export function SetupTree (ExtensionContextStore: ExtensionContextStore): vscode
     treeDataProvider: ExtensionContextStore.provider,
     showCollapseAll: true
   }
-  const tree = vscode.window.createTreeView('xbitVsc', options)
   vscode.window.registerTreeDataProvider('xbitVsc', ExtensionContextStore.provider)
+  const tree = vscode.window.createTreeView('xbitVsc', options)
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   tree.onDidChangeSelection(async (e: vscode.TreeViewSelectionChangeEvent<any>) => {
@@ -32,15 +32,15 @@ export function SetupTree (ExtensionContextStore: ExtensionContextStore): vscode
   })
 
   tree.onDidCollapseElement(e => {
-    console.log('onDidCollapseElement', e) // breakpoint here for debug
+    // console.log('onDidCollapseElement', e) // breakpoint here for debug
   })
 
   tree.onDidChangeVisibility(e => {
-    console.log('onDidChangeVisibility', e) // breakpoint here for debug
+    // console.log('onDidChangeVisibility', e) // breakpoint here for debug
   })
 
   tree.onDidExpandElement(e => {
-    console.log('onDidExpandElement', e) // breakpoint here for debug
+    // console.log('onDidExpandElement', e) // breakpoint here for debug
   })
 
   // tree is a disposable object so we need to push it to subscriptions

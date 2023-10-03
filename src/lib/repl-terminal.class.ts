@@ -54,7 +54,7 @@ export class ReplTerminal {
     this.terminal.show()
   }
 
-  onInput (callback: () => void): void {
+  onInput (callback: (data: string) => void): void {
     this.inputCallback = callback
   }
 

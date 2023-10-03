@@ -126,13 +126,10 @@ export class UsbDeviceInterface extends EventEmitter {
   async sendEof (): Promise<void> {
     // if this is a dongle, disconnect and reconnect
     if (this.eofType === 'disconnect') {
-      console.log('eof')
       this.write('\x04')
       await sleep(1500)
-      console.log('disconnect')
       await this.disconnect()
       await sleep(1500)
-      console.log('reconnect')
       await this.connect()
     } else if (this.eofType === 'restart') {
       this.write('\x04')

@@ -18,7 +18,7 @@ export async function DisconnectUsbDeviceCommand (usbDevice: UsbDevice): Promise
     await usbDevice.destroyTerminal()
     usbDevice.setIconPath()
     usbDevicesProvider.refresh()
-    ExtensionContextStore.emit('command', 'disconnectUsbDevice', usbDevice)
+    ExtensionContextStore.emit('disconnectUsbDevice', usbDevice)
     ExtensionContextStore.inform('Disconnected')
     return await Promise.resolve(null)
   } catch (error: unknown) {

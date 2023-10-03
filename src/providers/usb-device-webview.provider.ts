@@ -44,7 +44,7 @@ export class UsbDeviceWebViewProvider implements vscode.WebviewViewProvider {
         }
       })
     } catch (error) {
-      console.log(error)
+      console.error(error)
     }
   }
 
@@ -93,6 +93,7 @@ export class UsbDeviceWebViewProvider implements vscode.WebviewViewProvider {
         console.log('error showing webview', error)
       }
     }
+
     if (usbDevice instanceof UsbDevice) {
       this._selectedDevice = usbDevice
 

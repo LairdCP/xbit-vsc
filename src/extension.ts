@@ -32,9 +32,11 @@ export function activate (context: vscode.ExtensionContext): void {
   ExtensionContextStore.on('connectUsbDevice', () => {
     if (usbDeviceWebViewProvider.webview !== undefined) {
       void usbDeviceWebViewProvider.webview.postMessage({
-        command: 'connected',
-        device: {
-          connected: true
+        method: 'connected',
+        params: {
+          device: {
+            connected: true
+          }
         }
       })
     }
@@ -45,9 +47,11 @@ export function activate (context: vscode.ExtensionContext): void {
   ExtensionContextStore.on('disconnectUsbDevice', () => {
     if (usbDeviceWebViewProvider.webview !== undefined) {
       void usbDeviceWebViewProvider.webview.postMessage({
-        command: 'disconnected',
-        device: {
-          connected: false
+        method: 'disconnected',
+        params: {
+          device: {
+            connected: false
+          }
         }
       })
     }
@@ -89,13 +93,13 @@ export function activate (context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(UsbDeviceWebViewProvider.viewType, usbDeviceWebViewProvider))
 
-  // vscode.workspace.onDidChangeTextDocument(() => {
-  //   // console.log('Changed.', e);
-  // })
+  vscode.workspace.onDidChangeTextDocument(() => {
+    // console.log('Changed.', e);
+  })
 
-  // vscode.workspace.onDidCloseTextDocument(() => {
-  //   // console.log('Closed.', e);
-  // })
+  vscode.workspace.onDidCloseTextDocument(() => {
+    // console.log('Closed.', e);
+  })
 
   vscode.workspace.onDidSaveTextDocument(async (textDocument: vscode.TextDocument) => {
     let usbDeviceFile: UsbDeviceFile | undefined

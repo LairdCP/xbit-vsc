@@ -71,7 +71,7 @@ export async function RunApplet (element: any): Promise<null | Error> {
     panel.webview.html = parsedHtml.join('\n')
     return await Promise.resolve(null)
   } catch (error) {
-    console.error('error', error)
+    // console.error('error', error)
     return await Promise.reject(error)
   }
 }
