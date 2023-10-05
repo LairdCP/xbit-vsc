@@ -15,6 +15,9 @@ export class UsbDeviceFile extends vscode.TreeItem {
   command: vscode.Command
   name: string
   parentDevice: UsbDevice
+  private writeFileToDeviceDebounce: NodeJS.Timeout | null = null
+  private writeFileToDeviceData: string | undefined
+  private writing = false
 
   // overrides
   public readonly contextValue: string
@@ -130,6 +133,26 @@ export class UsbDeviceFile extends vscode.TreeItem {
   }
 
   async writeFileToDevice (data: string): Promise<string> {
+    // if already have a debounce pending, just update the data
+    if (this.writeFileToDeviceDebounce !== null) {
+      this.writeFileToDeviceData = data
+      return await Promise.resolve('OK')
+    }
+
+    // if already writing, set the data and a debounce
+    if (this.writing) {
+      this.writeFileToDeviceData = data
+      this.writeFileToDeviceDebounce = setTimeout(() => {
+        this.writeFileToDeviceDebounce = null
+        if (this.writeFileToDeviceData !== undefined) {
+          void this.writeFileToDevice(this.writeFileToDeviceData)
+        }
+      }, 1000)
+      return await Promise.resolve('OK')
+    }
+
+    this.writing = true
+    this.writeFileToDeviceData = undefined
     let offset = 0
     const write = async (): Promise<Error | string> => {
       try {
@@ -148,13 +171,20 @@ export class UsbDeviceFile extends vscode.TreeItem {
         return await write()
       } else {
         this.size = data.length
+        this.writing = false
+        // if write data is pending, write it now
+        if (this.writeFileToDeviceData !== undefined) {
+          clearTimeout(this.writeFileToDeviceDebounce as NodeJS.Timeout)
+          this.writeFileToDeviceDebounce = null
+          void this.writeFileToDevice(this.writeFileToDeviceData)
+        }
         return await Promise.resolve('OK')
       }
     }
-
     await this.parentDevice.ifc.writeWait('import binascii\r', 1000)
     const result = await this.parentDevice.ifc.writeWait(`f = open('${this.devPath}', 'wb')\r`, 1000)
     if (!result.includes('>>>')) {
+      this.writing = false
       return await Promise.reject(result)
     } else {
       // start writing chunks

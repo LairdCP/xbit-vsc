@@ -27,6 +27,12 @@ export function activate (context: vscode.ExtensionContext): void {
   // initialize the extension context store with the extension context
   ExtensionContextStore.init(context)
 
+  // "files.autoSave": "afterDelay"
+  const workbenchConfig = vscode.workspace.getConfiguration('files')
+  if (workbenchConfig.get('autoSave') !== 'off') {
+    void vscode.window.showErrorMessage('Please disable auto save in the settings.json file when using this extension.')
+  }
+
   // listen for usb device connection events from the connect command
   // this is used to update the webview state
   ExtensionContextStore.on('connectUsbDevice', () => {
