@@ -197,9 +197,14 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
           }
 
           // check if the port is already known
+          let known: UsbDevice | undefined
           for (let idx = 0; idx < this.usbDeviceNodes.length; idx++) {
-            if (this.usbDeviceNodes[idx].uriString === uri.toString() && this.usbDeviceNodes[idx].type !== 'busy') {
-              return next()
+            if (this.usbDeviceNodes[idx].uriString === uri.toString()) {
+              known = this.usbDeviceNodes[idx]
+              // if the port is busy, we don't query it again
+              if (this.usbDeviceNodes[idx].type !== 'busy') {
+                return next()
+              }
             }
           }
 
@@ -244,7 +249,7 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
             }
             next()
           }).catch((error) => {
-            if (error.message.includes('Resource busy') === true) {
+            if (error.message.includes('Resource busy') === true && known === undefined) {
               const portItem = new UsbDevice(this.context, uri, vscode.TreeItemCollapsibleState.None, port, 'busy')
               this.usbDeviceNodes.push(portItem)
             }

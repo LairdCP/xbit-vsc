@@ -62,7 +62,7 @@ export class UsbDeviceWebViewProvider implements vscode.WebviewViewProvider {
         await this._selectedDevice?.ifc.sendBreak()
       } else if (message.method === 'eof') {
         await this._selectedDevice?.ifc.sendEof()
-      } else if (message.method === 'useForApplet' &&
+      } else if (message.method === 'use-for-applet' &&
         this._selectedDevice !== null && this._selectedDevice !== undefined) {
         if (message.params.applet !== 'none') {
           AppletsStore.link(String(message.params.applet), this._selectedDevice)
