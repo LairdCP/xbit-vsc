@@ -24,7 +24,7 @@ export class UsbDevice extends vscode.TreeItem {
   ifc: UsbDeviceInterface
   name = 'Unknown'
   serialNumber: string
-  terminal: ReplTerminal | null = null
+  terminal: ReplTerminal | null
   lastSentHex?: string
   targetType?: string
   enableApplet = false
@@ -53,6 +53,7 @@ export class UsbDevice extends vscode.TreeItem {
     this.baudRate = 115200
     this.name = this.options.name
     this.receivedLine = ''
+    this.terminal = null
 
     if (this.options.board_name !== 'Unknown') {
       this.name = this.options.board_name
@@ -371,7 +372,7 @@ export class UsbDevice extends vscode.TreeItem {
     let payload = ''
     let expectedResponse = ''
     if (message.method === 'write' && message.params.command !== undefined) {
-      payload = message.params.command
+      payload = typeof message.params.command === 'string' ? message.params.command : ''
       expectedResponse = '>>>'
     } else {
       return

@@ -277,6 +277,9 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
   }
 
   async getChildren (element?: UsbDevice): Promise<vscode.TreeItem[]> {
+    if (this.pyocdInterface.executable === undefined) {
+      return await Promise.resolve([])
+    }
     if (element !== undefined) {
       const key = element?.uri.path ?? 'root'
       const result = this.treeCache.get(key)
