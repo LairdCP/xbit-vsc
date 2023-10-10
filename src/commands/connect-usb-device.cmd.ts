@@ -2,6 +2,10 @@ import { UsbDevice } from '../lib/usb-device.class'
 import ExtensionContextStore from '../stores/extension-context.store'
 
 export async function ConnectUsbDeviceCommand (usbDevice: UsbDevice): Promise<null | Error> {
+  if (usbDevice === undefined) {
+    return await Promise.reject(new Error('usbDevice is undefined'))
+  }
+
   if (ExtensionContextStore.provider === undefined || ExtensionContextStore.context === undefined) {
     return await Promise.reject(new Error('ExtensionContextStore is not yet inited'))
   }
