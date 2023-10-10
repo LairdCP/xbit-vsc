@@ -6,6 +6,7 @@ import { UsbDeviceInterface } from './usb-device-interface.class'
 import { ProbeInfo } from './hardware-probe-info.class'
 import { ReplTerminal } from './repl-terminal.class'
 import { InFlightCommand, DeviceCommand, DeviceCommandResponse, TreeItemIconPath, DeviceConfigurations, pythonLsStatElement } from './util.ifc'
+import ExtensionContextStore from '../stores/extension-context.store'
 
 // read in the device map
 import { DeviceMap } from './device-map'
@@ -125,6 +126,28 @@ export class UsbDevice extends vscode.TreeItem {
           cb(response)
         })
         this.receivedLine = ''
+      }
+    })
+
+    this.ifc.on('close', (error) => {
+      if (error !== null && error.disconnected === true) {
+        ExtensionContextStore.inform('Serial Port Closed By Device')
+        try {
+          void vscode.commands.executeCommand('xbitVsc.disconnectUsbDevice', this)
+        } catch (error) {
+          // error should already be handled by the command
+        }
+      }
+    })
+
+    vscode.window.onDidCloseTerminal(async (t) => {
+      if (t.name === this.terminal?.name) {
+        ExtensionContextStore.inform('Terminal Closed By User, Disconnecting')
+        try {
+          await vscode.commands.executeCommand('xbitVsc.disconnectUsbDevice', this)
+        } catch (error) {
+          // error should already be handled by the command
+        }
       }
     })
 
