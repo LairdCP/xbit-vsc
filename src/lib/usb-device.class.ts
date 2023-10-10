@@ -216,19 +216,21 @@ export class UsbDevice extends vscode.TreeItem {
   // Parse the result and populate an array
   // return the array in the promise
   async readDirFromDevice (dirPath: string): Promise<pythonLsStatElement[]> {
+    if (!this.replCapable) {
+      return await Promise.resolve([])
+    }
+
     const timeout = async (ms: number): Promise<void> => {
       return await new Promise(resolve => setTimeout(resolve, ms))
     }
 
     let tempConnection = false
-    if (!this.replCapable) {
-      return await Promise.resolve([])
-    }
     if (!this.connected) {
       tempConnection = true
       await this.connect()
       await this.ifc.sendBreak()
     }
+
     if (!(/\/$/.test(dirPath))) {
       dirPath = `${dirPath}/`
     }

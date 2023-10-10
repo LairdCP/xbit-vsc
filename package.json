@@ -150,12 +150,12 @@
         },
         {
           "command": "xbitVsc.refreshDeviceFiles",
-          "when": "viewItem == usbDevice || viewItem == usbDeviceDvkProbe",
+          "when": "viewItem == usbDevice || viewItem == usbDeviceConnected || viewItem == usbDeviceDvkProbe || viewItem == usbDeviceConnectedDvkProbe",
           "group": "navigation@2"
         },
         {
           "command": "xbitVsc.writeHexFile",
-          "when": "viewItem == usbDeviceDvkProbe || viewItem == usbDeviceConnectedDvkProbe",
+          "when": "viewItem == usbDevice || viewItem == usbDeviceConnected || viewItem == usbDeviceDvkProbe || viewItem == usbDeviceConnectedDvkProbe",
           "group": "commands"
         },
         {

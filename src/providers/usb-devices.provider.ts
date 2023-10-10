@@ -147,36 +147,39 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
     }
   }
 
+  async getPorts (): Promise<{ ports: ProbeInfo[], deviceIds: Set<string> }> {
+    // Pyocd.exec(['--list']).then((result) => {
+    const ports: ProbeInfo[] = []
+    const deviceIds: Set<string> = new Set()
+    const pyOcdResult = await this.pyocdInterface.listDevices()
+    pyOcdResult.forEach((p: DvkProbeInterfaces) => {
+      p.ports.forEach((port: DvkProbeInterface, idx: number) => {
+        port.board_name = p.board_name
+        const portInfo = new ProbeInfo(port)
+        portInfo.idx = idx
+        deviceIds.add(portInfo.path)
+        deviceIds.add(portInfo.path.replace('/dev/cu.', '/dev/tty.'))
+        ports.push(portInfo)
+      })
+    })
+    const serialPortResult = await SerialPort.list()
+    serialPortResult.forEach((port: PortInfo) => {
+      const portInfo = new ProbeInfo(port)
+      // if this is a port that the probe didn't find
+      if (!deviceIds.has(portInfo.path)) {
+        deviceIds.add(portInfo.path)
+        ports.push(portInfo)
+      }
+    })
+    return { ports, deviceIds }
+  }
+
   // list the connected parent nodes (USB Devices)
   // returns a promise
   // ----------------------------
   async _getUsbDevices (): Promise<UsbDevice[]> {
     return await new Promise((resolve, reject) => {
-      // Pyocd.exec(['--list']).then((result) => {
-      const ports: ProbeInfo[] = []
-      const deviceIds: Set<string> = new Set()
-      this.pyocdInterface.listDevices().then(async (result: DvkProbeInterfaces[]) => {
-        result.forEach((p: DvkProbeInterfaces) => {
-          p.ports.forEach((port: DvkProbeInterface, idx: number) => {
-            port.board_name = p.board_name
-            const portInfo = new ProbeInfo(port)
-            portInfo.idx = idx
-            deviceIds.add(portInfo.path)
-            deviceIds.add(portInfo.path.replace('/dev/cu.', '/dev/tty.'))
-            ports.push(portInfo)
-          })
-        })
-        return await SerialPort.list()
-      }).then((result: PortInfo[]) => {
-        result.forEach((port: PortInfo) => {
-          const portInfo = new ProbeInfo(port)
-          // if this is a port that the probe didn't find
-          if (!deviceIds.has(portInfo.path)) {
-            deviceIds.add(portInfo.path)
-            ports.push(portInfo)
-          }
-        })
-
+      this.getPorts().then(({ ports = [], deviceIds = new Set() }) => {
         // for each port, check if it's already known.
         // if not, connect and detect if repl capable
         async.eachSeries(ports, (port, next) => {
