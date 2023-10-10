@@ -8,8 +8,9 @@ import { UsbDeviceWebViewProvider } from './providers/usb-device-webview.provide
 
 import {
   RunApplet,
-  RefreshEntryCommand,
+  RefreshDevicesCommand,
   RefreshFileCommand,
+  RefreshDeviceFilesCommand,
   CreateDeviceFileCommand,
   DeleteDeviceFileCommand,
   RenameDeviceFileCommand,
@@ -81,8 +82,9 @@ export function activate (context: vscode.ExtensionContext): void {
 
   // Register command handlers for the extension
   //
-  context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.refreshEntry', RefreshEntryCommand))
+  context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.refreshDevices', RefreshDevicesCommand))
   context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.refreshFile', RefreshFileCommand))
+  context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.refreshDeviceFiles', RefreshDeviceFilesCommand))
   context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.createDeviceFile', CreateDeviceFileCommand))
   context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.deleteDeviceFile', DeleteDeviceFileCommand))
   context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.renameDeviceFile', RenameDeviceFileCommand))

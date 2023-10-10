@@ -201,7 +201,7 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
           for (let idx = 0; idx < this.usbDeviceNodes.length; idx++) {
             if (this.usbDeviceNodes[idx].uriString === uri.toString()) {
               known = this.usbDeviceNodes[idx]
-              // if the port is busy, we don't query it again
+              // if the port is known and not a "busy" port, we don't query it again
               if (this.usbDeviceNodes[idx].type !== 'busy') {
                 return next()
               }

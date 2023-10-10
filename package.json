@@ -2,7 +2,7 @@
   "name": "xbit-vsc",
   "displayName": "xbit vsc tool",
   "description": "",
-  "version": "0.0.6",
+  "version": "0.0.8",
   "repository": {
     "type": "git",
     "url": "https://github.com/RFPros-Canvas/xbit-vsc"
@@ -63,7 +63,7 @@
     },
     "commands": [
       {
-        "command": "xbitVsc.refreshEntry",
+        "command": "xbitVsc.refreshDevices",
         "title": "Refresh",
         "icon": "$(refresh)"
       },
@@ -89,6 +89,10 @@
       {
         "command": "xbitVsc.refreshFile",
         "title": "Refresh"
+      },
+      {
+        "command": "xbitVsc.refreshDeviceFiles",
+        "title": "Refresh Files"
       },
       {
         "command": "xbitVsc.writeHexFile",
@@ -122,7 +126,7 @@
     "menus": {
       "view/title": [
         {
-          "command": "xbitVsc.refreshEntry",
+          "command": "xbitVsc.refreshDevices",
           "when": "view == xbitVsc",
           "group": "navigation"
         }
@@ -143,6 +147,11 @@
           "command": "xbitVsc.disconnectUsbDevice",
           "when": "viewItem == usbDeviceConnected || viewItem == usbDeviceConnectedDvkProbe",
           "group": "navigation@1"
+        },
+        {
+          "command": "xbitVsc.refreshDeviceFiles",
+          "when": "viewItem == usbDevice || viewItem == usbDeviceDvkProbe",
+          "group": "navigation@2"
         },
         {
           "command": "xbitVsc.writeHexFile",
