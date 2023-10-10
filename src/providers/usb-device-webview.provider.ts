@@ -5,6 +5,7 @@ import * as fs from 'fs'
 import { UsbDevice } from '../lib/usb-device.class'
 import AppletsStore from '../stores/applets.store'
 import { DeviceCommand } from '../lib/util.ifc'
+import { UsbDeviceFile } from '../lib/usb-device-file.class'
 
 export class UsbDeviceWebViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType: string = 'xbitVsc.optionsView'
@@ -85,13 +86,17 @@ export class UsbDeviceWebViewProvider implements vscode.WebviewViewProvider {
     })
   }
 
-  async onSelected (usbDevice: UsbDevice): Promise<void> {
+  async onSelected (usbDevice: UsbDevice | UsbDeviceFile): Promise<void> {
     if (this._view !== null) {
       try {
         this._view.show()
       } catch (error) {
         console.log('error showing webview', error)
       }
+    }
+
+    if (usbDevice instanceof UsbDeviceFile) {
+      usbDevice = usbDevice.parentDevice
     }
 
     if (usbDevice instanceof UsbDevice) {
@@ -123,7 +128,8 @@ export class UsbDeviceWebViewProvider implements vscode.WebviewViewProvider {
         }
       })
     } else {
-      // file selected
+      // deselect
+      await this.onDeselected()
     }
   }
 }
