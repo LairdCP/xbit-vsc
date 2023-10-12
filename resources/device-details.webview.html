@@ -37,7 +37,7 @@
   </head>
   <body>
     <div class="device-selected" style="display: none">
-      <p><span id="serial-number"></span></p>
+      <p>ID: <span id="serial-number"></span></p>
       <section class="details-section">
         <vscode-button appearance="primary" id="connect-button">Connect</vscode-button>
         <vscode-button appearance="primary" id="disconnect-button">Disconnect</vscode-button>
@@ -47,7 +47,7 @@
         <h3>Tools</h3>
         <section class="details-section">
           <vscode-button appearance="secondary" id="break-button">Break</vscode-button>
-          <vscode-button appearance="secondary" id="eof-button">EOF</vscode-button>
+          <vscode-button appearance="secondary" id="eof-button" title="Send EOF to Reset">Reset</vscode-button>
         </section>
         <section class="details-section">
           <div class="dropdown-container">
@@ -69,6 +69,10 @@
             <vscode-option>38400</vscode-option>
             <vscode-option>57600</vscode-option>
             <vscode-option>115200</vscode-option>
+            <vscode-option>230400</vscode-option>
+            <vscode-option>460800</vscode-option>
+            <vscode-option>576000</vscode-option>
+            <vscode-option>921600</vscode-option>
           </vscode-dropdown>
         </div>
       </section>
@@ -98,6 +102,8 @@
       const manufacturer = document.getElementById('manufacturer')
       const breakButton = document.getElementById('break-button')
       const eofButton = document.getElementById('eof-button')
+
+      baudRate.value = 115200
 
       const vscode = acquireVsCodeApi()
       let currentDevice = null
@@ -154,7 +160,6 @@
             if (message.params.device) {
               currentDevice = message.params.device
               serialNumber.textContent = message.params.device.serialNumber
-              baudRate.value = message.params.device.baudRate
               connected = message.params.device.connected || false
               customName.value = message.params.device.name
               baudRate.value = message.params.device.baudRate.toString()
