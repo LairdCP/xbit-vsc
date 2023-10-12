@@ -43,6 +43,7 @@ export async function OpenDeviceFileCommand (usbDeviceFile: UsbDeviceFile): Prom
   // open file
   try {
     ExtensionContextStore.inform(`Reading File ${usbDeviceFile.name}`)
+    ExtensionContextStore.mute()
     const result: string = await usbDeviceFile.readFileFromDevice()
     const fileData = Buffer.from(result, 'ascii')
 
@@ -53,5 +54,8 @@ export async function OpenDeviceFileCommand (usbDeviceFile: UsbDeviceFile): Prom
   } catch (error: unknown) {
     ExtensionContextStore.error('Error Opening File', error, true)
     return await Promise.reject(error)
+  } finally {
+    console.log('unmute')
+    ExtensionContextStore.unmute()
   }
 }

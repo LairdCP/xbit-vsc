@@ -96,12 +96,9 @@ export class UsbDevice extends vscode.TreeItem {
 
     // when disconnected, the listener is not removed
     // 5. from device, data = '>>>'
-
     // TODO consume serialData event
     this.ifc.on('data', (data: Buffer) => {
-      if (this.terminal !== null) {
-        this._handleTerminalData(data)
-      }
+      this._handleTerminalData(data)
 
       // if panel webview attached,
       // post the data there
@@ -351,6 +348,10 @@ export class UsbDevice extends vscode.TreeItem {
   }
 
   private _handleTerminalData (data: Buffer): void {
+    if (ExtensionContextStore.muted && !ExtensionContextStore.showRepl) {
+      return
+    }
+
     if (this.terminal !== null) {
       const hex = data.toString('hex')
       if (/^7f20/.test(hex)) {

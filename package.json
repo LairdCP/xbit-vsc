@@ -35,6 +35,11 @@
           "type": "object",
           "description": "Specifies the device configuration objects"
         },
+        "xbit-vsc.show-repl": {
+          "type": "boolean",
+          "default": false,
+          "description": "Specifies whether to show the REPL traffic for extension operations."
+        },
         "xbit-vsc.show-zephyr": {
           "type": "boolean",
           "default": false,

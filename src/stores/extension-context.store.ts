@@ -10,9 +10,13 @@ export class ExtensionContextStore extends EventEmitter {
   provider: UsbDevicesProvider | undefined
   pyocdInterface: PyocdInterface | undefined
   outputChannel: vscode.OutputChannel
+  tree: vscode.TreeView<unknown> | undefined
   memFs = new MemFS()
 
   showZephyr = false
+  showRepl = false
+  muted = false
+
   constructor () {
     super()
     this.memFs.createDirectory(vscode.Uri.parse('memfs:/serial/'))
@@ -21,11 +25,13 @@ export class ExtensionContextStore extends EventEmitter {
     // initialize the config values
     const config = vscode.workspace.getConfiguration('xbit-vsc')
     this.showZephyr = config.get('show-zephyr', false)
+    this.showRepl = config.get('show-repl', false)
 
     vscode.workspace.onDidChangeConfiguration(() => {
       const config = vscode.workspace.getConfiguration('xbit-vsc')
       const showZephyrWas = this.showZephyr
       this.showZephyr = config.get('show-zephyr', false)
+      this.showRepl = config.get('show-repl', false)
       if (showZephyrWas !== this.showZephyr) {
         this.provider?.refresh()
       }
@@ -60,6 +66,14 @@ export class ExtensionContextStore extends EventEmitter {
       this.outputChannel.appendLine(message)
       if (window) void vscode.window.showErrorMessage(message)
     }
+  }
+
+  mute (): void {
+    this.muted = true
+  }
+
+  unmute (): void {
+    this.muted = false
   }
 }
 

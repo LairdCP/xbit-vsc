@@ -136,12 +136,16 @@ export function activate (context: vscode.ExtensionContext): void {
         }
       }
 
+      // set the silent flag to true to hide REPL output if not enablee in settings
       const dataToWrite = textDocument.getText()
       try {
+        ExtensionContextStore.mute()
         await usbDeviceFile.writeFileToDevice(dataToWrite)
         ExtensionContextStore.outputChannel.appendLine('Saved\n')
       } catch (error) {
         ExtensionContextStore.outputChannel.appendLine('Error saving\n')
+      } finally {
+        ExtensionContextStore.unmute()
       }
     }
   })

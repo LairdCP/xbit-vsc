@@ -47,6 +47,7 @@ export class UsbDeviceInterface extends EventEmitter {
           if (error !== null) {
             reject(error)
           } else {
+            void this.sendBreak()
             resolve()
           }
         })

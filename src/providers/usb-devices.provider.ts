@@ -293,11 +293,14 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
         if (!element.connected) {
           await vscode.commands.executeCommand('xbitVsc.connectUsbDevice', element)
         }
+        ExtensionContextStore.mute()
         const result = await element.getUsbDeviceFolder()
         this.treeCache.set(key, result)
         return await Promise.resolve(result)
       } catch (error) {
         return await Promise.reject(error)
+      } finally {
+        ExtensionContextStore.unmute()
       }
     } else {
       // pyocd query

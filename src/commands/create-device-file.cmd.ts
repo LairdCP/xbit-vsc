@@ -16,6 +16,7 @@ export async function CreateDeviceFileCommand (usbDevice: UsbDevice): Promise<nu
   if (fileName !== undefined) {
     const key = usbDevice.parentDevice.uri.path
     try {
+      ExtensionContextStore.mute()
       await usbDevice.createFile(fileName)
       ExtensionContextStore.provider?.treeCache.delete(key)
       ExtensionContextStore.provider?.refresh()
@@ -24,6 +25,8 @@ export async function CreateDeviceFileCommand (usbDevice: UsbDevice): Promise<nu
     } catch (error: unknown) {
       ExtensionContextStore.error('Error Creating File', error, true)
       return await Promise.reject(error)
+    } finally {
+      ExtensionContextStore.unmute()
     }
   }
   // cancelled?
