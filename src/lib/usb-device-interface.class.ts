@@ -20,8 +20,9 @@ export class UsbDeviceInterface extends EventEmitter {
 
   constructor (options: Options) {
     super()
+    console.log(options)
     this.path = options.path
-    this.baudRate = isNaN(options.baudRate) ? options.baudRate : 115200
+    this.baudRate = isNaN(options.baudRate) ? 115200 : options.baudRate
     this.serialPort = null
     this.resultBuffer = ''
     this.eofType = options.eofType

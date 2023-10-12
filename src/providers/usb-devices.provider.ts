@@ -57,18 +57,7 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
   // params:
   // port is the UsbDeviceClass Instance
   // ----------------------------
-  async connectAndExecute (port: ProbeInfo | UsbDevice, command: string): Promise<string> {
-    // if already connected to the port, disconnect first
-    if (port instanceof UsbDevice) {
-      if (port.ifc.connected) {
-        try {
-          await port.disconnect()
-        } catch (error: unknown) {
-          console.error('error disconnecting', error)
-        }
-      }
-    }
-
+  async connectAndExecute (port: ProbeInfo, command: string): Promise<string> {
     return await new Promise((resolve, reject) => {
       let timedOut = false
       const portTimeout = setTimeout(() => {
@@ -141,7 +130,8 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
         collapsibleState: element.collapsibleState,
         command: element.command,
         contextValue,
-        iconPath: element.iconPath
+        iconPath: element.iconPath,
+        id: element.id
       }
     } else {
       return element
@@ -287,7 +277,10 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
   }
 
   async getChildren (element?: UsbDevice): Promise<vscode.TreeItem[]> {
-    if (this.pyocdInterface.executable === undefined) {
+    // if (element !== undefined && !element.connected) {
+    //   return await Promise.resolve([])
+    // }
+    if (this.pyocdInterface.executable === null) {
       return await Promise.resolve([])
     }
     if (element !== undefined) {
@@ -297,6 +290,9 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
         return await Promise.resolve(result)
       }
       try {
+        if (!element.connected) {
+          await vscode.commands.executeCommand('xbitVsc.connectUsbDevice', element)
+        }
         const result = await element.getUsbDeviceFolder()
         this.treeCache.set(key, result)
         return await Promise.resolve(result)
@@ -307,5 +303,10 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
       // pyocd query
       return await this._getUsbDevices()
     }
+  }
+
+  async getParent (element: vscode.TreeItem): Promise<vscode.TreeItem> {
+    const usbDevice = element as UsbDevice
+    return await Promise.resolve(usbDevice.parentDevice)
   }
 }

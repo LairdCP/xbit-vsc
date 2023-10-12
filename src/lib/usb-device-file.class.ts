@@ -181,6 +181,7 @@ export class UsbDeviceFile extends vscode.TreeItem {
         return await Promise.resolve('OK')
       }
     }
+
     await this.parentDevice.ifc.writeWait('import binascii\r', 1000)
     const result = await this.parentDevice.ifc.writeWait(`f = open('${this.devPath}', 'wb')\r`, 1000)
     if (!result.includes('>>>')) {

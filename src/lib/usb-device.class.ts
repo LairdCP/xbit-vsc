@@ -18,7 +18,7 @@ export class UsbDevice extends vscode.TreeItem {
   context: vscode.ExtensionContext
   uri: vscode.Uri
   options: ProbeInfo
-  baudRate: number
+  _baudRate: number
   command: vscode.Command | undefined
   type: string
   ifc: UsbDeviceInterface
@@ -33,6 +33,7 @@ export class UsbDevice extends vscode.TreeItem {
   // overrides
   private readonly _dataHandlers: Map<string, (msg: DeviceCommandResponse) => void> = new Map()
   iconPath?: TreeItemIconPath | undefined
+  // id: string
 
   constructor (
     context: vscode.ExtensionContext,
@@ -42,15 +43,17 @@ export class UsbDevice extends vscode.TreeItem {
     type: string,
     command?: vscode.Command
   ) {
-    super(options.name, collapsibleState)
+    const ts = Date.now().toString()
+    super(ts, collapsibleState)
     this.context = context
+    this.id = ts
     this.uri = uri
     this.options = options
+    this._baudRate = 115200
     // this.tooltip = this.label
     this.type = type
     this.command = command // default vs code command when clicking on item
     this.serialNumber = this.options.serialNumber
-    this.baudRate = 115200
     this.name = this.options.name
     this.receivedLine = ''
     this.terminal = null
@@ -69,7 +72,7 @@ export class UsbDevice extends vscode.TreeItem {
     if (deviceConfigurations !== undefined) {
       if (deviceConfigurations[key] !== undefined) {
         if (deviceConfigurations[key]?.baudRate !== undefined) {
-          this.baudRate = deviceConfigurations[key].baudRate
+          this._baudRate = deviceConfigurations[key].baudRate
         }
         this.name = deviceConfigurations[key]?.name === '' ? this.name : deviceConfigurations[key]?.name
       }
@@ -134,9 +137,12 @@ export class UsbDevice extends vscode.TreeItem {
       if (error !== null && error.disconnected === true) {
         ExtensionContextStore.inform('Serial Port Closed By Device')
         try {
+          const key = this.uri.path
+          ExtensionContextStore.provider?.treeCache.delete(key)
           void vscode.commands.executeCommand('xbitVsc.disconnectUsbDevice', this)
         } catch (error) {
           // error should already be handled by the command
+          console.log('silent', error)
         }
       }
     })
@@ -153,6 +159,22 @@ export class UsbDevice extends vscode.TreeItem {
     })
 
     this.setIconPath()
+  }
+
+  set baudRate (baudRate: number | string) {
+    if (typeof baudRate === 'string') {
+      this._baudRate = parseInt(baudRate, 10)
+      this.ifc.baudRate = parseInt(baudRate, 10)
+    } else {
+      this._baudRate = baudRate
+    }
+    if (this.ifc !== undefined) {
+      this.ifc.baudRate = this._baudRate
+    }
+  }
+
+  get baudRate (): number {
+    return this._baudRate
   }
 
   get uriString (): string {
@@ -220,16 +242,8 @@ export class UsbDevice extends vscode.TreeItem {
     if (!this.replCapable) {
       return await Promise.resolve([])
     }
-
     const timeout = async (ms: number): Promise<void> => {
       return await new Promise(resolve => setTimeout(resolve, ms))
-    }
-
-    let tempConnection = false
-    if (!this.connected) {
-      tempConnection = true
-      await this.connect()
-      await this.ifc.sendBreak()
     }
 
     if (!(/\/$/.test(dirPath))) {
@@ -276,10 +290,6 @@ export class UsbDevice extends vscode.TreeItem {
 
       return element
     })
-
-    if (tempConnection) {
-      await this.disconnect()
-    }
     return await Promise.resolve(fileResult)
   }
 

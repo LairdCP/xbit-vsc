@@ -132,6 +132,7 @@
       })
 
       eofButton.addEventListener('click', () => {
+        vscode.postMessage({ method: 'break' })
         vscode.postMessage({ method: 'eof' })
       })
 
