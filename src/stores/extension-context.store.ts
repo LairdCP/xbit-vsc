@@ -12,10 +12,24 @@ export class ExtensionContextStore extends EventEmitter {
   outputChannel: vscode.OutputChannel
   memFs = new MemFS()
 
+  showZephyr = false
   constructor () {
     super()
     this.memFs.createDirectory(vscode.Uri.parse('memfs:/serial/'))
     this.outputChannel = vscode.window.createOutputChannel('xbitVsc')
+
+    // initialize the config values
+    const config = vscode.workspace.getConfiguration('xbit-vsc')
+    this.showZephyr = config.get('show-zephyr', false)
+
+    vscode.workspace.onDidChangeConfiguration(() => {
+      const config = vscode.workspace.getConfiguration('xbit-vsc')
+      const showZephyrWas = this.showZephyr
+      this.showZephyr = config.get('show-zephyr', false)
+      if (showZephyrWas !== this.showZephyr) {
+        this.provider?.refresh()
+      }
+    })
   }
 
   init (

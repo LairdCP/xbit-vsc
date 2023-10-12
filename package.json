@@ -18,7 +18,7 @@
   "main": "./out/extension.js",
   "contributes": {
     "configuration": {
-      "title": "xbit configuration",
+      "title": "Xbit",
       "type": "object",
       "properties": {
         "xbit-vsc.python-venv": {
@@ -34,6 +34,11 @@
         "xbit-vsc.device-configurations": {
           "type": "object",
           "description": "Specifies the device configuration objects"
+        },
+        "xbit-vsc.show-zephyr": {
+          "type": "boolean",
+          "default": false,
+          "description": "Specifies whether to show zephyr consoles detect via a serial port scan."
         }
       }
     },

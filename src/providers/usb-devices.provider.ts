@@ -9,6 +9,7 @@ import { SerialPort } from 'serialport'
 // import { UsbDeviceFolder } from '../lib/usb-device-folder.class'
 import { UsbDeviceFile } from '../lib/usb-device-file.class'
 import { PyocdInterface } from '../lib/pyocd'
+import ExtensionContextStore from '../stores/extension-context.store'
 
 export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
   context: vscode.ExtensionContext
@@ -268,7 +269,16 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
             return deviceIds.has(item.options.path)
           })
 
-          resolve(this.usbDeviceNodes)
+          // remove zephyr devices if not enabled
+          const returnNodes = this.usbDeviceNodes.filter((item): boolean => {
+            // rewrite this if else to be shorter
+            if (item.type === 'uart') {
+              return ExtensionContextStore.showZephyr
+            } else {
+              return true
+            }
+          })
+          resolve(returnNodes)
         })
       }).catch((error: unknown) => {
         reject(error)
