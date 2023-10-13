@@ -23,7 +23,6 @@ export async function ConnectUsbDeviceCommand (usbDevice: UsbDevice): Promise<nu
     usbDevice.setIconPath()
     usbDevicesProvider.refresh()
     ExtensionContextStore.emit('connectUsbDevice', usbDevice)
-    await usbDevice.ifc.sendBreak()
     ExtensionContextStore.inform('Connected')
     return await Promise.resolve(null)
   } catch (error: unknown) {

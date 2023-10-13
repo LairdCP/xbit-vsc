@@ -9,10 +9,17 @@ export async function RefreshDeviceFilesCommand (usbDevice: UsbDevice): Promise<
     // warn the user that the file will be closed?
     // mark the file as dirty?
 
-    ExtensionContextStore.provider?.treeCache.delete(key)
-    // trigger a refresh of the tree view
-    ExtensionContextStore.provider?.refresh()
-
+    if (ExtensionContextStore.provider !== undefined) {
+      const files = ExtensionContextStore.provider?.treeCache.get(key)?.map((file) => {
+        return { path: file.uri.path, size: file.size }
+      })
+      if (files !== undefined) {
+        ExtensionContextStore.provider.staleTreeCache.set(key, files)
+      }
+      ExtensionContextStore.provider.treeCache.delete(key)
+      // trigger a refresh of the tree view
+      ExtensionContextStore.provider.refresh()
+    }
     return await Promise.resolve(null)
   } else {
     return await Promise.reject(new Error('ExtensionContextStore.provider is undefined'))

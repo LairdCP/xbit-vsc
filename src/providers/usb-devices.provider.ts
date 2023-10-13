@@ -296,6 +296,25 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
         ExtensionContextStore.mute()
         const result = await element.getUsbDeviceFolder()
         this.treeCache.set(key, result)
+
+        // if this.staleTreeCache has a key for this device, compare the files
+        // if the file size is different, mark the file as dirty
+        const staleFiles = this.staleTreeCache.get(key)
+        if (staleFiles !== undefined) {
+          for (const file of result) {
+            const staleFile = staleFiles.find((f) => {
+              return f.path === file.uri.path
+            })
+            if (staleFile !== undefined && staleFile.size !== file.size) {
+              // delete from memfs
+              await vscode.workspace.fs.delete(file.uri)
+            } else if (staleFile === undefined) {
+              // delete from memfs
+              await vscode.workspace.fs.delete(file.uri)
+            }
+          }
+        }
+
         return await Promise.resolve(result)
       } catch (error) {
         return await Promise.reject(error)
