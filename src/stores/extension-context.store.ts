@@ -73,7 +73,11 @@ export class ExtensionContextStore extends EventEmitter {
   }
 
   unmute (): void {
-    this.muted = false
+    // the readble stream from for the tserial interface
+    // can be slow sometimes so wait a tick or two before unmuting
+    setTimeout(() => {
+      this.muted = false
+    }, 500)
   }
 }
 
