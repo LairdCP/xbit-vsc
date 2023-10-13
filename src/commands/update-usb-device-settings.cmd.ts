@@ -11,7 +11,7 @@ export async function UpdateUsbDeviceSettingsCommand (usbDevice: UsbDevice, mess
     if (deviceConfigurations === undefined) {
       deviceConfigurations = {}
     }
-    const key = `${usbDevice.serialNumber}.${String(usbDevice.label)}`
+    const key = `${usbDevice.serialNumber}.${String(usbDevice.options.idx)}`
 
     let baudRate = usbDevice.baudRate
     if ('baudRate' in message.params) {

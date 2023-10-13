@@ -69,7 +69,7 @@ export class UsbDevice extends vscode.TreeItem {
     // Set any custom configuration for this device
     const config = vscode.workspace.getConfiguration('xbit-vsc')
     const deviceConfigurations: DeviceConfigurations | undefined = config.get('device-configurations')
-    const key = `${this.serialNumber}.${String(this.label)}`
+    const key = `${this.serialNumber}.${String(this.options.idx)}`
 
     if (deviceConfigurations !== undefined) {
       if (deviceConfigurations[key] !== undefined) {
