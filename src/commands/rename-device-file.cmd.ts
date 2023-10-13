@@ -26,18 +26,28 @@ export async function RenameDeviceFileCommand (usbDeviceFile: UsbDeviceFile): Pr
       // rename in MemFS cache
       const newPath = path.dirname(usbDeviceFile.uri.path) + '/' + newFileName
       const newUri = usbDeviceFile.uri.with({ path: vscode.Uri.parse(newPath).path })
-      ExtensionContextStore.memFs.rename(usbDeviceFile.uri, newUri, { overwrite: true })
-
+      try {
+        ExtensionContextStore.memFs.rename(usbDeviceFile.uri, newUri, { overwrite: true })
+      } catch (ex) {
+        // can't rename file as it's not been loaded
+        // OK
+      }
       ExtensionContextStore.provider.treeCache.delete(key)
       ExtensionContextStore.provider.refresh()
 
       // close and reopend the renamed file
-      await vscode.window.showTextDocument(usbDeviceFile.uri)
-      await vscode.commands.executeCommand('workbench.action.closeActiveEditor')
-      await vscode.window.showTextDocument(newUri)
+      try {
+        await vscode.window.showTextDocument(usbDeviceFile.uri)
+        await vscode.commands.executeCommand('workbench.action.closeActiveEditor')
+        await vscode.window.showTextDocument(newUri)
+      } catch (ex) {
+        // can't open file as it's not been loaded
+        // OK
+      }
       ExtensionContextStore.inform(`Renamed File ${usbDeviceFile.label} to ${newFileName}\n`)
       return await Promise.resolve(null)
     } catch (error: unknown) {
+      console.log(error)
       ExtensionContextStore.error('Error Renaming File', error, true)
       return await Promise.reject(error)
     }

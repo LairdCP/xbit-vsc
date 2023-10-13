@@ -348,12 +348,15 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
             const staleFile = staleFiles.find((f) => {
               return f.path === file.uri.path
             })
-            if (staleFile !== undefined && staleFile.size !== file.size) {
+            if (staleFile === undefined ||
+              (staleFile !== undefined && staleFile.size !== file.size)) {
               // delete from memfs
-              await vscode.workspace.fs.delete(file.uri)
-            } else if (staleFile === undefined) {
-              // delete from memfs
-              await vscode.workspace.fs.delete(file.uri)
+              try {
+                await vscode.workspace.fs.delete(file.uri)
+              } catch (ex) {
+                // can't delete file as it's not been loaded
+                // OK
+              }
             }
           }
         }
