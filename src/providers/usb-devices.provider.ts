@@ -11,13 +11,17 @@ import { UsbDeviceFile } from '../lib/usb-device-file.class'
 import { PyocdInterface } from '../lib/pyocd'
 import ExtensionContextStore from '../stores/extension-context.store'
 
-export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
+export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeItem>, vscode.TreeDragAndDropController<vscode.TreeItem> {
+  dragMimeTypes: readonly string[] = ['text/plain', 'text/x-python', 'application/x-python-code', 'text/uri-list']
+  dropMimeTypes: readonly string[] = ['application/vnd.code.tree.xbitVsc', 'text/plain', 'text/x-python', 'application/x-python-code', 'text/uri-list']
+
   context: vscode.ExtensionContext
   _onDidChangeTreeData: vscode.EventEmitter<vscode.Event<any> | null>
   usbDeviceNodes: UsbDevice[]
   hiddenUsbDeviceNodes: string[]
   lastSentHex: string | null
   treeCache: Map<string, UsbDeviceFile[]>
+  staleTreeCache: Map<string, Array<{ path: string, size: number }>>
   pyocdInterface: PyocdInterface
 
   constructor (context: vscode.ExtensionContext, ifc: PyocdInterface) {
@@ -27,11 +31,50 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
     this.hiddenUsbDeviceNodes = [] // connected USB devices that don't response to serial query are put here
     this.lastSentHex = null
     this.treeCache = new Map() // cache the file tree for each device and sub folder. Key is the device.path/folder/...
+    this.staleTreeCache = new Map() // when refreshing device files, stash the current treeCache here so we can compare
     this.pyocdInterface = ifc
   }
 
   get onDidChangeTreeData (): vscode.Event<any> {
     return this._onDidChangeTreeData.event
+  }
+
+  public async handleDrop (
+    target: vscode.TreeItem | undefined,
+    sources: vscode.DataTransfer,
+    token: vscode.CancellationToken): Promise<void> {
+    if (!(target instanceof UsbDevice) || target === undefined) {
+      return
+    }
+    const files: string[] = sources.get('text/uri-list')?.value.split('\r\n')
+    for (const file of files) {
+      console.log(file)
+      const uri = vscode.Uri.parse(file)
+      const data = await vscode.workspace.fs.readFile(uri)
+      if (data.length > 32768) {
+        void vscode.window.showErrorMessage('File too large')
+        return
+      }
+      const fileName = uri.path.split('/').pop()
+      if (fileName !== undefined) {
+        // const targetPath = target?.uri.path ?? '/'
+        // const targetUri = vscode.Uri.parse(`memfs:${targetPath}/${fileName}`)
+        // await vscode.workspace.fs.writeFile(targetUri, data)
+
+        // write the file to the device
+        try {
+          ExtensionContextStore.mute()
+          await target.createFile(fileName, Buffer.from(data))
+          ExtensionContextStore.outputChannel.appendLine('Saved\n')
+        } catch (error) {
+          ExtensionContextStore.outputChannel.appendLine('Error saving\n')
+        } finally {
+          ExtensionContextStore.unmute()
+        }
+      }
+    }
+    // refresh device files command
+    await vscode.commands.executeCommand('xbitVsc.refreshDeviceFiles', target)
   }
 
   refresh (): void {

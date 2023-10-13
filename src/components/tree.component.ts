@@ -8,6 +8,8 @@ export function SetupTree (ExtensionContextStore: ExtensionContextStore): vscode
 
   const options = {
     treeDataProvider: ExtensionContextStore.provider,
+    dragAndDropController: ExtensionContextStore.provider,
+    canSelectMany: true,
     showCollapseAll: true
   }
   vscode.window.registerTreeDataProvider('xbitVsc', ExtensionContextStore.provider)

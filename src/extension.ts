@@ -126,8 +126,8 @@ export function activate (context: vscode.ExtensionContext): void {
       if (usbDeviceFile === undefined) {
         return
       }
-
-      if (!usbDeviceFile.parentDevice.connected) {
+      const usbDevice = usbDeviceFile.parentDevice
+      if (!usbDevice.connected) {
         try {
           await vscode.commands.executeCommand('xbitVsc.connectUsbDevice', usbDeviceFile.parentDevice)
         } catch (error) {
@@ -140,7 +140,7 @@ export function activate (context: vscode.ExtensionContext): void {
       const dataToWrite = textDocument.getText()
       try {
         ExtensionContextStore.mute()
-        await usbDeviceFile.writeFileToDevice(dataToWrite)
+        await usbDevice.writeFile(usbDeviceFile, dataToWrite)
         ExtensionContextStore.outputChannel.appendLine('Saved\n')
       } catch (error) {
         ExtensionContextStore.outputChannel.appendLine('Error saving\n')

@@ -5,6 +5,7 @@ import { UsbDeviceFile } from './usb-device-file.class'
 import { UsbDeviceInterface } from './usb-device-interface.class'
 import { ProbeInfo } from './hardware-probe-info.class'
 import { ReplTerminal } from './repl-terminal.class'
+import { UsbDeviceFileSystem } from './usb-device-filesystem.class'
 import { InFlightCommand, DeviceCommand, DeviceCommandResponse, TreeItemIconPath, DeviceConfigurations, pythonLsStatElement } from './util.ifc'
 import ExtensionContextStore from '../stores/extension-context.store'
 
@@ -29,6 +30,7 @@ export class UsbDevice extends vscode.TreeItem {
   targetType?: string
   enableApplet = false
   receivedLine = ''
+  filesystem = new UsbDeviceFileSystem(this)
 
   // overrides
   private readonly _dataHandlers: Map<string, (msg: DeviceCommandResponse) => void> = new Map()
@@ -199,6 +201,8 @@ export class UsbDevice extends vscode.TreeItem {
     return this.options.path
   }
 
+  // Serial Port Methods added to the device class for convienence
+  //
   async connect (): Promise<void> {
     return await this.ifc.connect()
   }
@@ -211,6 +215,13 @@ export class UsbDevice extends vscode.TreeItem {
     return this.ifc.write(data)
   }
 
+  async writeWait (data: string, timeout?: number): Promise<string> {
+    return await this.ifc.writeWait(data, timeout)
+  }
+  //
+
+  // Update the iconPath based on the state of the device
+  //
   setIconPath (): void {
     let type = 'usb'
     let connected = ''
@@ -229,74 +240,13 @@ export class UsbDevice extends vscode.TreeItem {
     }
   }
 
-  // Returns a promise
-  //
-  // Write the ls function to repl console
-  // Call the function with the current dir
-  // Parse the result and populate an array
-  // return the array in the promise
-  async readDirFromDevice (dirPath: string): Promise<pythonLsStatElement[]> {
-    if (!this.replCapable) {
-      return await Promise.resolve([])
-    }
-    const timeout = async (ms: number): Promise<void> => {
-      return await new Promise(resolve => setTimeout(resolve, ms))
-    }
-
-    if (!(/\/$/.test(dirPath))) {
-      dirPath = `${dirPath}/`
-    }
-    const lsFunction = [
-      'import os\r',
-      'def ls(path:str):\r',
-      '    for f in os.listdir(path):\r',
-      '        full_name = path + f\r',
-      '        s = os.stat(full_name)\r',
-      '        print(full_name, s[0], s[5], ",")\r'
-    ]
-
-    for (const i of lsFunction) {
-      await this.ifc.write(i)
-      await timeout(100)
-    }
-
-    await this.ifc.writeWait('\r', 1000)
-    const result = await this.ifc.writeWait(`ls('${dirPath}')\r`, 1000)
-    const resultMap = result.split(',')
-      .map((r: string) => r.trim()
-        .split(' ')
-      )
-      .filter((r: string[]) => {
-        return r.length > 1
-      })
-
-    const fileResult: pythonLsStatElement[] = resultMap.map((r: string[]) => {
-      const element: pythonLsStatElement = {
-        type: '',
-        size: parseInt(r[2], 10),
-        path: r[0]
-      }
-
-      if (r[1] === '32768') {
-        element.type = 'file'
-      } else if (r[1] === '16384') {
-        element.type = 'dir'
-      } else {
-        element.type = r[1]
-      }
-
-      return element
-    })
-    return await Promise.resolve(fileResult)
-  }
-
   // list the child nodes (files) on the USB Device
   async getUsbDeviceFolder (dir = '/'): Promise<UsbDeviceFile[]> {
     if (!this.replCapable) {
       return await Promise.resolve([])
     }
     try {
-      const files: pythonLsStatElement[] = await this.readDirFromDevice(dir)
+      const files: pythonLsStatElement[] = await this.filesystem.readDirFromDevice(dir)
       const treeNodes: UsbDeviceFile[] = []
       files.forEach((file: pythonLsStatElement) => {
         const { path, type, size } = file
@@ -322,48 +272,6 @@ export class UsbDevice extends vscode.TreeItem {
       return await Promise.resolve(treeNodes)
     } catch (error) {
       return await Promise.reject(error)
-    }
-  }
-
-  // TODO change to writeFile command
-  async createFile (filePath: string): Promise<string> {
-    try {
-      await this.ifc.writeWait(`f = open('${filePath}', 'w')\r`, 1000)
-      await this.ifc.writeWait('f.close()\r', 1000)
-      return await Promise.resolve('ok')
-    } catch (error) {
-      return await Promise.reject(error)
-    }
-  }
-
-  // TODO change to deleteFile command
-  async deleteFile (filePath: string): Promise<void> {
-    // write import os
-    await this.ifc.writeWait(`import os\ros.unlink('${filePath}')\r`, 1000)
-  }
-
-  async renameFile (oldFilePath: string, newFilePath: string): Promise<void> {
-    // write import os
-    await this.ifc.writeWait(`import os\ros.rename('${oldFilePath}', '${newFilePath}')\r`, 1000)
-  }
-
-  private _handleTerminalData (data: Buffer): void {
-    if (ExtensionContextStore.muted && !ExtensionContextStore.showRepl) {
-      return
-    }
-
-    if (this.terminal !== null) {
-      const hex = data.toString('hex')
-      if (/^7f20/.test(hex)) {
-        // Move cursor backward
-        this.terminal.write('\x1b[D')
-        // Delete character
-        this.terminal.write('\x1b[P')
-      }
-
-      if (this.terminal !== null) {
-        this.terminal.write(data.toString())
-      }
     }
   }
 
@@ -411,6 +319,8 @@ export class UsbDevice extends vscode.TreeItem {
     this.ifc.write(payload)
   }
 
+  // Terminal Methods for managing the terminal attached to the device
+  //
   async createTerminal (context: vscode.ExtensionContext): Promise<void> {
     this.terminal = new ReplTerminal(context, {
       name: `${this.name} - ${this.serialNumber}`,
@@ -438,4 +348,63 @@ export class UsbDevice extends vscode.TreeItem {
       this.terminal = null
     }
   }
+
+  private _handleTerminalData (data: Buffer): void {
+    if (ExtensionContextStore.muted && !ExtensionContextStore.showRepl) {
+      return
+    }
+
+    if (this.terminal !== null) {
+      const hex = data.toString('hex')
+      if (/^7f20/.test(hex)) {
+        // Move cursor backward
+        this.terminal.write('\x1b[D')
+        // Delete character
+        this.terminal.write('\x1b[P')
+      }
+
+      if (this.terminal !== null) {
+        this.terminal.write(data.toString())
+      }
+    }
+  }
+  // end terminal methods
+
+  // Populate filesystem methods on device class for convienence
+  //
+  async createFile (filePath: string, data?: Buffer): Promise<string> {
+    if (!this.connected || !this.replCapable) {
+      return await Promise.reject(new Error('Device is not connected'))
+    }
+    return await this.filesystem.createFile(filePath, data)
+  }
+
+  async deleteFile (filePath: string): Promise<void> {
+    if (!this.connected || !this.replCapable) {
+      return await Promise.reject(new Error('Device is not connected'))
+    }
+    return await this.filesystem.deleteFile(filePath)
+  }
+
+  async renameFile (oldFilePath: string, newFilePath: string): Promise<void> {
+    if (!this.connected || !this.replCapable) {
+      return await Promise.reject(new Error('Device is not connected'))
+    }
+    return await this.filesystem.renameFile(oldFilePath, newFilePath)
+  }
+
+  async writeFile (file: UsbDeviceFile, data: string): Promise<string> {
+    if (!this.connected || !this.replCapable) {
+      return await Promise.reject(new Error('Device is not connected'))
+    }
+    return await this.filesystem.writeFile(file, data)
+  }
+
+  async readDirFromDevice (dirPath: string): Promise<pythonLsStatElement[]> {
+    if (!this.connected || !this.replCapable) {
+      return await Promise.reject(new Error('Device is not connected'))
+    }
+    return await this.filesystem.readDirFromDevice(dirPath)
+  }
+  // end filesystem methods
 }
