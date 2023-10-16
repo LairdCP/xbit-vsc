@@ -43,12 +43,17 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
     target: vscode.TreeItem | undefined,
     sources: vscode.DataTransfer,
     token: vscode.CancellationToken): Promise<void> {
-    if (!(target instanceof UsbDevice) || target === undefined) {
+    if (target === undefined) {
+      return
+    }
+    if (target instanceof UsbDeviceFile) {
+      target = target.parentDevice
+    }
+    if (!(target instanceof UsbDevice)) {
       return
     }
     const files: string[] = sources.get('text/uri-list')?.value.split('\r\n')
     for (const file of files) {
-      console.log(file)
       const uri = vscode.Uri.parse(file)
       const data = await vscode.workspace.fs.readFile(uri)
       if (data.length > 32768) {
