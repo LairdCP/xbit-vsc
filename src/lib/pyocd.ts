@@ -1,12 +1,19 @@
-import * as path from 'path'
+import * as nodePath from 'path'
 import * as vscode from 'vscode'
 import { ChildProcess, spawn } from 'child_process'
 import * as fs from 'fs/promises'
 import { EventEmitter } from 'events'
 import { DvkProbeInterfaces } from './hardware-probe-info.class'
 
+let path = nodePath.posix
+if (process.platform === 'win32') {
+  path = nodePath.win32
+}
+
 const minPythonVersion = [3, 10]
 const minPipVersion = [22, 0]
+
+const config = vscode.workspace.getConfiguration('xbit-vsc')
 
 export class PyocdInterface {
   context: vscode.ExtensionContext
@@ -190,8 +197,8 @@ const findPythonExecutable = async (OUTPUT_CHANNEL: vscode.OutputChannel, resour
       }
       return execCommand
     } else {
-      const config = vscode.workspace.getConfiguration('python')
-      const executable: string | undefined = await config.get('defaultInterpreterPath')
+      const pythonConfig = vscode.workspace.getConfiguration('python')
+      const executable: string | undefined = await pythonConfig.get('defaultInterpreterPath')
       if (executable === undefined) {
         return ''
       }
@@ -344,8 +351,6 @@ const installDeps = async (OUTPUT_CHANNEL: vscode.OutputChannel, context: vscode
     return await Promise.resolve()
   }
 }
-
-const config = vscode.workspace.getConfiguration('xbit-vsc')
 
 interface detectPythonResult {
   executable: string

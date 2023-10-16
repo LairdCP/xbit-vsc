@@ -16,6 +16,7 @@ export class ExtensionContextStore extends EventEmitter {
   showZephyr = false
   showRepl = false
   muted = false
+  initializePending = false
 
   constructor () {
     super()
@@ -46,6 +47,16 @@ export class ExtensionContextStore extends EventEmitter {
     this.context = context
     SetupTree(this)
     context.subscriptions.push(vscode.workspace.registerFileSystemProvider('memfs', this.memFs, { isCaseSensitive: true }))
+
+    // check if the workspace settings.json file has the xbit-vsc settings in it
+    // if not, ignore
+    // else, update stubs
+    context.subscriptions.push(vscode.extensions.onDidChange(async () => {
+      if (this.initializePending) {
+        await vscode.commands.executeCommand('xbitVsc.initializeProject', this.initializePending)
+        this.initializePending = false
+      }
+    }))
   }
 
   inform (message: string, window = false): void {

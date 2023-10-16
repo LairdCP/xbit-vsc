@@ -1,9 +1,14 @@
 import * as vscode from 'vscode'
-import * as path from 'path'
+import * as nodePath from 'path'
 import PanelsStore from '../stores/applets.store'
 import { promises } from 'fs'
 import { XbitAppletJson } from '../lib/xbit-applet-json.ifc'
 const fs = promises
+
+let path = nodePath.posix
+if (process.platform === 'win32') {
+  path = nodePath.win32
+}
 
 // any is a vscode.TreeItem of xbit-applet.json
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

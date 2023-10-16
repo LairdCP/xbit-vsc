@@ -18,7 +18,8 @@ import {
   WriteHexFileCommand,
   ConnectUsbDeviceCommand,
   DisconnectUsbDeviceCommand,
-  UpdateUsbDeviceSettingsCommand
+  UpdateUsbDeviceSettingsCommand,
+  InitializeWorkspaceCommand
 } from './commands'
 
 // this is a singleton that can be imported anywhere
@@ -95,6 +96,7 @@ export function activate (context: vscode.ExtensionContext): void {
   context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.connectUsbDevice', ConnectUsbDeviceCommand))
   context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.disconnectUsbDevice', DisconnectUsbDeviceCommand))
   context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.updateUsbDeviceSettings', UpdateUsbDeviceSettingsCommand))
+  context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.initializeWorkspace', InitializeWorkspaceCommand))
 
   // register the webview provider
   const usbDeviceWebViewProvider = new UsbDeviceWebViewProvider(context.extensionUri)
