@@ -16,6 +16,7 @@ export class PyocdInterface {
   ready: boolean
   listDevicesPromise: Promise<DvkProbeInterfaces[]> | null = null
   events: EventEmitter
+  private muted = false
 
   constructor (context: vscode.ExtensionContext, outputChannel: vscode.OutputChannel) {
     this.context = context
@@ -113,14 +114,18 @@ export class PyocdInterface {
 
       child.stdout.on('data', (data: Buffer) => {
         result += data.toString()
-        this.outputChannel.appendLine(data.toString())
+        if (!this.muted) {
+          this.outputChannel.appendLine(data.toString())
+        }
         if (callback !== undefined) {
           callback(data.toString())
         }
       })
       child.stderr.on('data', (data: Buffer) => {
         error += data.toString()
-        this.outputChannel.appendLine(data.toString())
+        if (!this.muted) {
+          this.outputChannel.appendLine(data.toString())
+        }
         if (errorCallback !== undefined) {
           errorCallback(data.toString())
         }
@@ -133,6 +138,14 @@ export class PyocdInterface {
         }
       })
     })
+  }
+
+  mute (): void {
+    this.muted = true
+  }
+
+  unmute (): void {
+    this.muted = false
   }
 }
 

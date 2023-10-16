@@ -6,6 +6,8 @@ export async function WriteHexFileCommand (usbDevice: UsbDevice): Promise<null |
   const outputChannel = ExtensionContextStore.outputChannel
   const pyocdInterface = ExtensionContextStore.pyocdInterface
 
+  await vscode.commands.executeCommand('xbitVsc.disconnectUsbDevice', usbDevice)
+
   if (pyocdInterface === undefined) {
     throw new Error('pyocdInterface undefined')
   }
@@ -23,37 +25,31 @@ export async function WriteHexFileCommand (usbDevice: UsbDevice): Promise<null |
 
   if (onFulfilled !== null && onFulfilled !== undefined && onFulfilled.length > 0) {
     try {
-      let _progress: vscode.Progress<{ message: string, increment: number }> | null = null
-      let _increment = 0
-      void vscode.window.withProgress({
+      return await vscode.window.withProgress({
         location: vscode.ProgressLocation.Notification,
         title: `Loading ${onFulfilled[0].fsPath}`,
         cancellable: false
       }, async (progress) => {
-        _progress = progress
-        _progress.report({ increment: _increment, message: 'Loading File...' })
+        progress.report({ increment: 0, message: 'Erasing Flash...' })
+        const pyocdCommand = ['flash', '--target=nrf52833', '-u', usbDevice.serialNumber, '-e', 'chip', onFulfilled[0].fsPath]
+        pyocdInterface.mute()
+        await pyocdInterface.runCommand('pyocd', pyocdCommand, (data: string) => {
+          // on progress
+          if (data === '=') {
+            progress.report({ increment: 2.5, message: 'Loading File...' })
+          }
+          if (data === '=]') {
+            // done
+            progress.report({ increment: 2.5, message: 'Complete' })
+          }
+        })
+        return await Promise.resolve(null)
       })
-
-      const pyocdCommand = ['flash', '--target=nrf52833', '-u', usbDevice.serialNumber, '-e', 'chip', onFulfilled[0].fsPath]
-      await pyocdInterface.runCommand('pyocd', pyocdCommand, (data: string) => {
-        if (_progress === null) {
-          _increment = _increment + 2.5
-          return
-        }
-        // on progress
-        if (data === '=') {
-          _progress.report({ increment: 2.5, message: 'Loading File...' })
-        }
-        if (data === '=]') {
-          // done
-          _progress.report({ increment: 2.5, message: 'Complete' })
-        }
-      })
-
-      return await Promise.resolve(null)
     } catch (error: unknown) {
       ExtensionContextStore.error('Error Writing File', error, true)
       return await Promise.reject(error)
+    } finally {
+      pyocdInterface.unmute()
     }
   } else {
     // cancelled
