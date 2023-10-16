@@ -62,9 +62,26 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
       }
       const fileName = uri.path.split('/').pop()
       if (fileName !== undefined) {
-        // const targetPath = target?.uri.path ?? '/'
-        // const targetUri = vscode.Uri.parse(`memfs:${targetPath}/${fileName}`)
-        // await vscode.workspace.fs.writeFile(targetUri, data)
+        // is there a tree cache listing already?
+        if (!(this.treeCache.has(target.uri.path))) {
+          // if not, get the tree listing
+          await this.getChildren(target)
+        }
+
+        const found = this.treeCache.get(target.uri.path)?.find((file) => {
+          const compareFile = file.uri.path.split('/').pop()
+          console.log('comparing', compareFile, fileName)
+          return compareFile === fileName
+        })
+
+        console.log('found', found)
+        if (found !== undefined) {
+          // if the file is already on the device, prompt to overwrite
+          const overwrite = await vscode.window.showInformationMessage(`Overwrite ${fileName}?`, 'Yes', 'No')
+          if (overwrite === 'No') {
+            return
+          }
+        }
 
         // write the file to the device
         try {
