@@ -3,13 +3,16 @@ import * as nodePath from 'path'
 import { copy, emptyDir } from 'fs-extra'
 import ExtensionContextStore from '../stores/extension-context.store'
 
-let path = nodePath.posix
-if (process.platform === 'win32') {
-  path = nodePath.win32
-}
-
 export async function InitializeWorkspaceCommand (e: any): Promise<null | Error> {
   console.log(e)
+
+  console.log('InitializeWorkspaceCommand', process.platform)
+  let path = nodePath.posix
+  if (process.platform === 'win32') {
+    console.log('setting path', 'win32')
+    path = nodePath.win32
+  }
+
   const workspaceFolder = vscode.workspace.workspaceFolders?.find((workspaceFolder) => {
     return e.path?.startsWith(workspaceFolder.uri.path)
   })
@@ -17,8 +20,6 @@ export async function InitializeWorkspaceCommand (e: any): Promise<null | Error>
   if (workspaceFolder === undefined) {
     return null
   }
-
-  console.log('workspaceFolder', workspaceFolder.uri)
 
   // get the extension path: context.extensionUri.fsPath
   // get the project path: workspaceFolder.uri.path
@@ -31,7 +32,14 @@ export async function InitializeWorkspaceCommand (e: any): Promise<null | Error>
 
   // copy recursively files from extension/canvas-stubs to e.path/.vscode/xbit/canvas-stubs
   try {
-    const stubsFolder = path.join(workspaceFolder.uri.path, '.vscode', 'xbit', 'canvas-stubs')
+    console.log('Updating stubs for workspaceFolder', workspaceFolder)
+    const tempPath = path.join(workspaceFolder.uri.fsPath, '.vscode', 'xbit')
+    if (process.platform === 'win32' && tempPath.startsWith('\\')) {
+      tempPath.replace('\\', '')
+    }
+    const stubsFolder = path.join(workspaceFolder.uri.fsPath, '.vscode', 'xbit', 'canvas-stubs')
+    console.log('stubsFolder', stubsFolder)
+
     await emptyDir(stubsFolder)
     await copy(path.join(extensionFolder, 'stubs'), stubsFolder)
   } catch (error) {
@@ -41,9 +49,9 @@ export async function InitializeWorkspaceCommand (e: any): Promise<null | Error>
   const config = vscode.workspace.getConfiguration('python', workspaceFolder)
 
   try {
-    await config.update('languageServer', 'Pylance')
-    await config.update('analysis.typeCheckingMode', 'basic')
-
+    await config.update('languageServer', 'Pylance', ExtensionContextStore.configurationTarget)
+    await config.update('analysis.typeCheckingMode', 'basic', ExtensionContextStore.configurationTarget)
+    await config.update('analysis.stubPath', '.vscode/xbit/canvas-stubs', ExtensionContextStore.configurationTarget)
     await addToArray(config, 'analysis.typeshedPaths', '.vscode/xbit/canvas-stubs')
     await addToArray(config, 'analysis.extraPaths', '.vscode/xbit/canvas-stubs')
     ExtensionContextStore.inform('Workspace Initialized', true)
@@ -54,44 +62,6 @@ export async function InitializeWorkspaceCommand (e: any): Promise<null | Error>
   return null
 }
 
-// const addSettings = async function (vsc: string): Promise<void> {
-//   const settingsFilePath = path.join(vsc, 'settings.json')
-//   const stubsPath = path.join('.vscode', 'Xbit')
-//   const defaultSettings = {
-//     // eslint-disable-next-line @typescript-eslint/naming-convention
-//     "python.linting.enabled": true,
-//     // eslint-disable-next-line @typescript-eslint/naming-convention
-//     "python.languageServer": "Pylance",
-//     // eslint-disable-next-line @typescript-eslint/naming-convention
-//     "python.analysis.typeCheckingMode": "basic",
-//     // eslint-disable-next-line @typescript-eslint/naming-convention
-//     "micropico.syncFolder": "",
-//     // eslint-disable-next-line @typescript-eslint/naming-convention
-//     "micropico.openOnStart": true,
-//   };
-
-//   interface ISettings {
-//     // eslint-disable-next-line @typescript-eslint/naming-convention
-//     "python.analysis.typeshedPaths": string[];
-//     // eslint-disable-next-line @typescript-eslint/naming-convention
-//     "python.analysis.extraPaths": string[];
-//   }
-
-//   let settings = ((await readJsonFile(settingsFilePath)) as ISettings) || {};
-//   settings = _.defaults(settings, defaultSettings);
-
-//   settings["python.analysis.typeshedPaths"] = _.union(
-//     settings["python.analysis.typeshedPaths"] || [],
-//     [stubsPath]
-//   );
-//   settings["python.analysis.extraPaths"] = _.union(
-//     settings["python.analysis.extraPaths"] || [],
-//     [join(stubsPath, "stubs")]
-//   );
-
-//   await writeJsonFile(settingsFilePath, settings);
-// }
-
 const addToArray = async function (config: vscode.WorkspaceConfiguration, key: string, value: string): Promise<void> {
   // set the typeshed paths
   let gotArray = config.get<string[]>(key)
@@ -101,5 +71,5 @@ const addToArray = async function (config: vscode.WorkspaceConfiguration, key: s
   if (!gotArray.includes(value)) {
     gotArray.push(value)
   }
-  await config.update(key, gotArray)
+  await config.update(key, gotArray, ExtensionContextStore.configurationTarget)
 }

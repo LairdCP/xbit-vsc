@@ -53,8 +53,13 @@ export class ExtensionContextStore extends EventEmitter {
     // else, update stubs
     context.subscriptions.push(vscode.extensions.onDidChange(async () => {
       if (this.initializePending) {
-        await vscode.commands.executeCommand('xbitVsc.initializeProject', this.initializePending)
-        this.initializePending = false
+        const installed = vscode.extensions.getExtension('ms-python.vscode-pylance') !== undefined &&
+          vscode.extensions.getExtension('ms-python.python') !== undefined
+
+        if (installed) {
+          await vscode.commands.executeCommand('xbitVsc.initializeProject', this.initializePending)
+          this.initializePending = false
+        }
       }
     }))
   }
@@ -89,6 +94,13 @@ export class ExtensionContextStore extends EventEmitter {
     setTimeout(() => {
       this.muted = false
     }, 500)
+  }
+
+  get configurationTarget (): vscode.ConfigurationTarget {
+    if (vscode.workspace.workspaceFolders !== undefined) {
+      return vscode.ConfigurationTarget.Workspace
+    }
+    return vscode.ConfigurationTarget.Global
   }
 }
 

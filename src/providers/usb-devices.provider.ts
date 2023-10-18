@@ -13,7 +13,7 @@ import ExtensionContextStore from '../stores/extension-context.store'
 
 export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeItem>, vscode.TreeDragAndDropController<vscode.TreeItem> {
   dragMimeTypes: readonly string[] = ['text/plain', 'text/x-python', 'application/x-python-code', 'text/uri-list']
-  dropMimeTypes: readonly string[] = ['application/vnd.code.tree.xbitVsc', 'text/plain', 'text/x-python', 'application/x-python-code', 'text/uri-list']
+  dropMimeTypes: readonly string[] = ['text/plain', 'text/x-python', 'application/x-python-code', 'text/uri-list']
 
   context: vscode.ExtensionContext
   _onDidChangeTreeData: vscode.EventEmitter<vscode.Event<any> | null>

@@ -35,6 +35,7 @@ export async function UpdateUsbDeviceSettingsCommand (usbDevice: UsbDevice, mess
     }
 
     await config.update('device-configurations', deviceConfigurations, vscode.ConfigurationTarget.Global)
+
     usbDevice.name = name
     usbDevice.baudRate = baudRate
     ExtensionContextStore.provider?.refresh()
