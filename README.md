@@ -45,14 +45,13 @@ Canvas Firmware is the underlying software enabling Canvas-enabled radio modules
 
 Canvas firmware is released as a firmware image in a .hex file that can be programmed right from within the Xbit VS Code extension. To program a .hex file to update your hardware, right-click on the REPL port in the USB DEVICES panel and select Write Hex File. Once clicked, a file selection dialog will appear where you can select the desired .hex file to program onto your device.
 
-![image info](resources/write-hex.png)
+![image info](https://raw.githubusercontent.com/LairdCP/xbit-vsc/main/resources/write-hex.png)
 
 ## Interacting with the Device’s Python REPL
 
 When interacting with a device, you can Connect or Disconnect from the associated USB serial port. When the port is connected, the icon for the device will be highlighted in blue. The Xbit user interface panel has a header displaying SELECTED DEVICE providing a few options for interacting with the device including a Connect/Disconnect button. Pressing the Connect button will bring up a Terminal within VS Code that you can press Enter to interact with. To access the Python REPL of the device, select the serial port displaying the 3 greater than symbol >>> in the USB DEVICES panel, then click the Connect button down below. This will open a new terminal to the selected device that you can use to interact with the Python REPL.
 
-![image info](resources/repl-terminal.png)
-
+![image info](https://raw.githubusercontent.com/LairdCP/xbit-vsc/main/resources/repl-terminal.png)
 
 # Working With Files
 
@@ -62,11 +61,11 @@ When interacting with a device, you can Connect or Disconnect from the associate
 
 To create your first Python script on a compatible device, right-click the name of the device that lists the serial port of the board you’d like to interact with and select Create File.
 
-![image info](resources/create-file.png)
+![image info](https://raw.githubusercontent.com/LairdCP/xbit-vsc/main/resources/create-file.png)
 
 You will then be prompted for a file name to create on the device.
 
-![image info](resources/create-file-prompt.png)
+![image info](https://raw.githubusercontent.com/LairdCP/xbit-vsc/main/resources/create-file-prompt.png)
 
 Type the name of the file you’d like to create such as hello.py and then press Enter to create it.
 
@@ -74,13 +73,13 @@ Type the name of the file you’d like to create such as hello.py and then press
 
 To open and edit a file on your device, single click the file of interest in the device view to load it into an editor panel. You can then type directly into the text editor to modify the contents of the file.
 
-![image info](resources/edit-file.png)
+![image info](https://raw.githubusercontent.com/LairdCP/xbit-vsc/main/resources/edit-file.png)
 
 ## Renaming a Python Script on a Device
 
 To rename a file such as a Python script already on your device, right click the file in the device view and select Rename File.
 
-![image info](resources/rename-file.png)
+![image info](https://raw.githubusercontent.com/LairdCP/xbit-vsc/main/resources/rename-file.png)
 
 You will then be prompted for the new name you would like to assign to the file. enter the new name and press Enter to rename the file.
 
@@ -90,13 +89,13 @@ You will then be prompted for the new name you would like to assign to the file.
 
 If you are unable to connect to a device and see an error like this, double check if another application is already connected and using the port. If not, the serial port may be in a bad state. This can be fixed by unplugging the device and plugging it back in. 
 
-![image info](resources/serial-port-unavailable.png)
+![image info](https://raw.githubusercontent.com/LairdCP/xbit-vsc/main/resources/serial-port-unavailable.png)
 
 ## Timeout Errors
 
 These will occur if the extension doesn’t get a response from the connected device. This usually means that the repl console is in a state where it can’t process commands. Try to manually connect to the device to see it the repl comes up. See Interacting with the Device’s Python REPL. If you are unable to get a REPL terminal unplug the device and plug it back in, click the refresh button to redetect the devices.
 
-![image info](resources/timeout-error.png)
+![image info](https://raw.githubusercontent.com/LairdCP/xbit-vsc/main/resources/timeout-error.png)
 
 
 ## Using Xbit Applets
