@@ -26,17 +26,17 @@ On the first run of the extension, you are prompted to select a folder for the t
 
 Opening VS Code should automatically display the Xbit extension icon in the sidebar when installed. When the Xbit extension is activated by clicking on its icon, it will scan your workstation for compatible USB devices and present a USB serial port list in the sidebar. If a Python REPL is detected, you will see a name next to each device serial port and an icon indicating the type of interface available. A triple greater-than '>>>' icon indicates a Python REPL prompt.
 
-![image info](resources/detected-repl.png)
+![image info](https://raw.githubusercontent.com/LairdCP/xbit-vsc/main/resources/detected-repl.png)
 
 If a USB serial port is detected but the identity of the port cannot be determined, you’ll see a generic device listing identified by the default Xbit icon. At any time you can refresh the list of devices by clicking the refresh button in the USB DEVICES header bar. If the device's name indicates that the device is busy, it is likely that the device is already connected to another application. You will not be able to interact with the device until the other application releases the device.
 
 If a USB serial port is detected but the identity of the port cannot be determined, you’ll see a generic device listing identified by the default Xbit icon. At any time you can refresh the list of devices by clicking the refresh button in the USB DEVICES header bar.
 
-![image info](resources/refresh-devices.png)
+![image info](https://raw.githubusercontent.com/LairdCP/xbit-vsc/main/resources/refresh-devices.png)
 
 This extension will also allow interaction with Zephyr console shells on devices that support it, though these are hidden by default. Enable Zephyr shell in the extension options to see them.A Zephyr shell is indicated by a '$~' icon. If a Zephyr shell is detected, you can click on the device name to open a terminal window and interact with the shell.
 
-![image info](resources/show-zephyr.png)
+![image info](https://raw.githubusercontent.com/LairdCP/xbit-vsc/main/resources/show-zephyr.png)
 
 
 ## Updating Canvas Firmware
