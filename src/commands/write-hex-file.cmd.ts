@@ -31,6 +31,7 @@ export async function WriteHexFileCommand (usbDevice: UsbDevice): Promise<null |
         cancellable: false
       }, async (progress) => {
         progress.report({ increment: 0, message: 'Erasing Flash...' })
+        // bt510 is 'nrf52840'
         const pyocdCommand = ['flash', '--target=nrf52833', '-u', usbDevice.serialNumber, '-e', 'chip', onFulfilled[0].fsPath]
         pyocdInterface.mute()
         await pyocdInterface.runCommand('pyocd', pyocdCommand, (data: string) => {

@@ -74,7 +74,6 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
           return compareFile === fileName
         })
 
-        console.log('found', found)
         if (found !== undefined) {
           // if the file is already on the device, prompt to overwrite
           const overwrite = await vscode.window.showInformationMessage(`Overwrite ${fileName}?`, 'Yes', 'No')
@@ -128,7 +127,7 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
       const portTimeout = setTimeout(() => {
         timedOut = true
         closePort()
-      }, 1000)
+      }, 1500)
 
       const tempPort = new SerialPort({
         path: port.path,
@@ -163,7 +162,7 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
         tempPort.write(command)
         setTimeout(() => {
           closePort()
-        }, 500)
+        }, 1000)
       })
 
       tempPort.on('error', (error) => {

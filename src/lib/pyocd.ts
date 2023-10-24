@@ -51,7 +51,12 @@ export class PyocdInterface {
     }).then(() => {
       this.ready = true
     }).catch((error) => {
-      this.outputChannel.appendLine(`Python Environment Error: ${String(error.message)}`)
+      console.error(error)
+      if (error instanceof Error) {
+        this.outputChannel.appendLine(`Python Environment Error: ${String(error.message)}`)
+      } else {
+        this.outputChannel.appendLine(`Python Environment Error: ${String(error)}`)
+      }
     })
   }
 
