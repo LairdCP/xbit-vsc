@@ -331,7 +331,7 @@ const installDeps = async (OUTPUT_CHANNEL: vscode.OutputChannel, context: vscode
       OUTPUT_CHANNEL.appendLine('installing dependencies')
 
       let errorString = ''
-      const childProcess = spawn(pip, ['install', '-r', context.asAbsolutePath('./requirements.in')])
+      const childProcess = spawn(pip, ['install', '-r', '-q', context.asAbsolutePath('./requirements.in')])
       childProcess.stdout.on('data', (out) => {
         console.log(out.toString())
       })
