@@ -331,7 +331,7 @@ const installDeps = async (OUTPUT_CHANNEL: vscode.OutputChannel, context: vscode
       OUTPUT_CHANNEL.appendLine('installing dependencies')
 
       let errorString = ''
-      const childProcess = spawn(pip, ['install', '-r', '-q', context.asAbsolutePath('./requirements.in')])
+      const childProcess = spawn(pip, ['install', '-qq', '-r', context.asAbsolutePath('./requirements.in')])
       childProcess.stdout.on('data', (out) => {
         console.log(out.toString())
       })
@@ -344,7 +344,7 @@ const installDeps = async (OUTPUT_CHANNEL: vscode.OutputChannel, context: vscode
       })
 
       childProcess.on('close', () => {
-        if (errorString !== '') {
+        if (errorString.includes('ERROR') || errorString.includes('CRITICAL')) {
           reject(errorString)
         } else {
           void config.update('requirements-version', metaJson.version, vscode.ConfigurationTarget.Global)
