@@ -418,6 +418,10 @@ const detectPython = async (OUTPUT_CHANNEL: vscode.OutputChannel): Promise<null 
     OUTPUT_CHANNEL.appendLine('no venv found')
     void config.delete('requirements-version')
 
+    void config.update('requirements-version', undefined)
+
+    // if on linux, prompt to install python3-venv
+
     const selection = await vscode.window.showWarningMessage('This extension uses a python virtual enviroment to install dependencies. Please select a location for the venv.', 'Select', 'Cancel')
     if (selection === 'Select') {
       OUTPUT_CHANNEL.appendLine('initializing venv')

@@ -191,6 +191,7 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
         label = `${element.name} (busy)`
         contextValue = 'usbDeviceBusy'
       }
+
       return {
         label,
         description: element.description,
@@ -201,7 +202,19 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
         id: element.id
       }
     } else {
-      return element
+      let contextValue = 'usbDeviceFile'
+      if (typeof element.label === 'string' && /\.py$/.test(element.label)) {
+        contextValue = 'usbDeviceFilePython'
+      }
+      return {
+        label: element.label,
+        description: element.description,
+        collapsibleState: element.collapsibleState,
+        command: element.command,
+        contextValue,
+        iconPath: element.iconPath,
+        id: element.id
+      }
     }
   }
 

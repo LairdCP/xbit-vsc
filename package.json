@@ -2,7 +2,7 @@
   "name": "xbit-vsc",
   "displayName": "Xbit tools for VS Code",
   "description": "",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "publisher": "rfp-canvas",
   "repository": {
     "type": "git",
@@ -136,6 +136,10 @@
       {
         "command": "xbitVsc.initializeWorkspace",
         "title": "Xbit: Initialize Workspace"
+      },
+      {
+        "command": "xbitVsc.runPython",
+        "title": "Run Python"
       }
     ],
     "menus": {
@@ -183,18 +187,30 @@
         },
         {
           "command": "xbitVsc.deleteDeviceFile",
-          "when": "viewItem == usbDeviceFile"
+          "when": "viewItem == usbDeviceFile || viewItem == usbDeviceFilePython"
         },
         {
           "command": "xbitVsc.renameDeviceFile",
-          "when": "viewItem == usbDeviceFile"
+          "when": "viewItem == usbDeviceFile || viewItem == usbDeviceFilePython"
         },
         {
           "command": "xbitVsc.refreshFile",
-          "when": "viewItem == usbDeviceFile"
+          "when": "viewItem == usbDeviceFile || viewItem == usbDeviceFilePython"
+        },
+        {
+          "command": "xbitVsc.runPython",
+          "when": "viewItem == usbDeviceFilePython"
         }
       ]
-    }
+    },
+    "languages": [
+      {
+        "id": "python",
+        "extensions": [
+          ".py"
+        ]
+      }
+    ]
   },
   "scripts": {
     "compile": "tsc -p ./",

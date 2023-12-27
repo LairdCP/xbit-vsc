@@ -17,6 +17,7 @@ export class UsbDeviceInterface extends EventEmitter {
   resultBuffer: string
   eofType: string
   supportsBreak: boolean
+  rawMode: boolean
 
   constructor (options: Options) {
     super()
@@ -27,6 +28,7 @@ export class UsbDeviceInterface extends EventEmitter {
     this.resultBuffer = ''
     this.eofType = options.eofType
     this.supportsBreak = options.supportsBreak
+    this.rawMode = false
   }
 
   get connected (): boolean {
@@ -113,6 +115,14 @@ export class UsbDeviceInterface extends EventEmitter {
           this.resultBuffer = this.resultBuffer.replace(command, '')
           resolve(this.resultBuffer)
           this.resultBuffer = ''
+        } else if (this.rawMode && this.resultBuffer.includes('>')) {
+          clearInterval(waiting)
+          clearTimeout(timeouting)
+
+          this.resultBuffer = this.resultBuffer.replace('OK', '')
+          this.resultBuffer = this.resultBuffer.replace(/>$/, '')
+          resolve(this.resultBuffer)
+          this.resultBuffer = ''
         }
       }, wait)
 
@@ -123,13 +133,30 @@ export class UsbDeviceInterface extends EventEmitter {
     })
   }
 
+  // send ctrl+a
+  async sendEnterRawMode (): Promise<void> {
+    this.write('\x01')
+    this.rawMode = true
+    return await sleep(100)
+  }
+
+  // send ctrl+d
+  async sendExecuteRawMode (): Promise<string> {
+    const result = await this.writeWait('\x04')
+    await sleep(50)
+    return result
+  }
+
+  // send ctrl+b
+  async sendExitRawMode (): Promise<void> {
+    this.write('\x02')
+    this.rawMode = false
+    return await sleep(100)
+  }
+
   async sendBreak (): Promise<void> {
     this.write('\x03')
-    return await new Promise((resolve) => {
-      setTimeout(() => {
-        resolve()
-      }, 500)
-    })
+    return await sleep(500)
   }
 
   async sendEof (): Promise<void> {

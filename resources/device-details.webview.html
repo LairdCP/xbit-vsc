@@ -48,6 +48,7 @@
         <section class="details-section">
           <vscode-button appearance="secondary" id="break-button">Break</vscode-button>
           <vscode-button appearance="secondary" id="eof-button" title="Send EOF to Reset">Reset</vscode-button>
+          <vscode-button appearance="secondary" id="exit-raw-button" title="Exit Raw Mode">Exit Raw REPL</vscode-button>
         </section>
         <section class="details-section">
           <div class="dropdown-container">
@@ -102,7 +103,8 @@
       const manufacturer = document.getElementById('manufacturer')
       const breakButton = document.getElementById('break-button')
       const eofButton = document.getElementById('eof-button')
-
+      const exitRawButton = document.getElementById('exit-raw-button')
+      
       baudRate.value = 115200
 
       const vscode = acquireVsCodeApi()
@@ -134,6 +136,10 @@
       eofButton.addEventListener('click', () => {
         vscode.postMessage({ method: 'break' })
         vscode.postMessage({ method: 'eof' })
+      })
+
+      exitRawButton.addEventListener('click', () => {
+        vscode.postMessage({ method: 'exit-raw-mode' })
       })
 
       appletDropdown.addEventListener('change', () => {

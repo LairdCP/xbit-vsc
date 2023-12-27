@@ -73,6 +73,8 @@ export class UsbDeviceWebViewProvider implements vscode.WebviewViewProvider {
         } else {
           AppletsStore.unlink(String(message.params.applet), this._selectedDevice)
         }
+      } else if (message.method === 'exit-raw-mode') {
+        await this._selectedDevice?.ifc.sendExitRawMode()
       }
     })
   }
