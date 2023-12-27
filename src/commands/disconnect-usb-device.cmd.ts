@@ -1,6 +1,7 @@
 import * as vscode from 'vscode'
 import { UsbDevice } from '../lib/usb-device.class'
 import ExtensionContextStore from '../stores/extension-context.store'
+import * as crypto from 'crypto'
 
 export async function DisconnectUsbDeviceCommand (usbDevice: UsbDevice): Promise<null | Error> {
   if (ExtensionContextStore.provider === undefined || ExtensionContextStore.context === undefined) {
@@ -12,7 +13,7 @@ export async function DisconnectUsbDeviceCommand (usbDevice: UsbDevice): Promise
   const deviceFiles = ExtensionContextStore.provider?.treeCache.get(key)
   // would like to collapse the tree here, but it there is no api for it
   // unless I want to collapse all tree views
-  usbDevice.id = Date.now().toString()
+  usbDevice.id = crypto.randomUUID()
   try {
     await ExtensionContextStore.tree?.reveal(usbDevice, { select: false, focus: false, expand: false })
     ExtensionContextStore.provider?.treeCache.delete(key)

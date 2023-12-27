@@ -8,6 +8,7 @@ import { ReplTerminal } from './repl-terminal.class'
 import { UsbDeviceFileSystem } from './usb-device-filesystem.class'
 import { InFlightCommand, DeviceCommand, DeviceCommandResponse, TreeItemIconPath, DeviceConfigurations, pythonLsStatElement } from './util.ifc'
 import ExtensionContextStore from '../stores/extension-context.store'
+import * as crypto from 'crypto'
 
 // read in the device map
 import { DeviceMap } from './device-map'
@@ -45,10 +46,10 @@ export class UsbDevice extends vscode.TreeItem {
     type: string,
     command?: vscode.Command
   ) {
-    const ts = Date.now().toString()
-    super(ts, collapsibleState)
+    const id = crypto.randomUUID()
+    super(id, collapsibleState)
     this.context = context
-    this.id = ts
+    this.id = id
     this.uri = uri
     this.options = options
     this._baudRate = 115200
