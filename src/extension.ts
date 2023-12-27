@@ -126,7 +126,7 @@ export function activate (context: vscode.ExtensionContext): void {
       }
 
       if (usbDeviceFile === undefined) {
-        return
+        return await vscode.window.showErrorMessage('Error Saving File. File Not Found')
       }
       const usbDevice = usbDeviceFile.parentDevice
       if (!usbDevice.connected) {
@@ -138,7 +138,7 @@ export function activate (context: vscode.ExtensionContext): void {
         }
       }
 
-      // set the silent flag to true to hide REPL output if not enablee in settings
+      // set the silent flag to true to hide REPL output if not enabled in settings
       const dataToWrite = textDocument.getText()
       try {
         ExtensionContextStore.mute()
@@ -150,6 +150,7 @@ export function activate (context: vscode.ExtensionContext): void {
         ExtensionContextStore.unmute()
       }
     }
+    return await vscode.window.showErrorMessage('Error Saving File. No Tree Provider')
   })
 }
 
