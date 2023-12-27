@@ -42,7 +42,7 @@ export async function RunApplet (element: any): Promise<null | Error> {
     PanelsStore.set(panelKey, panel)
 
     const appletPath = path.join(path.dirname(element.path))
-    const onDiskAppletPath = vscode.Uri.parse(appletPath)
+    const onDiskAppletPath = vscode.Uri.parse(appletPath + '/dist')
     const webviewAppletPath = panel.webview.asWebviewUri(onDiskAppletPath)
 
     const parsedHtml: string[] = []
@@ -54,17 +54,16 @@ export async function RunApplet (element: any): Promise<null | Error> {
       if (line.includes('src=')) {
         const src = line.split('src=')[1].split('"')[1]
         // convert to absolute path
-        const absolutePath = path.join(path.dirname(element.path), src)
+        const absolutePath = path.join(path.dirname(element.path), 'dist', src)
         // convert to vscode uri
         const onDiskPath = vscode.Uri.parse(absolutePath)
         const webviewPath = panel.webview.asWebviewUri(onDiskPath)
 
         parsedHtml.push(line.replace(src, webviewPath.toString()))
-      } else if (line.includes('<link rel="stylesheet" href=')) {
+      } else if (line.includes('rel="stylesheet"')) {
         const src = line.split('href=')[1].split('"')[1]
         // convert to absolute path
-        const absolutePath = path.join(path.dirname(element.path), src)
-        // convert to vscode uri
+        const absolutePath = path.join(path.dirname(element.path), 'dist', src)
         const onDiskPath = vscode.Uri.parse(absolutePath)
         const webviewPath = panel.webview.asWebviewUri(onDiskPath)
 
