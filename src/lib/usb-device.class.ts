@@ -30,8 +30,12 @@ export class UsbDevice extends vscode.TreeItem {
   lastSentHex?: string
   targetType?: string
   enableApplet = false
-  receivedLine = ''
   filesystem = new UsbDeviceFileSystem(this)
+  uname = 'unknown'
+  appId = 'unknown'
+  appVersion = 'unknown'
+  xbitShell = false
+  resultBuffer = ''
 
   // overrides
   private readonly _dataHandlers: Map<string, (msg: DeviceCommandResponse) => void> = new Map()
@@ -58,7 +62,6 @@ export class UsbDevice extends vscode.TreeItem {
     this.command = command // default vs code command when clicking on item
     this.serialNumber = this.options.serialNumber
     this.name = this.options.name
-    this.receivedLine = ''
     this.terminal = null
 
     if (this.options.board_name !== 'Unknown') {
@@ -100,36 +103,82 @@ export class UsbDevice extends vscode.TreeItem {
     // when disconnected, the listener is not removed
     // 5. from device, data = '>>>'
     // TODO consume serialData event
-    this.ifc.on('data', (data: Buffer) => {
-      this._handleTerminalData(data)
+    this.ifc.on('data', (data: string) => {
+      this.resultBuffer = this.resultBuffer + data
+
+      this._handleTerminalData(Buffer.from(data))
 
       // if panel webview attached,
       // post the data there
       // for each webview panel...
-      this.receivedLine = this.receivedLine + data.toString()
-      if (/\r\n$/.test(this.receivedLine)) {
+      if (/\r\n$/.test(this.resultBuffer)) {
+        let lines = this.resultBuffer.split(/\r\n/)
+        ExtensionContextStore.log(lines.join('\n'))
+
+        const lastLine = lines.pop()
+        if (lastLine !== undefined) {
+          this.resultBuffer = lastLine
+        } else {
+          this.resultBuffer = ''
+        }
+
+        // XBIT SHELL STUFF
+        // // for each line, extract the json
+        // const jsonLines: XbitShellJSON[] = []
+        // lines.forEach(str => {
+        //   jsonLines.push(...extractJSON(str))
+        // })
+
+        // // for each array of json object(s), send it to the main window
+        // jsonLines.forEach(jsonLine => {
+        //   try {
+        //     const converted = convertJsonPayload(jsonLine)
+        //     if (converted !== undefined) {
+        //       converted.params.path = this.path
+        //       this._dataHandlers.forEach((cb: (msg: DeviceCommandResponse) => void, key: string) => {
+        //         cb(converted)
+        //       })
+        //     }
+        //   } catch (error) {
+        //     // ContextProvider.error(error)
+        //   }
+
+        //   // emit this event to resolve inflight requests
+        //   if (jsonLine?.i !== undefined) {
+        //     this.ifc.emit(`jsonData${jsonLine.i}`, jsonLine)
+        //   }
+        // })
+
+        // for each data handler...
         this._dataHandlers.forEach((cb: (msg: DeviceCommandResponse) => void, key: string) => {
-          // for each in-flight command...
-          inFlightCommands = inFlightCommands.filter((command: InFlightCommand) => {
-            // if the command key matches the panel key...
-            if (command.panelKey === key && this.receivedLine.includes(command.expectedResponse)) {
-              const response = {
-                id: command.message.id,
-                result: this.receivedLine
+          // for each line...
+          lines = lines.filter((line: string) => {
+            let found = false
+            // for each in-flight command...
+            inFlightCommands = inFlightCommands.filter((command: InFlightCommand) => {
+              // if the command key matches the panel key...
+              if (command.panelKey === key && line.includes(command.expectedResponse)) {
+                const response = {
+                  id: command.message.id,
+                  result: line
+                }
+                // call the callback with the response
+                cb(response)
+                found = true
+                return false
+              } else {
+                return true
               }
-              // call the callback with the response
-              cb(response)
-              return false
-            } else {
-              return true
-            }
+            })
+            return !found
           })
           // this isn't a command response
           // but send it to the webview anyway
-          const response = { result: this.receivedLine }
-          cb(response)
+          if (lines.length > 0) {
+            const response = { result: lines.join('\n') }
+            cb(response)
+          }
         })
-        this.receivedLine = ''
       }
     })
 
@@ -212,8 +261,8 @@ export class UsbDevice extends vscode.TreeItem {
     return await this.ifc.disconnect()
   }
 
-  async write (data: string): Promise<void> {
-    return this.ifc.write(data)
+  async write (data: string): Promise<Error | null> {
+    return await this.ifc.write(data)
   }
 
   async writeWait (data: string, timeout?: number): Promise<string> {
@@ -286,16 +335,18 @@ export class UsbDevice extends vscode.TreeItem {
     this._dataHandlers.delete(key)
   }
 
-  // when a command is sent from the webview panel, it is handled here
+  // when a command is sent from an applet's webview panel, it is handled here
   // and sent to the device. Such as 'connect'
-  commandHandler (panelKey: string, message: DeviceCommand): void {
+  async commandHandler (panelKey: string, message: DeviceCommand): Promise<Error | null> {
+    // TODO support more commands
+
     let payload = ''
     let expectedResponse = ''
     if (message.method === 'write' && message.params.command !== undefined) {
       payload = typeof message.params.command === 'string' ? message.params.command : ''
       expectedResponse = '>>>'
     } else {
-      return
+      return await Promise.reject(new Error('Invalid Command'))
     }
 
     // if we expect a response, register the command
@@ -317,7 +368,7 @@ export class UsbDevice extends vscode.TreeItem {
       inFlightCommands.push(cmd)
     }
     // write to the serial port
-    this.ifc.write(payload)
+    return await this.ifc.write(payload)
   }
 
   // Terminal Methods for managing the terminal attached to the device
@@ -328,11 +379,15 @@ export class UsbDevice extends vscode.TreeItem {
       iconPath: this.iconPath
     })
 
-    this.terminal.onInput((data: string) => {
+    this.terminal.onInput((data: string): void => {
       // send line to the serial port
       if (this.connected) {
         this.lastSentHex = Buffer.from(data).toString('hex')
-        this.ifc.write(data)
+        this.ifc.write(data).catch((error) => {
+          ExtensionContextStore.inform(error.message)
+        })
+      } else {
+        throw new Error('Device is not connected')
       }
     })
   }

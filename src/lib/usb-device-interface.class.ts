@@ -1,6 +1,7 @@
 import { SerialPort } from 'serialport'
 import * as EventEmitter from 'events'
 import { sleep } from '../util'
+import ExtensionContextStore from '../stores/extension-context.store'
 
 interface Options {
   path: string
@@ -14,7 +15,6 @@ export class UsbDeviceInterface extends EventEmitter {
   private serialPort: null | SerialPort
   baudRate: number
   path: string
-  resultBuffer: string
   eofType: string
   supportsBreak: boolean
   rawMode: boolean
@@ -25,7 +25,6 @@ export class UsbDeviceInterface extends EventEmitter {
     this.path = options.path
     this.baudRate = isNaN(options.baudRate) ? 115200 : options.baudRate
     this.serialPort = null
-    this.resultBuffer = ''
     this.eofType = options.eofType
     this.supportsBreak = options.supportsBreak
     this.rawMode = false
@@ -54,9 +53,8 @@ export class UsbDeviceInterface extends EventEmitter {
         })
 
         this.serialPort.on('data', (data: Buffer) => {
-          this.resultBuffer += data.toString()
           // TODO emit serialData event
-          this.emit('data', data)
+          this.emit('data', data.toString())
         })
 
         this.serialPort.on('error', (error: unknown) => {
@@ -73,61 +71,82 @@ export class UsbDeviceInterface extends EventEmitter {
   }
 
   async disconnect (): Promise<void> {
-    try {
+    return await new Promise((resolve, reject) => {
       if (this.serialPort !== null && 'port' in this.serialPort) {
-        this.serialPort.close()
+        this.serialPort.close((error) => {
+          if (error instanceof Error && !error.message.includes('Port is not open')) {
+            reject(error)
+          } else {
+            this.serialPort = null
+            resolve()
+          }
+        })
+      } else {
+        resolve()
       }
-      this.serialPort = null
-      return await Promise.resolve()
-    } catch (error) {
-      return await Promise.reject(error)
-    }
+    })
   }
 
   // break
 
   // write
-  write (data: string): void {
+  async write (data: string): Promise<null | Error> {
     if (this.serialPort !== null && 'port' in this.serialPort) {
       this.serialPort.write(data)
+      return await Promise.resolve(null)
+    } else {
+      return await Promise.reject(new Error('serialPort is null'))
     }
   }
 
   // writeWait
-  async writeWait (command: string, timeout = 1000, wait = 10): Promise<string> {
+  async writeWait (command: string, options: any = {}): Promise<string> {
+    const timeout = options.timeout === undefined ? 5000 : options.timeout
+    const waitFor = options.waitFor === undefined ? '>>>' : options.waitFor
+    const jsonResponse = options.jsonResponse === true
+    let id = 0
+    let responseBuffer = ''
+
     return await new Promise((resolve, reject) => {
-      this.resultBuffer = ''
-      this.write(command)
+      const resolver = (data: string): void => {
+        responseBuffer += data.replace(command, '')
 
-      const waiting = setInterval(() => {
-        // check for Error first as there will also be a >>> at the end
-        if (this.resultBuffer.includes('Error')) {
-          clearInterval(waiting)
-          clearTimeout(timeouting)
-
-          this.resultBuffer = this.resultBuffer.replace(command, '')
-          reject(this.resultBuffer)
-          this.resultBuffer = ''
-        } else if (this.resultBuffer.includes('>>>')) {
-          clearInterval(waiting)
-          clearTimeout(timeouting)
-
-          this.resultBuffer = this.resultBuffer.replace(command, '')
-          resolve(this.resultBuffer)
-          this.resultBuffer = ''
-        } else if (this.rawMode && this.resultBuffer.includes('>')) {
-          clearInterval(waiting)
-          clearTimeout(timeouting)
-
-          this.resultBuffer = this.resultBuffer.replace('OK', '')
-          this.resultBuffer = this.resultBuffer.replace(/>$/, '')
-          resolve(this.resultBuffer)
-          this.resultBuffer = ''
+        if (responseBuffer.includes('Error')) {
+          reject(responseBuffer)
+        } else if (this.rawMode && responseBuffer.includes('>')) {
+          resolve(responseBuffer)
+        } else if (responseBuffer.includes(waitFor)) {
+          resolve(responseBuffer)
+        } else {
+          return
         }
-      }, wait)
+        clearTimeout(timeouting)
+        this.removeListener('data', resolver)
+      }
+
+      if (jsonResponse) {
+        try {
+          id = JSON.parse(command.replace(/"/g, '\\"').replace(/(?<!\\)'/g, '"')).i
+          command = command + '\r'
+        } catch (error) {
+          if (error instanceof Error) {
+            ExtensionContextStore.log(error.message)
+          }
+        }
+        this.once(`jsonData${id}`, (jsonLine) => {
+          clearTimeout(timeouting)
+          resolve(jsonLine)
+        })
+      } else {
+        this.on('data', resolver)
+      }
+
+      this.write(command).catch((error) => {
+        clearTimeout(timeouting)
+        reject(error)
+      })
 
       const timeouting = setTimeout(() => {
-        clearInterval(waiting)
         reject(new Error('timeout: ' + command))
       }, timeout)
     })
@@ -135,7 +154,7 @@ export class UsbDeviceInterface extends EventEmitter {
 
   // send ctrl+a
   async sendEnterRawMode (): Promise<void> {
-    this.write('\x01')
+    await this.write('\x01')
     this.rawMode = true
     return await sleep(100)
   }
@@ -149,31 +168,31 @@ export class UsbDeviceInterface extends EventEmitter {
 
   // send ctrl+b
   async sendExitRawMode (): Promise<void> {
-    this.write('\x02')
+    await this.write('\x02')
     this.rawMode = false
     return await sleep(100)
   }
 
   async sendBreak (): Promise<void> {
-    this.write('\x03')
+    await this.write('\x03')
     return await sleep(500)
   }
 
   async sendEof (): Promise<void> {
     // if this is a dongle, disconnect and reconnect
     if (this.eofType === 'disconnect') {
-      this.write('\x04')
+      await this.write('\x04')
       await sleep(1500)
       await this.disconnect()
       await sleep(1500)
       await this.connect()
     } else if (this.eofType === 'restart') {
-      this.write('\x04')
+      await this.write('\x04')
     }
     return await sleep(500)
   }
 
-  // writeWaitFor
-
-  // readWait
+  async reset (): Promise<void> {
+    return await this.sendEof()
+  }
 }

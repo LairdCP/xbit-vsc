@@ -73,7 +73,6 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
 
         const found = this.treeCache.get(target.uri.path)?.find((file) => {
           const compareFile = file.uri.path.split('/').pop()
-          console.log('comparing', compareFile, fileName)
           return compareFile === fileName
         })
 
@@ -124,9 +123,12 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
   // params:
   // port is the UsbDeviceClass Instance
   // ----------------------------
-  async connectAndExecute (port: ProbeInfo, command: string): Promise<string> {
+  async connectAndExecute (port: ProbeInfo, commands: string[]): Promise<string[]> {
+    // if already connected to the port, disconnect first
     return await new Promise((resolve, reject) => {
       let timedOut = false
+      let receivedData = ''
+      const responses: string[] = []
       const portTimeout = setTimeout(() => {
         timedOut = true
         closePort()
@@ -142,30 +144,48 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
       })
 
       const closePort = (error: Error | null = null): void => {
-        clearTimeout(portTimeout)
         tempPort.removeAllListeners()
-        try {
-          tempPort.close()
-        } catch (error) {
-          console.error('error closing port', error)
-        }
-        if (error !== null) {
-          reject(error)
-        } else {
-          resolve(receivedData.replace(command, '')) // remove the command from the result
-        }
+        tempPort.close((error) => {
+          if (error !== null) {
+            ExtensionContextStore.error('error closing port', error)
+            reject(error)
+          } else {
+            resolve(responses)
+          }
+        })
       }
 
-      let receivedData = ''
+      let commandTimeout = setTimeout(() => null, 0)
+      let command: string | undefined
+      const sendCommand = (): void => {
+        if (command !== undefined) {
+          const data = receivedData.replace(command, '')
+          responses.push(data)
+        }
+        receivedData = ''
+
+        command = commands.shift()
+        if (command === undefined) {
+          return closePort()
+        }
+
+        tempPort.write(command)
+        commandTimeout = setTimeout(() => {
+          sendCommand()
+        }, 500)
+      }
+
       tempPort.on('data', (data: Buffer) => {
         receivedData += data.toString()
+        if (receivedData.includes('>>>')) {
+          clearTimeout(commandTimeout)
+          sendCommand()
+        }
       })
 
       tempPort.on('open', () => {
-        tempPort.write(command)
-        setTimeout(() => {
-          closePort()
-        }, 1000)
+        clearTimeout(portTimeout)
+        sendCommand()
       })
 
       tempPort.on('error', (error) => {
@@ -302,10 +322,29 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
           // if no target_board_name, fallback to serial port query
           // if not, connect and detect if repl capable
           //
-          this.connectAndExecute(port, '\r\n').then((result) => {
+          this.connectAndExecute(port, [
+            '\x03',
+            '\r\n'
+          ]).then(async ([, result]) => {
             // if data is >>> it is a repl capable device
             if (result.includes('>>>')) {
               const portItem = new UsbDevice(this.context, uri, vscode.TreeItemCollapsibleState.Collapsed, port, 'repl')
+              try {
+                let responses = await this.connectAndExecute(port, [
+                  'import os;os.uname()\r\n',
+                  'app_id\r\n',
+                  'app_ver\r\n'
+                ])
+                responses = responses.map((response) => {
+                  return response.replace('>>> ', '').replace(/(\r|\n)+/g, '')
+                })
+                portItem.uname = /^Traceback/.test(responses[0]) ? 'unknown' : responses[0]
+                portItem.appId = /^Traceback/.test(responses[1]) ? 'unknown' : responses[1].replace(/'/g, '')
+                portItem.appVersion = /^Traceback/.test(responses[2]) ? 'unknown' : responses[2].replace(/'/g, '')
+              } catch (error) {
+                ExtensionContextStore.error('error getting app_id', error)
+              }
+
               this.usbDeviceNodes.push(portItem)
             } else if (result.includes('uart:~$')) {
               const portItem = new UsbDevice(this.context, uri, vscode.TreeItemCollapsibleState.None, port, 'uart')

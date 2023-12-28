@@ -16,7 +16,20 @@ class AppletsStore {
 
     panel.webview.onDidReceiveMessage(async (message: DeviceCommand) => {
       // 1. from webview, panelKey = A, message = { method: 'foo', params: 'bar' }
-      this.handleMessage(panelKey, message)
+      // 2. if panelKey is linked to device(s)...
+      if (this._links.has(panelKey)) {
+        const link = this._links.get(panelKey)
+        if (link !== undefined) {
+          // for each linked device...
+          link.forEach((usbDevice: UsbDevice) => {
+            // send the message to the device
+            // panelKey = A, message = { method: 'foo', params: 'bar' }
+            usbDevice.commandHandler(panelKey, message).catch((error: unknown) => {
+              console.error(error)
+            })
+          })
+        }
+      }
     })
 
     panel.onDidDispose(() => {
@@ -43,21 +56,6 @@ class AppletsStore {
 
   list (): string[] {
     return Array.from(this._panels.keys())
-  }
-
-  handleMessage (panelKey: string, message: DeviceCommand): void {
-    // 2. if panelKey is linked to device(s)...
-    if (this._links.has(panelKey)) {
-      const link = this._links.get(panelKey)
-      if (link !== undefined) {
-        // for each linked device...
-        link.forEach((usbDevice: UsbDevice) => {
-          // send the message to the device
-          // panelKey = A, message = { method: 'foo', params: 'bar' }
-          usbDevice.commandHandler(panelKey, message)
-        })
-      }
-    }
   }
 
   link (panelKey: string, usbDevice: UsbDevice): void {

@@ -64,6 +64,10 @@ export class ExtensionContextStore extends EventEmitter {
     }))
   }
 
+  log (message: string): void {
+    this.outputChannel.appendLine(message)
+  }
+
   inform (message: string, window = false): void {
     this.outputChannel.appendLine(message)
     if (window) void vscode.window.showInformationMessage(message)
