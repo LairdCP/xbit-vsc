@@ -7,12 +7,15 @@ export async function RunPythonCommand (usbDeviceFile: UsbDeviceFile): Promise<n
     const usbDevice = usbDeviceFile.parentDevice
     ExtensionContextStore.outputChannel.appendLine('Running Python File')
 
+    // reboot device - this can take a few seconds
+    await usbDevice.ifc.sendEof()
+
     let dataToWrite = await usbDeviceFile.readFileFromDevice()
     await usbDevice.ifc.sendEnterRawMode()
     while (dataToWrite.length > 0) {
       const data = dataToWrite.slice(0, 255)
       dataToWrite = dataToWrite.slice(255)
-      usbDevice.ifc.write(data)
+      await usbDevice.ifc.write(data)
     }
     const result = await usbDevice.ifc.sendExecuteRawMode()
     await usbDevice.ifc.sendExitRawMode()
@@ -21,6 +24,7 @@ export async function RunPythonCommand (usbDeviceFile: UsbDeviceFile): Promise<n
 
     return await Promise.resolve(null)
   } catch (error: unknown) {
+    console.log('RunPythonCommand', error)
     return await Promise.reject(error)
   }
 }

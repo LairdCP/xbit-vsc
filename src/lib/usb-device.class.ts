@@ -183,7 +183,7 @@ export class UsbDevice extends vscode.TreeItem {
     })
 
     this.ifc.on('close', (error) => {
-      if (error !== null && error.disconnected === true) {
+      if (error !== null && error.disconnected === true && !this.ifc.restarting) {
         ExtensionContextStore.inform('Serial Port Closed By Device')
         try {
           const key = this.uri.path

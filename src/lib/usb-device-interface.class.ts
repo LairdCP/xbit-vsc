@@ -18,6 +18,8 @@ export class UsbDeviceInterface extends EventEmitter {
   eofType: string
   supportsBreak: boolean
   rawMode: boolean
+  restarting: boolean
+  connected: boolean
 
   constructor (options: Options) {
     super()
@@ -28,14 +30,16 @@ export class UsbDeviceInterface extends EventEmitter {
     this.eofType = options.eofType
     this.supportsBreak = options.supportsBreak
     this.rawMode = false
+    this.restarting = false
+    this.connected = false
   }
 
-  get connected (): boolean {
-    return this.serialPort !== null
-  }
+  // get connected (): boolean {
+  //   return this.serialPort !== null
+  // }
 
   async connect (): Promise<void> {
-    if (this.serialPort !== null) {
+    if (this.connected) {
       return await Promise.resolve()
     }
     return await new Promise((resolve, reject) => {
@@ -48,6 +52,7 @@ export class UsbDeviceInterface extends EventEmitter {
           if (error !== null) {
             reject(error)
           } else {
+            this.connected = true
             resolve()
           }
         })
@@ -62,6 +67,7 @@ export class UsbDeviceInterface extends EventEmitter {
         })
 
         this.serialPort.on('close', (error: unknown) => {
+          this.connected = false
           this.emit('close', error)
         })
       } catch (error: unknown) {
@@ -179,17 +185,30 @@ export class UsbDeviceInterface extends EventEmitter {
   }
 
   async sendEof (): Promise<void> {
+    let tryCount = 10
     // if this is a dongle, disconnect and reconnect
     if (this.eofType === 'disconnect') {
+      this.restarting = true
       await this.write('\x04')
-      await sleep(1500)
       await this.disconnect()
-      await sleep(1500)
-      await this.connect()
+      while (!this.connected) {
+        tryCount--
+        await sleep(1000)
+        try {
+          await this.connect()
+        } catch (error) {
+          console.log('reconnect error', error)
+        }
+        if (tryCount === 0) {
+          this.restarting = false
+          this.emit('close')
+          break
+        }
+      }
     } else if (this.eofType === 'restart') {
       await this.write('\x04')
+      return await sleep(500)
     }
-    return await sleep(500)
   }
 
   async reset (): Promise<void> {
