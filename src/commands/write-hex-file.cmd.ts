@@ -42,6 +42,7 @@ export async function WriteHexFileCommand (usbDevice: UsbDevice): Promise<null |
           if (data === '=]') {
             // done
             progress.report({ increment: 2.5, message: 'Complete' })
+            ExtensionContextStore.inform('Write Complete', true)
           }
         })
         return await Promise.resolve(null)
