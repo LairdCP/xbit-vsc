@@ -115,6 +115,10 @@ export function activate (context: vscode.ExtensionContext): void {
 
   vscode.workspace.onDidSaveTextDocument(async (textDocument: vscode.TextDocument) => {
     let usbDeviceFile: UsbDeviceFile | undefined
+    // this fires for any file save, so only show the error if the file is in the tree
+    if (textDocument.uri.scheme !== 'memfs') {
+      return
+    }
     // find the deviceFile by uri
     if (ExtensionContextStore.provider !== undefined) {
       const iterator = ExtensionContextStore.provider.treeCache.entries()

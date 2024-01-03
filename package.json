@@ -2,7 +2,7 @@
   "name": "xbit-vsc",
   "displayName": "Xbit tools for VS Code",
   "description": "",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "publisher": "rfp-canvas",
   "repository": {
     "type": "git",
@@ -53,7 +53,7 @@
         {
           "id": "xbit-devices",
           "title": "xbit",
-          "icon": "resources/xbit.svg"
+          "icon": "resources/xbit.png"
         }
       ]
     },
