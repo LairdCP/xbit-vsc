@@ -58,7 +58,7 @@ When interacting with a device, you can Connect or Disconnect from the associate
 
 # Working With Files
 
-> Files are stored in a virtual filesystem while working in VS Code. If files are changed on the device outside of VS Code, you can refresh the device (or individual file) by right-clicking on the item and selecting 'Refresh' to reload the files into VS Code.
+> Files are stored in a virtual filesystem while working in VS Code. If files are changed on the device outside of VS Code, you can refresh the device (or individual file) by right-clicking on the item and selecting 'Refresh' to reload the files into VS Code. A backup copy of all files that you open/edit from devices will be stored in the xbit.venv folder.
 
 ## Creating a Python Script on a Device
 
@@ -107,7 +107,7 @@ This extension supports working with Xbit Applets. Xbit Applets are a way to dev
 
 1. Connect a Canvas Device to your computer.
 2. Open an Xbit Applet folder in your VS Code workspace.
-3. Find the xbit-applet.json file for the applet you want to runl, right click and select "Run Xbit Applet..."
+3. Find the package.json file for the applet you want to run, right click and select "Run Xbit Applet..."
 4. Switch to the Xbit extension and find the device you want to use for the applet.
 5. Connect to the device.
 6. In the lower "selected device" panel, from the drop down "selected applet" choose the running applet to pipe device data to the applet.
