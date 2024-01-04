@@ -2,6 +2,9 @@ import * as vscode from 'vscode'
 import * as path from 'path'
 import { UsbDeviceFile } from '../lib/usb-device-file.class'
 import ExtensionContextStore from '../stores/extension-context.store'
+import * as fs from 'fs/promises'
+
+const config = vscode.workspace.getConfiguration('xbit-vsc')
 
 export async function RenameDeviceFileCommand (usbDeviceFile: UsbDeviceFile): Promise<null | Error> {
   if (!usbDeviceFile.parentDevice.connected) {
@@ -22,7 +25,6 @@ export async function RenameDeviceFileCommand (usbDeviceFile: UsbDeviceFile): Pr
       }
       const key = usbDeviceFile.parentDevice.uri.path
       await usbDeviceFile.parentDevice.renameFile(oldFilePath, newFileName)
-
       // rename in MemFS cache
       const newPath = path.dirname(usbDeviceFile.uri.path) + '/' + newFileName
       const newUri = usbDeviceFile.uri.with({ path: vscode.Uri.parse(newPath).path })
@@ -44,6 +46,19 @@ export async function RenameDeviceFileCommand (usbDeviceFile: UsbDeviceFile): Pr
         // can't open file as it's not been loaded
         // OK
       }
+
+      const location: string | undefined = config.get('python-venv')
+      if (location !== undefined) {
+        const oldFilename = ExtensionContextStore.getLocalFileFromUri(usbDeviceFile.uri)
+        const newFilename = ExtensionContextStore.getLocalFileFromUri(newUri)
+
+        fs.rename(path.join(location, oldFilename), path.join(location, newFilename)).then(() => {
+          ExtensionContextStore.inform('File Renamed', false)
+        }).catch((error: unknown) => {
+          ExtensionContextStore.error('Error Renaming File', error)
+        })
+      }
+
       ExtensionContextStore.inform(`Renamed File ${usbDeviceFile.label} to ${newFileName}\n`)
       return await Promise.resolve(null)
     } catch (error: unknown) {

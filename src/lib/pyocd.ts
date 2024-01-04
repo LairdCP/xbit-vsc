@@ -416,8 +416,6 @@ const detectPython = async (OUTPUT_CHANNEL: vscode.OutputChannel): Promise<null 
   let venv = await getVenv()
   if (venv === null) {
     OUTPUT_CHANNEL.appendLine('no venv found')
-    void config.delete('requirements-version')
-
     void config.update('requirements-version', undefined)
 
     // if on linux, prompt to install python3-venv

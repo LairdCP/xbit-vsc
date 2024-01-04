@@ -5,6 +5,10 @@
 
 import * as path from 'path'
 import * as vscode from 'vscode'
+import * as fs from 'fs/promises'
+
+import ExtensionContextStore from '../stores/extension-context.store'
+const config = vscode.workspace.getConfiguration('xbit-vsc')
 
 export class File implements vscode.FileStat {
   type: vscode.FileType
@@ -95,6 +99,16 @@ export class MemFS implements vscode.FileSystemProvider {
     entry.size = content.byteLength
     entry.data = content
 
+    const location: string | undefined = config.get('python-venv')
+    if (location !== undefined) {
+      const filename = ExtensionContextStore.getLocalFileFromUri(uri)
+      fs.writeFile(path.join(location, filename), content).then(() => {
+        ExtensionContextStore.inform('File saved', false)
+      }).catch((error: unknown) => {
+        ExtensionContextStore.error('Error Writing File', error)
+      })
+    }
+
     this._fireSoon({ type: vscode.FileChangeType.Changed, uri })
   }
 
@@ -131,6 +145,7 @@ export class MemFS implements vscode.FileSystemProvider {
     parent.entries.delete(basename)
     parent.mtime = Date.now()
     parent.size -= 1
+
     this._fireSoon({ type: vscode.FileChangeType.Changed, uri: dirname }, { uri, type: vscode.FileChangeType.Deleted })
   }
 

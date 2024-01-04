@@ -39,6 +39,15 @@ export class ExtensionContextStore extends EventEmitter {
     })
   }
 
+  getLocalFileFromUri (uri: vscode.Uri): string {
+    const filename = uri.path.replace('/dev/', '/').split('/')
+    filename.shift() // ''
+    filename.shift() // 'serial'
+    const deviceId = filename.shift()
+    filename.shift() // 'com'
+    return [deviceId, ...filename].join('-')
+  }
+
   init (
     context: vscode.ExtensionContext
   ): void {

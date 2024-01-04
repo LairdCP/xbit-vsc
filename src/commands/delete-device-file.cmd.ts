@@ -1,6 +1,10 @@
 import * as vscode from 'vscode'
+import * as path from 'path'
 import { UsbDeviceFile } from '../lib/usb-device-file.class'
 import ExtensionContextStore from '../stores/extension-context.store'
+import * as fs from 'fs/promises'
+
+const config = vscode.workspace.getConfiguration('xbit-vsc')
 
 export async function DeleteDeviceFileCommand (usbDeviceFile: UsbDeviceFile): Promise<null | Error> {
   if (!usbDeviceFile.parentDevice.connected) {
@@ -18,7 +22,16 @@ export async function DeleteDeviceFileCommand (usbDeviceFile: UsbDeviceFile): Pr
 
     // deleting a file that's never been opened will throw an error
     try {
-      await ExtensionContextStore.memFs.delete(usbDeviceFile.uri)
+      ExtensionContextStore.memFs.delete(usbDeviceFile.uri)
+      const location: string | undefined = config.get('python-venv')
+      if (location !== undefined) {
+        const filename = ExtensionContextStore.getLocalFileFromUri(usbDeviceFile.uri)
+        fs.unlink(path.join(location, filename)).then(() => {
+          ExtensionContextStore.inform('File deleted', false)
+        }).catch((error: unknown) => {
+          console.error('Error Deleting File', error)
+        })
+      }
     } catch (error: unknown) {
       if (error instanceof vscode.FileSystemError && error.code === 'FileNotFound') {
         // ignore
@@ -28,6 +41,7 @@ export async function DeleteDeviceFileCommand (usbDeviceFile: UsbDeviceFile): Pr
     }
 
     ExtensionContextStore.inform(`Deleted File: ${usbDeviceFile.name}`)
+
     return await Promise.resolve(null)
   } catch (error: unknown) {
     console.error(error)

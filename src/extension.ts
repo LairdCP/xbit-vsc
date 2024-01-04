@@ -1,6 +1,7 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode'
+
 // import { PyocdInterface } from './lib/pyocd'
 // const SerialPortProvider = require('./serial-port.lib')
 import { UsbDeviceFile } from './lib/usb-device-file.class'
@@ -119,6 +120,7 @@ export function activate (context: vscode.ExtensionContext): void {
     if (textDocument.uri.scheme !== 'memfs') {
       return
     }
+
     // find the deviceFile by uri
     if (ExtensionContextStore.provider !== undefined) {
       const iterator = ExtensionContextStore.provider.treeCache.entries()
@@ -150,13 +152,15 @@ export function activate (context: vscode.ExtensionContext): void {
         ExtensionContextStore.mute()
         await usbDevice.writeFile(usbDeviceFile, dataToWrite)
         ExtensionContextStore.outputChannel.appendLine('Saved\n')
+        // remove the local copy?
       } catch (error) {
         ExtensionContextStore.outputChannel.appendLine('Error saving\n')
       } finally {
         ExtensionContextStore.unmute()
       }
+    } else {
+      return await vscode.window.showErrorMessage('Error Saving File. No Tree Provider')
     }
-    return await vscode.window.showErrorMessage('Error Saving File. No Tree Provider')
   })
 }
 
