@@ -14,6 +14,9 @@ export async function DeleteDeviceFileCommand (usbDeviceFile: UsbDeviceFile): Pr
   // const dirPath = path.dirname(filePath)
   const key = usbDeviceFile.parentDevice.uri.path
   try {
+    if (usbDeviceFile.parentDevice.filesystem.opLock !== false) {
+      throw new Error(usbDeviceFile.parentDevice.filesystem.opLock as string)
+    }
     ExtensionContextStore.mute()
     await usbDeviceFile.parentDevice.deleteFile(usbDeviceFile.devPath)
     // remove from MemFS cache
@@ -45,7 +48,6 @@ export async function DeleteDeviceFileCommand (usbDeviceFile: UsbDeviceFile): Pr
     return await Promise.resolve(null)
   } catch (error: unknown) {
     console.error(error)
-    ExtensionContextStore.error('Error Deleting File', error, true)
     return await Promise.reject(error)
   } finally {
     ExtensionContextStore.unmute()

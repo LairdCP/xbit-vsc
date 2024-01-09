@@ -5,6 +5,7 @@ import * as vscode from 'vscode'
 // import { PyocdInterface } from './lib/pyocd'
 // const SerialPortProvider = require('./serial-port.lib')
 import { UsbDeviceFile } from './lib/usb-device-file.class'
+import { UsbDevice } from './lib/usb-device.class'
 import { UsbDeviceWebViewProvider } from './providers/usb-device-webview.provider'
 
 import {
@@ -85,14 +86,65 @@ export function activate (context: vscode.ExtensionContext): void {
 
   // Register command handlers for the extension
   //
-  context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.refreshDevices', RefreshDevicesCommand))
-  context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.refreshFile', RefreshFileCommand))
-  context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.refreshDeviceFiles', RefreshDeviceFilesCommand))
-  context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.createDeviceFile', CreateDeviceFileCommand))
-  context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.deleteDeviceFile', DeleteDeviceFileCommand))
-  context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.renameDeviceFile', RenameDeviceFileCommand))
+  context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.refreshDevices', async () => {
+    try {
+      await RefreshDevicesCommand()
+    } catch (error) {
+      // TODO select the previous device
+      ExtensionContextStore.error('Error Refreshing File', error, true)
+    }
+  }))
+  context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.refreshFile', async (usbDeviceFile: UsbDeviceFile) => {
+    try {
+      await RefreshFileCommand(usbDeviceFile)
+    } catch (error) {
+      // TODO select the previous device
+      ExtensionContextStore.error('Error Refreshing File', error, true)
+    }
+  }))
+  context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.refreshDeviceFiles', async (usbDevice: UsbDevice) => {
+    try {
+      await RefreshDeviceFilesCommand(usbDevice)
+    } catch (error) {
+      // TODO select the previous device
+      ExtensionContextStore.error('Error Refreshing Files', error, true)
+    }
+  }))
+
+  context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.createDeviceFile', async (usbDevice: UsbDevice) => {
+    try {
+      await CreateDeviceFileCommand(usbDevice)
+    } catch (error) {
+      // TODO select the previous device
+      ExtensionContextStore.error('Error Creating File', error, true)
+    }
+  }))
+
+  context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.deleteDeviceFile', async (usbDeviceFile: UsbDeviceFile) => {
+    try {
+      await DeleteDeviceFileCommand(usbDeviceFile)
+    } catch (error) {
+      // TODO select the previous device
+      ExtensionContextStore.error('Error Deleting File', error, true)
+    }
+  }))
+  context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.renameDeviceFile', async (usbDeviceFile: UsbDeviceFile) => {
+    try {
+      await RenameDeviceFileCommand(usbDeviceFile)
+    } catch (error) {
+      // TODO select the previous device
+      ExtensionContextStore.error('Error Renaming File', error, true)
+    }
+  }))
   // called when a python file on a connected device is selected in the tree view
-  context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.openDeviceFile', OpenDeviceFileCommand))
+  context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.openDeviceFile', async (usbDeviceFile: UsbDeviceFile) => {
+    try {
+      await OpenDeviceFileCommand(usbDeviceFile)
+    } catch (error) {
+      // TODO select the previous device
+      ExtensionContextStore.error('Error Opening File', error, true)
+    }
+  }))
   context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.writeHexFile', WriteHexFileCommand))
   context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.runApplet', RunApplet))
   context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.connectUsbDevice', ConnectUsbDeviceCommand))
@@ -153,8 +205,10 @@ export function activate (context: vscode.ExtensionContext): void {
         await usbDevice.writeFile(usbDeviceFile, dataToWrite)
         ExtensionContextStore.outputChannel.appendLine('Saved\n')
         // remove the local copy?
+        ExtensionContextStore.inform(`Saved File ${usbDeviceFile.name}\n`)
       } catch (error) {
         ExtensionContextStore.outputChannel.appendLine('Error saving\n')
+        ExtensionContextStore.error(`Error Saving File ${usbDeviceFile.name}\n`, error, true)
       } finally {
         ExtensionContextStore.unmute()
       }

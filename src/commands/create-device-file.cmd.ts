@@ -8,6 +8,10 @@ export async function CreateDeviceFileCommand (usbDevice: UsbDevice): Promise<nu
     await vscode.commands.executeCommand('xbitVsc.connectUsbDevice', usbDevice)
   }
 
+  if (usbDevice.filesystem.opLock !== false) {
+    throw new Error(usbDevice.filesystem.opLock as string)
+  }
+
   // create a new file object with unamed file
   const fileName = await vscode.window.showInputBox()
   // check if the file already exists with the same filename.
@@ -23,7 +27,6 @@ export async function CreateDeviceFileCommand (usbDevice: UsbDevice): Promise<nu
       ExtensionContextStore.inform(`Created New File: ${fileName}`)
       return await Promise.resolve(null)
     } catch (error: unknown) {
-      ExtensionContextStore.error('Error Creating File', error, true)
       return await Promise.reject(error)
     } finally {
       ExtensionContextStore.unmute()

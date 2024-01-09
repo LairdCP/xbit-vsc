@@ -4,10 +4,16 @@ import { UsbDeviceFile } from './usb-device-file.class'
 import { UsbDevice } from './usb-device.class'
 import { pythonLsStatElement } from './util.ifc'
 
+const CONST_READING_FILE = 'Reading File'
+const CONST_WRITING_FILE = 'Writing File'
+const CONST_READING_DIR = 'Reading Dir'
+const CONST_CREATING_FILE = 'Creating File'
+
 export class UsbDeviceFileSystem {
-  private writeFileToDeviceDebounce: NodeJS.Timeout | null = null
-  private writeFileToDeviceData: string | undefined
+  private _opLock: boolean | string = false
   private writing: UsbDeviceFile | null = null
+  private reading: UsbDeviceFile | null = null
+  private readingDir: string | null = null
   private _rwRrate = 512
   usbDevice: UsbDevice
 
@@ -23,8 +29,17 @@ export class UsbDeviceFileSystem {
     this._rwRrate = rate
   }
 
+  get opLock (): boolean | string {
+    return this._opLock
+  }
+
+  set opLock (lock: boolean | string) {
+    this._opLock = lock
+  }
+
   // TODO change to writeFile command
   async createFile (filePath: string, data?: Buffer): Promise<string> {
+    this.opLock = CONST_CREATING_FILE
     try {
       // if data is defined, write it to the file
       if (data !== undefined) {
@@ -36,6 +51,8 @@ export class UsbDeviceFileSystem {
       }
     } catch (error) {
       return await Promise.reject(error)
+    } finally {
+      this.opLock = false
     }
   }
 
@@ -51,30 +68,12 @@ export class UsbDeviceFileSystem {
   }
 
   async writeFile (file: UsbDeviceFile, data: string): Promise<string> {
-    // if already have a debounce pending, just update the data
-    if (this.writeFileToDeviceDebounce !== null) {
-      this.writeFileToDeviceData = data
-      return await Promise.resolve('OK')
+    // if already writing, reject
+    if (this.opLock !== false) {
+      return await Promise.reject(new Error(this.opLock as string))
     }
-
-    // if already writing, set the data and a debounce
-    if (this.writing !== null) {
-      if (this.writing === file) {
-        this.writeFileToDeviceData = data
-        return await Promise.reject(new Error('Already writing to this device'))
-      }
-      this.writeFileToDeviceData = data
-      this.writeFileToDeviceDebounce = setTimeout(() => {
-        this.writeFileToDeviceDebounce = null
-        if (this.writeFileToDeviceData !== undefined) {
-          void this.writeFile(file, this.writeFileToDeviceData)
-        }
-      }, 1000)
-      return await Promise.resolve('OK')
-    }
-
+    this.opLock = CONST_WRITING_FILE
     this.writing = file
-    this.writeFileToDeviceData = undefined
     let offset = 0
     const write = async (): Promise<Error | string> => {
       try {
@@ -85,6 +84,8 @@ export class UsbDeviceFileSystem {
         await this.usbDevice.writeWait(`f.write(binascii.unhexlify('${bytesToWrite}'))\r`)
       } catch (error) {
         console.error('error', error)
+        this.writing = null
+
         return await Promise.reject(error)
       }
 
@@ -94,25 +95,25 @@ export class UsbDeviceFileSystem {
       } else {
         file.size = data.length
         this.writing = null
-        // if write data is pending, write it now
-        if (this.writeFileToDeviceData !== undefined) {
-          clearTimeout(this.writeFileToDeviceDebounce as NodeJS.Timeout)
-          this.writeFileToDeviceDebounce = null
-          void this.writeFile(file, this.writeFileToDeviceData)
-        }
+        this.opLock = false
         return await Promise.resolve('OK')
       }
     }
-
-    await this.usbDevice.writeWait('import binascii\r', 1000)
-    const result = await this.usbDevice.writeWait(`f = open('${file.devPath}', 'wb')\r`, 1000)
-    if (!result.includes('>>>')) {
+    try {
+      await this.usbDevice.writeWait('import binascii\r', 1000)
+      const result = await this.usbDevice.writeWait(`f = open('${file.devPath}', 'wb')\r`, 1000)
+      if (!result.includes('>>>')) {
+        this.writing = null
+        return await Promise.reject(result)
+      } else {
+        // start writing chunks
+        await write()
+        return await this.usbDevice.writeWait('f.close()\r', 1000)
+      }
+    } catch (error) {
       this.writing = null
-      return await Promise.reject(result)
-    } else {
-      // start writing chunks
-      await write()
-      return await this.usbDevice.writeWait('f.close()\r', 1000)
+      this.opLock = false
+      return await Promise.reject(error)
     }
   }
 
@@ -126,6 +127,13 @@ export class UsbDeviceFileSystem {
     if (!this.usbDevice.replCapable) {
       return await Promise.resolve([])
     }
+
+    if (this.opLock !== false) {
+      return await Promise.reject(new Error(this.opLock as string))
+    }
+
+    this.opLock = CONST_READING_DIR
+    this.readingDir = dirPath
     const timeout = async (ms: number): Promise<void> => {
       return await new Promise(resolve => setTimeout(resolve, ms))
     }
@@ -142,38 +150,61 @@ export class UsbDeviceFileSystem {
       '        print(full_name, s[0], s[5], ",")\r'
     ]
 
-    for (const i of lsFunction) {
-      await this.usbDevice.write(i)
-      await timeout(100)
-    }
+    try {
+      for (const i of lsFunction) {
+        await this.usbDevice.write(i)
+        await timeout(100)
+      }
 
-    await this.usbDevice.writeWait('\r', 1000)
-    const result = await this.usbDevice.writeWait(`ls('${dirPath}')\r`, 1000)
-    const resultMap = result.split(',')
-      .map((r: string) => r.trim()
-        .split(' ')
-      )
-      .filter((r: string[]) => {
-        return r.length > 1
+      await this.usbDevice.writeWait('\r', 1000)
+      const result = await this.usbDevice.writeWait(`ls('${dirPath}')\r`, 1000)
+      const resultMap = result.split(',')
+        .map((r: string) => r.trim()
+          .split(' ')
+        )
+        .filter((r: string[]) => {
+          return r.length > 1
+        })
+
+      const fileResult: pythonLsStatElement[] = resultMap.map((r: string[]) => {
+        const element: pythonLsStatElement = {
+          type: '',
+          size: parseInt(r[2], 10),
+          path: r[0]
+        }
+
+        if (r[1] === '32768') {
+          element.type = 'file'
+        } else if (r[1] === '16384') {
+          element.type = 'dir'
+        } else {
+          element.type = r[1]
+        }
+
+        return element
       })
+      return await Promise.resolve(fileResult)
+    } catch (error) {
+      return await Promise.reject(error)
+    } finally {
+      this.readingDir = null
+      this.opLock = false
+    }
+  }
 
-    const fileResult: pythonLsStatElement[] = resultMap.map((r: string[]) => {
-      const element: pythonLsStatElement = {
-        type: '',
-        size: parseInt(r[2], 10),
-        path: r[0]
-      }
-
-      if (r[1] === '32768') {
-        element.type = 'file'
-      } else if (r[1] === '16384') {
-        element.type = 'dir'
-      } else {
-        element.type = r[1]
-      }
-
-      return element
-    })
-    return await Promise.resolve(fileResult)
+  async readFile (file: UsbDeviceFile): Promise<string> {
+    if (this.opLock !== false) {
+      return await Promise.reject(new Error(this.opLock as string))
+    }
+    this.reading = file
+    this.opLock = CONST_READING_FILE
+    try {
+      return await file.readFileFromDevice()
+    } catch (error) {
+      return await Promise.reject(error)
+    } finally {
+      this.reading = null
+      this.opLock = false
+    }
   }
 }

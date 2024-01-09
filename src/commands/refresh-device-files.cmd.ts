@@ -4,6 +4,11 @@ import { UsbDevice } from '../lib/usb-device.class'
 export async function RefreshDeviceFilesCommand (usbDevice: UsbDevice): Promise<null | Error> {
   if (ExtensionContextStore.provider !== undefined) {
     const key = usbDevice.uri.path
+
+    if (usbDevice.filesystem.opLock !== false) {
+      throw new Error(usbDevice.filesystem.opLock as string)
+    }
+
     // for each open file
     // if the file is in the tree cache path
     // warn the user that the file will be closed?

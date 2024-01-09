@@ -15,8 +15,13 @@ export async function RenameDeviceFileCommand (usbDeviceFile: UsbDeviceFile): Pr
   const newFilePath = await vscode.window.showInputBox({
     value: usbDeviceFile.label
   })
+
   if (newFilePath !== undefined && ExtensionContextStore.provider !== undefined) {
     try {
+      if (usbDeviceFile.parentDevice.filesystem.opLock !== false) {
+        throw new Error(usbDeviceFile.parentDevice.filesystem.opLock as string)
+      }
+
       // rename the file on the device
       const oldFilePath = usbDeviceFile.devPath.split('/').pop() ?? ''
       const newFileName = newFilePath.split('/').pop() ?? ''
@@ -52,18 +57,13 @@ export async function RenameDeviceFileCommand (usbDeviceFile: UsbDeviceFile): Pr
         const oldFilename = ExtensionContextStore.getLocalFileFromUri(usbDeviceFile.uri)
         const newFilename = ExtensionContextStore.getLocalFileFromUri(newUri)
 
-        fs.rename(path.join(location, oldFilename), path.join(location, newFilename)).then(() => {
-          ExtensionContextStore.inform('File Renamed', false)
-        }).catch((error: unknown) => {
-          ExtensionContextStore.error('Error Renaming File', error)
-        })
+        await fs.rename(path.join(location, oldFilename), path.join(location, newFilename))
+        ExtensionContextStore.inform('File Renamed', false)
       }
 
       ExtensionContextStore.inform(`Renamed File ${usbDeviceFile.label} to ${newFileName}\n`)
       return await Promise.resolve(null)
     } catch (error: unknown) {
-      console.log(error)
-      ExtensionContextStore.error('Error Renaming File', error, true)
       return await Promise.reject(error)
     }
   }

@@ -16,6 +16,17 @@ const deviceMap = new DeviceMap()
 
 let inFlightCommands: InFlightCommand[] = []
 
+export interface XbitShellJSON {
+  i?: number
+  e?: string
+  m?: string
+  d?: string
+  b?: string
+  j?: string
+  r?: string
+  t?: string
+}
+
 export class UsbDevice extends vscode.TreeItem {
   context: vscode.ExtensionContext
   uri: vscode.Uri
@@ -268,7 +279,36 @@ export class UsbDevice extends vscode.TreeItem {
   async writeWait (data: string, timeout?: number): Promise<string> {
     return await this.ifc.writeWait(data, timeout)
   }
-  //
+
+  // async startXbitShell (): Promise<null | Error> {
+  //   if (this.appId === 'xbit_usb') {
+  //     // exit the current shell if we're in one
+  //     await this.ifc.sendBreak()
+  //     try {
+  //       await this.ifc.writeWait('xbitShellStart()\r', {
+  //         waitFor: 'xbit>'
+  //       })
+
+  //       this.xbitShell = true
+  //       return await Promise.resolve(null)
+  //     } catch (error) {
+  //       return await Promise.reject(error)
+  //     }
+  //   } else {
+  //     return await Promise.reject(new Error('Not an xbit_usb device'))
+  //   }
+  // }
+
+  // async stopXbitShell (): Promise<string> {
+  //   this.xbitShell = false
+  //   try {
+  //     return await this.ifc.writeWait('\x03', {
+  //       waitFor: '>>>'
+  //     })
+  //   } catch (error) {
+  //     return await Promise.reject(error)
+  //   }
+  // }
 
   // Update the iconPath based on the state of the device
   //
