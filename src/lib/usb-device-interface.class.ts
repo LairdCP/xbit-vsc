@@ -162,7 +162,7 @@ export class UsbDeviceInterface extends EventEmitter {
   async sendEnterRawMode (): Promise<void> {
     await this.write('\x01')
     this.rawMode = true
-    return await sleep(100)
+    return await sleep(50)
   }
 
   // send ctrl+d
@@ -176,12 +176,12 @@ export class UsbDeviceInterface extends EventEmitter {
   async sendExitRawMode (): Promise<void> {
     await this.write('\x02')
     this.rawMode = false
-    return await sleep(100)
+    return await sleep(50)
   }
 
   async sendBreak (): Promise<void> {
     await this.write('\x03')
-    return await sleep(500)
+    return await sleep(50)
   }
 
   async sendEof (): Promise<void> {
@@ -207,7 +207,9 @@ export class UsbDeviceInterface extends EventEmitter {
       }
     } else if (this.eofType === 'restart') {
       await this.write('\x04')
-      return await sleep(500)
+      return await sleep(50)
+    } else {
+      return await Promise.reject(new Error('Unknown eofType'))
     }
   }
 
