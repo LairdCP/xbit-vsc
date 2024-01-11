@@ -4,10 +4,10 @@ import { UsbDeviceFile } from './usb-device-file.class'
 import { UsbDevice } from './usb-device.class'
 import { pythonLsStatElement } from './util.ifc'
 
-const CONST_READING_FILE = 'Currentlying Reading File'
-const CONST_WRITING_FILE = 'Currentlying Writing File'
-const CONST_READING_DIR = 'Currentlying Reading Dir'
-const CONST_CREATING_FILE = 'Currentlying Creating File'
+const CONST_READING_FILE = 'Currently Reading File'
+const CONST_WRITING_FILE = 'Currently Writing File'
+const CONST_READING_DIR = 'Currently Reading Dir'
+const CONST_CREATING_FILE = 'Currently Creating File'
 
 export class UsbDeviceFileSystem {
   private _opLock: boolean | string = false
@@ -39,12 +39,12 @@ export class UsbDeviceFileSystem {
 
   // TODO change to writeFile command
   async createFile (filePath: string, data?: Buffer): Promise<string> {
-    this.opLock = CONST_CREATING_FILE
     try {
       // if data is defined, write it to the file
       if (data !== undefined) {
         return await this.writeFile(new UsbDeviceFile(this.usbDevice.context, this.usbDevice.uri.with({ path: filePath }), 'file', data.length, this.usbDevice), data.toString('ascii'))
       } else {
+        this.opLock = CONST_CREATING_FILE
         await this.usbDevice.writeWait(`f = open('${filePath}', 'w')\r`, 1000)
         await this.usbDevice.writeWait('f.close()\r', 1000)
         return await Promise.resolve('ok')
