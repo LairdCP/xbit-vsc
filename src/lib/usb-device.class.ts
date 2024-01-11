@@ -124,7 +124,7 @@ export class UsbDevice extends vscode.TreeItem {
       // for each webview panel...
       if (/\r\n$/.test(this.resultBuffer)) {
         let lines = this.resultBuffer.split(/\r\n/)
-        ExtensionContextStore.log(lines.join('\n'))
+        ExtensionContextStore.log(lines.join('\r\n'))
 
         const lastLine = lines.pop()
         if (lastLine !== undefined) {
@@ -186,7 +186,7 @@ export class UsbDevice extends vscode.TreeItem {
           // this isn't a command response
           // but send it to the webview anyway
           if (lines.length > 0) {
-            const response = { result: lines.join('\n') }
+            const response = { result: lines.join('\r\n') }
             cb(response)
           }
         })

@@ -4,10 +4,10 @@ import { UsbDeviceFile } from './usb-device-file.class'
 import { UsbDevice } from './usb-device.class'
 import { pythonLsStatElement } from './util.ifc'
 
-const CONST_READING_FILE = 'Reading File'
-const CONST_WRITING_FILE = 'Writing File'
-const CONST_READING_DIR = 'Reading Dir'
-const CONST_CREATING_FILE = 'Creating File'
+const CONST_READING_FILE = 'Currentlying Reading File'
+const CONST_WRITING_FILE = 'Currentlying Writing File'
+const CONST_READING_DIR = 'Currentlying Reading Dir'
+const CONST_CREATING_FILE = 'Currentlying Creating File'
 
 export class UsbDeviceFileSystem {
   private _opLock: boolean | string = false

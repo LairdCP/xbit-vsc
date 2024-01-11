@@ -116,6 +116,7 @@ export class UsbDeviceInterface extends EventEmitter {
     return await new Promise((resolve, reject) => {
       const resolver = (data: string): void => {
         responseBuffer += data.replace(command, '')
+        responseBuffer = responseBuffer.replace(command, '')
 
         if (responseBuffer.includes('Error')) {
           reject(responseBuffer)
