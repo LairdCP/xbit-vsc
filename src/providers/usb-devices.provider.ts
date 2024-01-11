@@ -243,6 +243,7 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
     const ports: ProbeInfo[] = []
     const deviceIds: Set<string> = new Set()
     const pyOcdResult = await this.pyocdInterface.listDevices()
+
     pyOcdResult.forEach((p: DvkProbeInterfaces) => {
       p.ports.forEach((port: DvkProbeInterface, idx: number) => {
         port.board_name = p.board_name
