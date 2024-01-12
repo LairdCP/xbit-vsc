@@ -10,7 +10,7 @@ for probe in probes:
   ports = []
   for port in probe.ports:
     port_info = DvkProbe.get_com_port_info(probe.ports[port])
-    print("Port %d: %s" % (port, port_info))
+    print("Port %s: %s" % (port, port_info))
     ports.append(port_info)
   # if inst has function probe, then call it
   probe.open()
