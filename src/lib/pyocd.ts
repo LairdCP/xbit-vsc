@@ -62,16 +62,19 @@ export class PyocdInterface {
 
   private async _listDevices (): Promise<DvkProbeInterfaces[]> {
     // ask pyocd for the list of devices
-    return await this.runCommand('python', [this.context.asAbsolutePath('./pytools/query.py')])
-      .then((result: string) => {
-        let probeResult: DvkProbeInterfaces[] = []
-        try {
-          probeResult = JSON.parse(result)
-        } catch (error) {
-          console.error(error)
-        }
-        return probeResult
-      })
+    try {
+      const result = await this.runCommand('python', [this.context.asAbsolutePath('./pytools/query.py')])
+      let probeResult: DvkProbeInterfaces[] = []
+      try {
+        probeResult = JSON.parse(result)
+      } catch (error) {
+        console.error(error)
+      }
+      return probeResult
+    } catch (error) {
+      console.error(error)
+      return []
+    }
   }
 
   async listDevices (): Promise<DvkProbeInterfaces[]> {
