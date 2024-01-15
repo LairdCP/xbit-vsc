@@ -2,7 +2,7 @@
   "name": "xbit-vsc",
   "displayName": "Xbit tools for VS Code",
   "description": "",
-  "version": "0.1.13",
+  "version": "0.1.14",
   "publisher": "rfp-canvas",
   "repository": {
     "type": "git",

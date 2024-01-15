@@ -15,7 +15,7 @@ Canvas Software Suite includes a VS Code Extension called Xbit. This extension p
 
 - Canvas Device
 - Python 3.10 or later
-- Pip 21.3 or later
+- Pip 22 or later
 - On Linux, you may need to install the python venv package. On Ubuntu, this can be done with the following command:
 ```sudo apt install python3.10-venv```
 
@@ -33,7 +33,7 @@ Opening VS Code should automatically display the Xbit extension icon in the side
 
 ![image info](https://raw.githubusercontent.com/LairdCP/xbit-vsc/main/resources/detected-repl.png)
 
-If a USB serial port is detected but the identity of the port cannot be determined, you’ll see a generic device listing identified by the default Xbit icon. At any time you can refresh the list of devices by clicking the refresh button in the USB DEVICES header bar. If the device's name indicates that the device is busy, it is likely that the device is already connected to another application. You will not be able to interact with the device until the other application releases the device.
+If a USB serial port is detected but the identity of the port cannot be determined, you’ll see a generic device listing identified by the default icon. At any time you can refresh the list of devices by clicking the refresh button in the USB DEVICES header bar. If the device's name indicates that the device is busy, it is likely that the device is already connected to another application. You will not be able to interact with the device until the other application releases the device.
 
 ![image info](https://raw.githubusercontent.com/LairdCP/xbit-vsc/main/resources/refresh-devices.png)
 
@@ -86,6 +86,16 @@ To rename a file such as a Python script already on your device, right click the
 
 You will then be prompted for the new name you would like to assign to the file. enter the new name and press Enter to rename the file.
 
+# Intellisense
+This extension comes with intellisense support for the Canvas MicroPython libraries. To enable intellisense, open a workspace and right click on any file. Select the "Xbit: Initialize Workspace..." option. The .vscode folder will be created in the workspace and the necessary files will be created. 
+
+You can now open a python file and start typing. Intellisense will provide suggestions for the current word. You can use the arrow keys to select the desired suggestion and press Enter to insert it into the editor.
+
+# Running Python Scripts on a Device
+When viewing the files on a device, you can right click on a python script and select Run File to execute the script on the device. The output of the script will be displayed in the output window.
+
+![image info](https://raw.githubusercontent.com/LairdCP/xbit-vsc/main/resources/run-file.png)
+
 # Troubleshooting
 
 ## Serial Port Unavailable or Busy
@@ -98,7 +108,7 @@ If you are unable to connect to a device and see an error like this, double chec
 
 These will occur if the extension doesn’t get a response from the connected device. This usually means that the repl console is in a state where it can’t process commands. Try to manually connect to the device to see it the repl comes up. See Interacting with the Device’s Python REPL. If you are unable to get a REPL terminal unplug the device and plug it back in, click the refresh button to redetect the devices.
 
-![image info](https://raw.githubusercontent.com/LairdCP/xbit-vsc/main/resources/timeout-error.png)
+![image info](https://raw.githubusercontent.com/LairdCP/xbit-vsc/main/resources/timeout.png)
 
 
 ## Using Xbit Applets
