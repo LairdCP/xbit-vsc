@@ -2,13 +2,15 @@
 import { UsbDeviceFile } from '../lib/usb-device-file.class'
 import ExtensionContextStore from '../stores/extension-context.store'
 
-export async function RunPythonCommand (usbDeviceFile: UsbDeviceFile): Promise<null | Error> {
+export async function RunPythonCommand (usbDeviceFile: UsbDeviceFile, reset: boolean): Promise<null | Error> {
   try {
     const usbDevice = usbDeviceFile.parentDevice
     ExtensionContextStore.outputChannel.appendLine('Running Python File')
 
-    // reboot device - this can take a few seconds
-    await usbDevice.ifc.sendEof()
+    // reboot device - this can take a few seconds 
+    if (reset) {
+      await usbDevice.ifc.sendEof()
+    }
 
     let dataToWrite = await usbDeviceFile.readFileFromDevice()
     await usbDevice.ifc.sendEnterRawMode()

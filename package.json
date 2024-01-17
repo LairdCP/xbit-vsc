@@ -138,8 +138,12 @@
         "title": "Xbit: Initialize Workspace"
       },
       {
-        "command": "xbitVsc.runPython",
-        "title": "Run Python"
+        "command": "xbitVsc.runPythonReset",
+        "title": "Run Python (reset)"
+      },
+      {
+        "command": "xbitVsc.runPythonNoReset",
+        "title": "Run Python (no reset)"
       }
     ],
     "menus": {
@@ -198,7 +202,11 @@
           "when": "viewItem == usbDeviceFile || viewItem == usbDeviceFilePython"
         },
         {
-          "command": "xbitVsc.runPython",
+          "command": "xbitVsc.runPythonReset",
+          "when": "viewItem == usbDeviceFilePython"
+        },
+        {
+          "command": "xbitVsc.runPythonNoReset",
           "when": "viewItem == usbDeviceFilePython"
         }
       ]

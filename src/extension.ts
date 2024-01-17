@@ -151,7 +151,22 @@ export function activate (context: vscode.ExtensionContext): void {
   context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.disconnectUsbDevice', DisconnectUsbDeviceCommand))
   context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.updateUsbDeviceSettings', UpdateUsbDeviceSettingsCommand))
   context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.initializeWorkspace', InitializeWorkspaceCommand))
-  context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.runPython', RunPythonCommand))
+  context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.runPythonReset', async (usbDeviceFile: UsbDeviceFile) => {
+    try {
+      await RunPythonCommand(usbDeviceFile, true)
+    } catch (error) {
+      // TODO select the previous device
+      ExtensionContextStore.error('Error Opening File', error, true)
+    }
+  }))
+  context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.runPythonNoReset', async (usbDeviceFile: UsbDeviceFile) => {
+    try {
+      await RunPythonCommand(usbDeviceFile, false)
+    } catch (error) {
+      // TODO select the previous device
+      ExtensionContextStore.error('Error Opening File', error, true)
+    }
+  }))
 
   // register the webview provider
   const usbDeviceWebViewProvider = new UsbDeviceWebViewProvider(context.extensionUri)
