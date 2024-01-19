@@ -117,6 +117,100 @@ export class UsbDeviceFileSystem {
     }
   }
 
+  async writeFileRawREPL (file: UsbDeviceFile, data: string): Promise<Error | null> {
+    // if already writing, reject
+    if (this.opLock !== false) {
+      return await Promise.reject(new Error(this.opLock as string))
+    }
+    this.opLock = CONST_WRITING_FILE
+    this.writing = file
+    let offset = 0
+
+    const commands = [
+      'import binascii',
+      `f = open('${file.devPath}', 'wb')`
+    ]
+
+    while (offset < data.length) {
+      const bytesToWrite = Buffer.from(data, 'ascii').toString('hex').slice(offset, offset + this._rwRrate)
+      if (bytesToWrite === null) {
+        break
+      }
+      commands.push(`f.write(binascii.unhexlify('${bytesToWrite}'))`)
+      offset += this._rwRrate
+    }
+    commands.push('f.close()')
+
+    try {
+      await this.usbDevice.ifc.sendEnterRawMode()
+      await this.usbDevice.ifc.sendEnterRawPasteMode()
+      await this.usbDevice.ifc.writeRawPasteMode(Buffer.from(commands.join('\r\n'), 'ascii'))
+      await this.usbDevice.ifc.sendExitRawMode()
+      return await Promise.resolve(null)
+    } catch (error) {
+      return await Promise.reject(error)
+    } finally {
+      this.writing = null
+      this.opLock = false
+    }
+  }
+
+  async readFileRawREPL (file: UsbDeviceFile): Promise<string> {
+    // if already reading, reject
+    if (this.opLock !== false) {
+      return await Promise.reject(new Error(this.opLock as string))
+    }
+    this.opLock = CONST_READING_FILE
+    this.reading = file
+    let offset = 0
+    const _rwRrate = 512
+    const commands = [
+      'import binascii',
+      `f = open('.${file.devPath}', 'rb')`
+    ]
+    /*
+    import binascii
+    f = open('/xbit-lib.py', 'rb')
+    print(binascii.hexlify(f.read(512)))
+    f.close()
+    */
+
+    while (offset < file.size) {
+      commands.push(`print(binascii.hexlify(f.read(${_rwRrate})).decode())`)
+      offset += this._rwRrate
+    }
+    commands.push('f.close()')
+
+    try {
+      await this.usbDevice.ifc.sendEnterRawMode()
+      // await this.usbDevice.ifc.writeRawMode(Buffer.from(commands.join('\r\n'), 'ascii'))
+      commands.forEach((c) => {
+        void this.usbDevice.ifc.write(c + '\r\n')
+      })
+      const readResult = await this.usbDevice.ifc.sendExecuteRawMode()
+      await this.usbDevice.ifc.sendExitRawMode()
+      // file contents will be a Buffer with this: b'HEXBYTES'\n\rb'HEXBYTES'\n\rb'HEXBYTES'
+      // convert to hex bytes and replace the extra characters
+      // b', ' and /r/n
+      const hexString = readResult.toString('hex').replace(/(0d|0a)/g, '')
+      // convert back to a buffer, and then to ascii string
+      const hexContents = Buffer.from(hexString, 'hex').toString()
+      // convert the ascii hex string to ascii
+      const fileContents = Buffer.from(hexContents, 'hex').toString('ascii')
+
+      if (typeof fileContents === 'string') {
+        return await Promise.resolve(fileContents)
+      } else {
+        throw new Error('unknown error')
+      }
+    } catch (error) {
+      return await Promise.reject(error)
+    } finally {
+      this.reading = null
+      this.opLock = false
+    }
+  }
+
   // Returns a promise
   //
   // Write the ls function to repl console
@@ -193,19 +287,19 @@ export class UsbDeviceFileSystem {
     }
   }
 
-  async readFile (file: UsbDeviceFile): Promise<string> {
-    if (this.opLock !== false) {
-      return await Promise.reject(new Error(this.opLock as string))
-    }
-    this.reading = file
-    this.opLock = CONST_READING_FILE
-    try {
-      return await file.readFileFromDevice()
-    } catch (error) {
-      return await Promise.reject(error)
-    } finally {
-      this.reading = null
-      this.opLock = false
-    }
-  }
+  // async readFile (file: UsbDeviceFile): Promise<string> {
+  //   if (this.opLock !== false) {
+  //     return await Promise.reject(new Error(this.opLock as string))
+  //   }
+  //   this.reading = file
+  //   this.opLock = CONST_READING_FILE
+  //   try {
+  //     return await file.readFileFromDevice()
+  //   } catch (error) {
+  //     return await Promise.reject(error)
+  //   } finally {
+  //     this.reading = null
+  //     this.opLock = false
+  //   }
+  // }
 }

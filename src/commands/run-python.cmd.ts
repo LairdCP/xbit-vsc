@@ -12,7 +12,7 @@ export async function RunPythonCommand (usbDeviceFile: UsbDeviceFile, reset: boo
       await usbDevice.ifc.sendEof()
     }
 
-    let dataToWrite = await usbDeviceFile.readFileFromDevice()
+    let dataToWrite = await usbDevice.filesystem.readFileRawREPL(usbDeviceFile)
     await usbDevice.ifc.sendEnterRawMode()
     while (dataToWrite.length > 0) {
       const data = dataToWrite.slice(0, 255)
@@ -22,7 +22,7 @@ export async function RunPythonCommand (usbDeviceFile: UsbDeviceFile, reset: boo
     const result = await usbDevice.ifc.sendExecuteRawMode()
     await usbDevice.ifc.sendExitRawMode()
     ExtensionContextStore.inform('File Executed:' + usbDeviceFile.name)
-    ExtensionContextStore.outputChannel.appendLine(result.trim())
+    ExtensionContextStore.outputChannel.appendLine(result.toString().trim())
 
     return await Promise.resolve(null)
   } catch (error: unknown) {

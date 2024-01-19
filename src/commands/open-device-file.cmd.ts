@@ -45,7 +45,7 @@ export async function OpenDeviceFileCommand (usbDeviceFile: UsbDeviceFile): Prom
     ExtensionContextStore.inform(`Reading File ${usbDeviceFile.name}`)
     ExtensionContextStore.mute()
     // const result: string = await usbDeviceFile.readFileFromDevice()
-    const result: string = await usbDeviceFile.parentDevice.filesystem.readFile(usbDeviceFile)
+    const result: string = await usbDeviceFile.parentDevice.filesystem.readFileRawREPL(usbDeviceFile)
     const fileData = Buffer.from(result, 'ascii')
 
     memFs.writeFile(usbDeviceFile.uri, fileData, { create: true, overwrite: true })
