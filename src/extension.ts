@@ -227,7 +227,7 @@ export function activate (context: vscode.ExtensionContext): void {
       const dataToWrite = textDocument.getText()
       try {
         ExtensionContextStore.mute()
-        await usbDevice.writeFile(usbDeviceFile, dataToWrite)
+        await usbDevice.filesystem.writeFileRawREPL(usbDeviceFile, dataToWrite)
         ExtensionContextStore.outputChannel.appendLine('Saved\n')
         // remove the local copy?
         ExtensionContextStore.inform(`Saved File ${usbDeviceFile.name}\n`)

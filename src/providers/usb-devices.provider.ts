@@ -58,10 +58,10 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
       const data = await vscode.workspace.fs.readFile(uri)
 
       // if the file is larger than 32k, don't write it
-      if (data.length > 32768) {
-        void vscode.window.showErrorMessage('File too large')
-        return
-      }
+      // if (data.length > 32768) {
+      //   void vscode.window.showErrorMessage('File too large')
+      //   return
+      // }
 
       const fileName = uri.path.split('/').pop()
       if (fileName !== undefined) {

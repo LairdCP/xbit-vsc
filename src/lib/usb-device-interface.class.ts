@@ -29,7 +29,6 @@ export class UsbDeviceInterface extends EventEmitter {
 
   constructor (options: Options) {
     super()
-    console.log(options)
     this.path = options.path
     this.baudRate = isNaN(options.baudRate) ? 115200 : options.baudRate
     this.serialPort = null
@@ -69,7 +68,6 @@ export class UsbDeviceInterface extends EventEmitter {
         })
 
         this.serialPort.on('data', (data: Buffer) => {
-          // console.log('data', data)
           // TODO emit serialData event
           this.emit('data', data.toString())
           if (this.awaiting !== null) {
@@ -189,7 +187,7 @@ export class UsbDeviceInterface extends EventEmitter {
     this.serialPort?.flush()
     return await new Promise((resolve, reject) => {
       this.awaiting = (result) => {
-        console.log('awaitBuffer got', result.toString('hex'))
+        // console.log('awaitBuffer got', result.toString('hex'))
         awaitBuffer = Buffer.concat([awaitBuffer, result])
         if (awaitBuffer.includes(waitFor)) {
           this.awaiting = null
@@ -227,9 +225,7 @@ export class UsbDeviceInterface extends EventEmitter {
   // send ctrl+d
   async sendExecuteRawMode (): Promise<Buffer> {
     const result = await this.writeWaitFor('\x04', '>')
-    console.log('result', result)
     const trimmedResult = result.slice(2, result.length - 3)
-    console.log('trimmedResult', trimmedResult.toString())
     return trimmedResult
   }
 
@@ -246,23 +242,29 @@ export class UsbDeviceInterface extends EventEmitter {
   }
 
   async sendEnterRawPasteMode (): Promise<number | Error> {
-    const result = await this.writeWaitFor('\x05A\x01', 0x52, 1000, 50)
-    this.rawPasteMode = true
-    if (result instanceof Buffer) {
-      if (result[0] === 0x52) {
-        // raw mode understood
-        if (result[1] === 0x01) {
-          // raw mode enabled
-          this.windowSize = result.readInt16LE(2)
-          console.log('raw mode enabled', this.windowSize)
-          return await Promise.resolve(this.windowSize)
-        } else if (result[1] === 0x00) {
-          // raw mode disabled
-          return await Promise.reject(new Error('raw mode disabled'))
+    return await new Promise((resolve, reject) => {
+      this.awaiting = (data) => {
+        if (data instanceof Buffer) {
+          if (data[0] === 0x52) {
+            // raw mode understood
+            if (data[1] === 0x01) {
+              // raw mode enabled
+              this.rawPasteMode = true
+              this.windowSize = data.readInt16LE(2)
+              this.awaiting = null
+              resolve(this.windowSize)
+            } else if (data[1] === 0x00) {
+              // raw mode disabled
+              this.awaiting = null
+              reject(new Error('raw mode disabled'))
+            }
+          }
         }
+        this.awaiting = null
+        return new Error('raw mode error')
       }
-    }
-    return new Error('raw mode error')
+      this.serialPort?.write('\x05A\x01')
+    })
   }
 
   async sendExitRawPasteMode (): Promise<string | Buffer | Error> {
@@ -278,35 +280,38 @@ export class UsbDeviceInterface extends EventEmitter {
     if (this.windowSize === 0) {
       throw new Error('windowSize is 0')
     }
-    let windowRemain = this.windowSize
+    let windowRemain = 0
     // Write out the commandBytes data.
     let i = 0
     // this function is called on every complete chunk of data received
     // from the serial port
     return await new Promise((resolve, reject) => {
       this.awaiting = (data) => {
-        // await sleep(50)
-        // console.log('awaiting', data)
         if (data[0] === 0x01) {
           // Device indicated that a new window of data can be sent.
           windowRemain += this.windowSize
           // Send out as much data as possible that fits within the allowed window.
           const b = commandBytes.slice(i, Math.min(i + windowRemain, commandBytes.length))
-          // console.log('b', b.length, b)
           if (this.serialPort === null) {
+            this.awaiting = null
             return reject(new Error('serialPort disconnected'))
           }
           this.serialPort.write(b)
           windowRemain -= b.length
           i += b.length
+          console.log('i', i)
           if (i === commandBytes.length) {
+            this.awaiting = null
             resolve()
           }
         } else if (data[0] === 0x04) {
+          // Device indicated that it has received all data.
+          this.awaiting = null
           resolve()
         } else {
           // Unexpected data from device.
-          throw new Error(`unexpected read during raw paste: ${data.toString()}`)
+          this.awaiting = null
+          return reject(new Error(`unexpected read during raw paste: ${data.toString()}`))
         }
       }
       this.awaiting(Buffer.from([0x01]))

@@ -142,10 +142,13 @@ export class UsbDeviceFileSystem {
     commands.push('f.close()')
 
     try {
+      console.time('rawwrite')
       await this.usbDevice.ifc.sendEnterRawMode()
       await this.usbDevice.ifc.sendEnterRawPasteMode()
       await this.usbDevice.ifc.writeRawPasteMode(Buffer.from(commands.join('\r\n'), 'ascii'))
+      await this.usbDevice.ifc.sendExitRawPasteMode()
       await this.usbDevice.ifc.sendExitRawMode()
+      console.timeEnd('rawwrite')
       return await Promise.resolve(null)
     } catch (error) {
       return await Promise.reject(error)
