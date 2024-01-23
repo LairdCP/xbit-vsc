@@ -14,7 +14,7 @@ export class UsbDeviceFileSystem {
   private writing: UsbDeviceFile | null = null
   private reading: UsbDeviceFile | null = null
   private readingDir: string | null = null
-  private _rwRrate = 512
+  private _rwRrate = 256
   usbDevice: UsbDevice
 
   constructor (usbDevice: UsbDevice) {
@@ -144,9 +144,13 @@ export class UsbDeviceFileSystem {
     try {
       console.time('rawwrite')
       await this.usbDevice.ifc.sendEnterRawMode()
-      await this.usbDevice.ifc.sendEnterRawPasteMode()
-      await this.usbDevice.ifc.writeRawPasteMode(Buffer.from(commands.join('\r\n'), 'ascii'))
-      await this.usbDevice.ifc.sendExitRawPasteMode()
+      while (commands.length > 0) {
+        const commandsToSend = commands.splice(0, 16)
+        commandsToSend.push('f.close()')
+        await this.usbDevice.ifc.sendEnterRawPasteMode()
+        await this.usbDevice.ifc.writeRawPasteMode(Buffer.from(commandsToSend.join('\r\n'), 'ascii'))
+        await this.usbDevice.ifc.sendExitRawPasteMode()
+      }
       await this.usbDevice.ifc.sendExitRawMode()
       console.timeEnd('rawwrite')
       return await Promise.resolve(null)
@@ -158,7 +162,7 @@ export class UsbDeviceFileSystem {
     }
   }
 
-  async readFileRawREPL (file: UsbDeviceFile): Promise<string> {
+  async readFileRawREPL (file: UsbDeviceFile, progressCallback: any = null): Promise<string> {
     // if already reading, reject
     if (this.opLock !== false) {
       return await Promise.reject(new Error(this.opLock as string))
@@ -166,47 +170,59 @@ export class UsbDeviceFileSystem {
     this.opLock = CONST_READING_FILE
     this.reading = file
     let offset = 0
-    const _rwRrate = 512
     const commands = [
       'import binascii',
       `f = open('.${file.devPath}', 'rb')`
     ]
-    /*
-    import binascii
-    f = open('/xbit-lib.py', 'rb')
-    print(binascii.hexlify(f.read(512)))
-    f.close()
-    */
-
     while (offset < file.size) {
-      commands.push(`print(binascii.hexlify(f.read(${_rwRrate})).decode())`)
+      commands.push(`print(binascii.hexlify(f.read(${this._rwRrate})).decode())`)
       offset += this._rwRrate
     }
     commands.push('f.close()')
 
+    let readResult = Buffer.from('')
     try {
       await this.usbDevice.ifc.sendEnterRawMode()
+      await this.usbDevice.ifc.flush()
       // await this.usbDevice.ifc.writeRawMode(Buffer.from(commands.join('\r\n'), 'ascii'))
-      commands.forEach((c) => {
-        void this.usbDevice.ifc.write(c + '\r\n')
-      })
-      const readResult = await this.usbDevice.ifc.sendExecuteRawMode()
+      console.time('rawread')
+      let n = 0
+      while (commands.length > 0) {
+        let nextCommand = commands.shift()
+        if (nextCommand === undefined) {
+          break
+        }
+        nextCommand = nextCommand + '\r\n'
+        await this.usbDevice.ifc.write(nextCommand)
+        const readBuffer = await this.usbDevice.ifc.sendExecuteRawMode()
+        readResult = Buffer.concat([readResult, readBuffer])
+        if (typeof progressCallback === 'function') {
+          progressCallback(this._rwRrate, file.size)
+        }
+      }
+      console.timeEnd('rawread')
       await this.usbDevice.ifc.sendExitRawMode()
+      // const readResult = await this.usbDevice.ifc.sendExecuteRawMode()
       // file contents will be a Buffer with this: b'HEXBYTES'\n\rb'HEXBYTES'\n\rb'HEXBYTES'
       // convert to hex bytes and replace the extra characters
       // b', ' and /r/n
+      // console.log('readResult', readResult)
       const hexString = readResult.toString('hex').replace(/(0d|0a)/g, '')
       // convert back to a buffer, and then to ascii string
+      // console.log('hexString', hexString)
       const hexContents = Buffer.from(hexString, 'hex').toString()
       // convert the ascii hex string to ascii
+      // console.log('hexContents', hexContents)
       const fileContents = Buffer.from(hexContents, 'hex').toString('ascii')
 
+      // console.log('fileContents', fileContents.length)
       if (typeof fileContents === 'string') {
         return await Promise.resolve(fileContents)
       } else {
         throw new Error('unknown error')
       }
     } catch (error) {
+      console.error('error', error)
       return await Promise.reject(error)
     } finally {
       this.reading = null

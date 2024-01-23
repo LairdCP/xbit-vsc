@@ -26,6 +26,7 @@ export class UsbDeviceInterface extends EventEmitter {
   connected: boolean
   awaiting: null | ((data: Buffer) => void)
   windowSize: number
+  writeWaitForTimeout: NodeJS.Timeout
 
   constructor (options: Options) {
     super()
@@ -41,6 +42,7 @@ export class UsbDeviceInterface extends EventEmitter {
     this.connected = false
     this.awaiting = null
     this.windowSize = 0
+    this.writeWaitForTimeout = undefined as unknown as NodeJS.Timeout
   }
 
   // get connected (): boolean {
@@ -69,13 +71,15 @@ export class UsbDeviceInterface extends EventEmitter {
 
         this.serialPort.on('data', (data: Buffer) => {
           // TODO emit serialData event
-          this.emit('data', data.toString())
           if (this.awaiting !== null) {
             this.awaiting(data)
+          } else {
+            this.emit('data', data.toString())
           }
         })
 
         this.serialPort.on('error', (error: unknown) => {
+          console.log('serialPort on error', error)
           this.emit('error', error)
         })
 
@@ -112,16 +116,35 @@ export class UsbDeviceInterface extends EventEmitter {
     })
   }
 
-  // break
+  // drain async
+  async drain (): Promise<void> {
+    return await new Promise((resolve, reject) => {
+      if (this.serialPort !== null && 'port' in this.serialPort) {
+        this.serialPort.drain((error) => {
+          if (error !== null && error !== undefined) {
+            reject(error)
+          } else {
+            resolve()
+          }
+        })
+      }
+    })
+  }
 
   // write
-  async write (data: string): Promise<null | Error> {
-    if (this.serialPort !== null && 'port' in this.serialPort) {
-      this.serialPort.write(data)
-      return await Promise.resolve(null)
-    } else {
-      return await Promise.reject(new Error('serialPort is null'))
-    }
+  async write (data: string | Buffer): Promise<null | Error> {
+    return await new Promise((resolve, reject) => {
+      if (this.serialPort !== null && 'port' in this.serialPort) {
+        this.serialPort.write(data, (error) => {
+          if (error !== null && error !== undefined) {
+            console.log('write error', error)
+            reject(error)
+          } else {
+            resolve(null)
+          }
+        })
+      }
+    })
   }
 
   // writeWait
@@ -178,65 +201,77 @@ export class UsbDeviceInterface extends EventEmitter {
     })
   }
 
-  async writeWaitFor (command: string | Buffer, waitFor: string | number | Buffer, timeout = 1000, delay = 50): Promise<Buffer> {
-    // TODO queue commands?
-    if (this.awaiting !== null) {
-      return await Promise.reject(new Error('already writing'))
-    }
-    let awaitBuffer = Buffer.from([])
-    this.serialPort?.flush()
+  async flush (): Promise<void> {
     return await new Promise((resolve, reject) => {
-      this.awaiting = (result) => {
-        // console.log('awaitBuffer got', result.toString('hex'))
-        awaitBuffer = Buffer.concat([awaitBuffer, result])
-        if (awaitBuffer.includes(waitFor)) {
-          this.awaiting = null
-          resolve(awaitBuffer.slice(0, awaitBuffer.indexOf(waitFor)))
-        }
+      if (this.serialPort !== null) {
+        this.serialPort.flush((error) => {
+          if (error !== null && error !== undefined) {
+            reject(error)
+          } else {
+            resolve()
+          }
+        })
       }
-      if (timeout !== 0) {
-        setTimeout(() => {
-          this.awaiting = null
-          reject(new Error('timeout: ' + command.toString()))
-        }, timeout)
-      }
-      setTimeout(() => {
-        if (this.serialPort === null) {
-          this.awaiting = null
-          return reject(new Error('serialPort is null'))
-        }
-        this.serialPort.write(command)
-      }, delay)
     })
   }
 
-  // send ctrl+a
-  // async sendEnterRawMode (): Promise<void> {
-  //   await this.write('\x01')
-  //   this.rawMode = true
-  //   return await sleep(50)
-  // }
+  async writeWaitFor (command: string | Buffer, waitFor: string | number | Buffer, timeout = 5000, delay = 50): Promise<Buffer> {
+    // TODO queue commands?
+    if (this.awaiting !== null) {
+      return await Promise.reject(new Error('writeWaitFor already writing'))
+    }
+
+    let awaitBuffer = Buffer.from([])
+    let draining = true
+    const p: Promise<Buffer> = new Promise((resolve, reject) => {
+      this.awaiting = (result) => {
+        if (draining) {
+          return
+        }
+        awaitBuffer = Buffer.concat([awaitBuffer, result])
+        // console.log('writeWaitFor...awaitBuffer got', result.toString('utf-8'), waitFor.toString())
+        // console.log('writeWaitFor...awaitBuffer has', awaitBuffer.length)
+
+        if (typeof waitFor === 'number') {
+          if (awaitBuffer[awaitBuffer.length - 1] === waitFor) {
+            this.awaiting = null
+            clearTimeout(this.writeWaitForTimeout)
+            resolve(awaitBuffer.slice(0, awaitBuffer.indexOf(waitFor)))
+          }
+        } else if (awaitBuffer.lastIndexOf(waitFor) === awaitBuffer.length - 1 - waitFor.length) {
+          this.awaiting = null
+          clearTimeout(this.writeWaitForTimeout)
+          resolve(awaitBuffer.slice(0, awaitBuffer.indexOf(waitFor)))
+        }
+      }
+
+      if (this.serialPort === null) {
+        this.awaiting = null
+        return reject(new Error('writeWaitFor serialPort is null'))
+      }
+    })
+    await this.write(command)
+    await this.drain()
+    draining = false
+    return await p
+  }
+
   async sendEnterRawMode (): Promise<string | Buffer | Error> {
-    const p = await this.writeWaitFor('\r\x01', 'raw REPL; CTRL-B to exit\r\n>', 1000, 50)
+    const p = await this.writeWaitFor('\r\x01', 0x3e)
     this.rawMode = true
+    console.log(p)
     return p
   }
 
   // send ctrl+d
   async sendExecuteRawMode (): Promise<Buffer> {
-    const result = await this.writeWaitFor('\x04', '>')
+    const result = await this.writeWaitFor('\x04', 0x3e)
     const trimmedResult = result.slice(2, result.length - 3)
     return trimmedResult
   }
 
-  // send ctrl+b
-  // async sendExitRawMode (): Promise<void> {
-  //   await this.write('\x02')
-  //   this.rawMode = false
-  //   return await sleep(50)
-  // }
   async sendExitRawMode (): Promise<string | Buffer | Error> {
-    const p = await this.writeWaitFor('\x0D\x02', 'MicroPython', 1000, 50)
+    const p = await this.writeWaitFor('\x0D\x02', '>>>', 1000, 50)
     this.rawMode = false
     return p
   }
@@ -244,6 +279,7 @@ export class UsbDeviceInterface extends EventEmitter {
   async sendEnterRawPasteMode (): Promise<number | Error> {
     return await new Promise((resolve, reject) => {
       this.awaiting = (data) => {
+        // console.log('sendEnterRawPasteMode data', data.toString('hex'))
         if (data instanceof Buffer) {
           if (data[0] === 0x52) {
             // raw mode understood
@@ -263,14 +299,24 @@ export class UsbDeviceInterface extends EventEmitter {
         this.awaiting = null
         return new Error('raw mode error')
       }
-      this.serialPort?.write('\x05A\x01')
+      console.log('entering raw paste mode')
+      this.write('\x05A\x01').catch((error) => {
+        this.awaiting = null
+        reject(error)
+      })
     })
   }
 
   async sendExitRawPasteMode (): Promise<string | Buffer | Error> {
-    const p = await this.writeWaitFor('\x04', '>', 1000, 50)
-    this.rawPasteMode = false
-    return p
+    console.log('exiting raw paste mode')
+    try {
+      await this.writeWaitFor('\x04', 0x3e)
+      this.rawPasteMode = false
+      return await Promise.resolve('raw paste mode exited')
+    } catch (error) {
+      console.log('error', error)
+      return await Promise.reject(error)
+    }
   }
 
   async writeRawPasteMode (commandBytes: Buffer): Promise<void> {
@@ -287,6 +333,7 @@ export class UsbDeviceInterface extends EventEmitter {
     // from the serial port
     return await new Promise((resolve, reject) => {
       this.awaiting = (data) => {
+        console.log('data', data.toString('hex'))
         if (data[0] === 0x01) {
           // Device indicated that a new window of data can be sent.
           windowRemain += this.windowSize
@@ -296,7 +343,10 @@ export class UsbDeviceInterface extends EventEmitter {
             this.awaiting = null
             return reject(new Error('serialPort disconnected'))
           }
-          this.serialPort.write(b)
+          this.write(b).catch((error) => {
+            this.awaiting = null
+            return reject(error)
+          })
           windowRemain -= b.length
           i += b.length
           console.log('i', i)

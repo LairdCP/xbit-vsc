@@ -17,11 +17,11 @@ export async function OpenDeviceFileCommand (usbDeviceFile: UsbDeviceFile): Prom
     ExtensionContextStore.warn('File Does Not Exist Yet')
   }
 
-  // if not connected, connect
   if (!usbDeviceFile.parentDevice.connected) {
     await vscode.commands.executeCommand('xbitVsc.connectUsbDevice', usbDeviceFile.parentDevice)
   }
 
+  // recursively create path in memFs for the file we're opening
   ExtensionContextStore.inform(`Ensuring Path Exists ${usbDeviceFile.parentDevice.uri.path}`)
   const pathParts = usbDeviceFile.parentDevice.uri.path.split('/')
   let pathToCreate = ''
@@ -43,18 +43,23 @@ export async function OpenDeviceFileCommand (usbDeviceFile: UsbDeviceFile): Prom
   // open file
   try {
     ExtensionContextStore.inform(`Reading File ${usbDeviceFile.name}`)
-    ExtensionContextStore.mute()
     // const result: string = await usbDeviceFile.readFileFromDevice()
-    const result: string = await usbDeviceFile.parentDevice.filesystem.readFileRawREPL(usbDeviceFile)
-    const fileData = Buffer.from(result, 'ascii')
+    return await vscode.window.withProgress({
+      location: vscode.ProgressLocation.Notification,
+      title: `Reading File ${usbDeviceFile.name}`,
+      cancellable: false
+    }, async (progress) => {
+      const result: string = await usbDeviceFile.parentDevice.filesystem.readFileRawREPL(usbDeviceFile, (increment: number, total: number) => {
+        progress.report({ increment: (increment / total) * 100, message: '...' })
+      })
+      const fileData = Buffer.from(result, 'ascii')
 
-    memFs.writeFile(usbDeviceFile.uri, fileData, { create: true, overwrite: true })
-    await vscode.window.showTextDocument(usbDeviceFile.uri)
-    ExtensionContextStore.inform(`Opened File ${usbDeviceFile.name}\n`)
-    return await Promise.resolve(null)
+      memFs.writeFile(usbDeviceFile.uri, fileData, { create: true, overwrite: true })
+      await vscode.window.showTextDocument(usbDeviceFile.uri)
+      ExtensionContextStore.inform(`Opened File ${usbDeviceFile.name}\n`)
+      return await Promise.resolve(null)
+    })
   } catch (error: unknown) {
     return await Promise.reject(error)
-  } finally {
-    ExtensionContextStore.unmute()
   }
 }
