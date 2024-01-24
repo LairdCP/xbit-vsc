@@ -12,7 +12,7 @@ export async function RunPythonCommand (usbDeviceFile: UsbDeviceFile, reset: boo
       await usbDevice.ifc.sendEof()
     }
 
-    let dataToWrite = await usbDevice.filesystem.readFileRawREPL(usbDeviceFile)
+    let dataToWrite: Buffer = await usbDevice.readFile(usbDeviceFile)
     await usbDevice.ifc.sendEnterRawMode()
     while (dataToWrite.length > 0) {
       const data = dataToWrite.slice(0, 255)

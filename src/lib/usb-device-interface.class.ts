@@ -147,6 +147,20 @@ export class UsbDeviceInterface extends EventEmitter {
     })
   }
 
+  async flush (): Promise<void> {
+    return await new Promise((resolve, reject) => {
+      if (this.serialPort !== null) {
+        this.serialPort.flush((error) => {
+          if (error !== null && error !== undefined) {
+            reject(error)
+          } else {
+            resolve()
+          }
+        })
+      }
+    })
+  }
+
   // writeWait
   async writeWait (command: string, options: any = {}): Promise<string> {
     const timeout = options.timeout === undefined ? 5000 : options.timeout
@@ -201,85 +215,82 @@ export class UsbDeviceInterface extends EventEmitter {
     })
   }
 
-  async flush (): Promise<void> {
-    return await new Promise((resolve, reject) => {
-      if (this.serialPort !== null) {
-        this.serialPort.flush((error) => {
-          if (error !== null && error !== undefined) {
-            reject(error)
-          } else {
-            resolve()
-          }
-        })
-      }
-    })
-  }
-
-  async writeWaitFor (command: string | Buffer, waitFor: string | number | Buffer, timeout = 5000, delay = 50): Promise<Buffer> {
+  async writeWaitFor (command: string | Buffer, waitFor: string | number | Buffer, log = false): Promise<Buffer> {
     // TODO queue commands?
     if (this.awaiting !== null) {
       return await Promise.reject(new Error('writeWaitFor already writing'))
     }
+    if (this.serialPort === null) {
+      this.awaiting = null
+      return await Promise.reject(new Error('writeWaitFor serialPort is null'))
+    }
 
     let awaitBuffer = Buffer.from([])
-    let draining = true
-    const p: Promise<Buffer> = new Promise((resolve, reject) => {
+    return await new Promise((resolve, reject) => {
       this.awaiting = (result) => {
-        if (draining) {
-          return
-        }
         awaitBuffer = Buffer.concat([awaitBuffer, result])
-        // console.log('writeWaitFor...awaitBuffer got', result.toString('utf-8'), waitFor.toString())
-        // console.log('writeWaitFor...awaitBuffer has', awaitBuffer.length)
+        if (log) {
+          console.log('writeWaitFor...awaitBuffer got', result.toString('utf-8'), waitFor, awaitBuffer[awaitBuffer.length - 1])
+          console.log('awaitBuffer is', awaitBuffer.toString('hex'))
+          console.log('writeWaitFor...awaitBuffer has', awaitBuffer.length)
+        }
 
         if (typeof waitFor === 'number') {
           if (awaitBuffer[awaitBuffer.length - 1] === waitFor) {
             this.awaiting = null
-            clearTimeout(this.writeWaitForTimeout)
             resolve(awaitBuffer.slice(0, awaitBuffer.indexOf(waitFor)))
           }
-        } else if (awaitBuffer.lastIndexOf(waitFor) === awaitBuffer.length - 1 - waitFor.length) {
+        } else if (awaitBuffer.lastIndexOf(waitFor) === awaitBuffer.length - waitFor.length) {
           this.awaiting = null
-          clearTimeout(this.writeWaitForTimeout)
           resolve(awaitBuffer.slice(0, awaitBuffer.indexOf(waitFor)))
+        } else if (awaitBuffer.includes('Traceback')) {
+          this.awaiting = null
+          reject(new Error('Traceback: ' + command.toString('hex')))
         }
       }
 
-      if (this.serialPort === null) {
+      this.write(command).then(async () => {
+        return await this.drain()
+      }).then(() => {
+        // running command
+      }).catch((error) => {
         this.awaiting = null
-        return reject(new Error('writeWaitFor serialPort is null'))
-      }
+        reject(error)
+      })
     })
-    await this.write(command)
-    await this.drain()
-    draining = false
-    return await p
   }
 
-  async sendEnterRawMode (): Promise<string | Buffer | Error> {
-    const p = await this.writeWaitFor('\r\x01', 0x3e)
+  async sendEnterRawMode (): Promise<void> {
+    await this.writeWaitFor('\r\x01', Buffer.from('657869740d0a3e', 'hex'), true) // "exit\r\n>"
     this.rawMode = true
-    console.log(p)
-    return p
   }
 
   // send ctrl+d
   async sendExecuteRawMode (): Promise<Buffer> {
-    const result = await this.writeWaitFor('\x04', 0x3e)
-    const trimmedResult = result.slice(2, result.length - 3)
-    return trimmedResult
+    try {
+      const result = await this.writeWaitFor('\x04', 0x3e)
+      const trimmedResult = result.slice(2, result.length - 3)
+      return trimmedResult
+    } catch (error) {
+      console.log('sendExecuteRawMode error', error)
+      return await Promise.reject(error)
+    }
   }
 
   async sendExitRawMode (): Promise<string | Buffer | Error> {
-    const p = await this.writeWaitFor('\x0D\x02', '>>>', 1000, 50)
-    this.rawMode = false
-    return p
+    try {
+      const p = await this.writeWaitFor('\x0D\x02', Buffer.from('0d0a3e3e3e20', 'hex')) // "\r\n>>> "
+      this.rawMode = false
+      return p
+    } catch (error) {
+      console.log('sendExitRawMode error', error)
+      return await Promise.reject(error)
+    }
   }
 
-  async sendEnterRawPasteMode (): Promise<number | Error> {
-    return await new Promise((resolve, reject) => {
+  async sendEnterRawPasteMode (): Promise<number> {
+    const p: Promise<number> = new Promise((resolve, reject) => {
       this.awaiting = (data) => {
-        // console.log('sendEnterRawPasteMode data', data.toString('hex'))
         if (data instanceof Buffer) {
           if (data[0] === 0x52) {
             // raw mode understood
@@ -299,16 +310,13 @@ export class UsbDeviceInterface extends EventEmitter {
         this.awaiting = null
         return new Error('raw mode error')
       }
-      console.log('entering raw paste mode')
-      this.write('\x05A\x01').catch((error) => {
-        this.awaiting = null
-        reject(error)
-      })
     })
+    await this.write('\x05A\x01')
+    await this.drain()
+    return await p
   }
 
   async sendExitRawPasteMode (): Promise<string | Buffer | Error> {
-    console.log('exiting raw paste mode')
     try {
       await this.writeWaitFor('\x04', 0x3e)
       this.rawPasteMode = false
@@ -349,7 +357,6 @@ export class UsbDeviceInterface extends EventEmitter {
           })
           windowRemain -= b.length
           i += b.length
-          console.log('i', i)
           if (i === commandBytes.length) {
             this.awaiting = null
             resolve()

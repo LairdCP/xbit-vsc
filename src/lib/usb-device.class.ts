@@ -492,7 +492,7 @@ export class UsbDevice extends vscode.TreeItem {
 
   // Populate filesystem methods on device class for convienence
   //
-  async createFile (filePath: string, data?: Buffer): Promise<string> {
+  async createFile (filePath: string, data?: Buffer): Promise<null> {
     if (!this.connected || !this.replCapable) {
       return await Promise.reject(new Error('Device is not connected'))
     }
@@ -513,11 +513,18 @@ export class UsbDevice extends vscode.TreeItem {
     return await this.filesystem.renameFile(oldFilePath, newFilePath)
   }
 
-  async writeFile (file: UsbDeviceFile, data: string): Promise<string> {
+  async writeFile (file: UsbDeviceFile, data: Buffer, progressCallback: any = null): Promise<null> {
     if (!this.connected || !this.replCapable) {
       return await Promise.reject(new Error('Device is not connected'))
     }
-    return await this.filesystem.writeFile(file, data)
+    return await this.filesystem.writeFileRawREPL(file, data, progressCallback)
+  }
+
+  async readFile (file: UsbDeviceFile, progressCallback: any = null): Promise<Buffer> {
+    if (!this.connected || !this.replCapable) {
+      return await Promise.reject(new Error('Device is not connected'))
+    }
+    return await this.filesystem.readFileRawREPL(file, progressCallback)
   }
 
   async readDirFromDevice (dirPath: string): Promise<pythonLsStatElement[]> {

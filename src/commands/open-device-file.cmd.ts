@@ -43,16 +43,14 @@ export async function OpenDeviceFileCommand (usbDeviceFile: UsbDeviceFile): Prom
   // open file
   try {
     ExtensionContextStore.inform(`Reading File ${usbDeviceFile.name}`)
-    // const result: string = await usbDeviceFile.readFileFromDevice()
     return await vscode.window.withProgress({
       location: vscode.ProgressLocation.Notification,
       title: `Reading File ${usbDeviceFile.name}`,
       cancellable: false
     }, async (progress) => {
-      const result: string = await usbDeviceFile.parentDevice.filesystem.readFileRawREPL(usbDeviceFile, (increment: number, total: number) => {
+      const fileData: Buffer = await usbDeviceFile.parentDevice.readFile(usbDeviceFile, (increment: number, total: number) => {
         progress.report({ increment: (increment / total) * 100, message: '...' })
       })
-      const fileData = Buffer.from(result, 'ascii')
 
       memFs.writeFile(usbDeviceFile.uri, fileData, { create: true, overwrite: true })
       await vscode.window.showTextDocument(usbDeviceFile.uri)

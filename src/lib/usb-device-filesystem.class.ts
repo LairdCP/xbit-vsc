@@ -38,16 +38,17 @@ export class UsbDeviceFileSystem {
   }
 
   // TODO change to writeFile command
-  async createFile (filePath: string, data?: Buffer): Promise<string> {
+  async createFile (filePath: string, data?: Buffer): Promise<null> {
     try {
       // if data is defined, write it to the file
       if (data !== undefined) {
-        return await this.writeFile(new UsbDeviceFile(this.usbDevice.context, this.usbDevice.uri.with({ path: filePath }), 'file', data.length, this.usbDevice), data.toString('ascii'))
+        const newFile = new UsbDeviceFile(this.usbDevice.context, this.usbDevice.uri.with({ path: filePath }), 'file', data.length, this.usbDevice)
+        return await this.writeFileRawREPL(newFile, data)
       } else {
         this.opLock = CONST_CREATING_FILE
         await this.usbDevice.writeWait(`f = open('${filePath}', 'w')\r`, 1000)
         await this.usbDevice.writeWait('f.close()\r', 1000)
-        return await Promise.resolve('ok')
+        return await Promise.resolve(null)
       }
     } catch (error) {
       return await Promise.reject(error)
@@ -67,116 +68,72 @@ export class UsbDeviceFileSystem {
     await this.usbDevice.writeWait(`import os\ros.rename('${oldFilePath}', '${newFilePath}')\r`, 1000)
   }
 
-  async writeFile (file: UsbDeviceFile, data: string): Promise<string> {
+  async writeFileRawREPL (file: UsbDeviceFile, data: Buffer, progressCallback: any = null): Promise<null> {
     // if already writing, reject
     if (this.opLock !== false) {
       return await Promise.reject(new Error(this.opLock as string))
     }
     this.opLock = CONST_WRITING_FILE
     this.writing = file
-    let offset = 0
-    const write = async (): Promise<Error | string> => {
-      try {
-        const bytesToWrite = Buffer.from(data, 'ascii').toString('hex').slice(offset, offset + this._rwRrate)
-        if (bytesToWrite === null) {
-          return await Promise.resolve('OK')
-        }
-        await this.usbDevice.writeWait(`f.write(binascii.unhexlify('${bytesToWrite}'))\r`)
-      } catch (error) {
-        console.error('error', error)
-        this.writing = null
-
-        return await Promise.reject(error)
-      }
-
-      offset += this._rwRrate
-      if (offset < data.length * 2) {
-        return await write()
-      } else {
-        file.size = data.length
-        this.writing = null
-        this.opLock = false
-        return await Promise.resolve('OK')
-      }
-    }
-    try {
-      await this.usbDevice.writeWait('import binascii\r', 1000)
-      const result = await this.usbDevice.writeWait(`f = open('${file.devPath}', 'wb')\r`, 1000)
-      if (!result.includes('>>>')) {
-        this.writing = null
-        return await Promise.reject(result)
-      } else {
-        // start writing chunks
-        await write()
-        return await this.usbDevice.writeWait('f.close()\r', 1000)
-      }
-    } catch (error) {
-      this.writing = null
-      this.opLock = false
-      return await Promise.reject(error)
-    }
-  }
-
-  async writeFileRawREPL (file: UsbDeviceFile, data: string): Promise<Error | null> {
-    // if already writing, reject
-    if (this.opLock !== false) {
-      return await Promise.reject(new Error(this.opLock as string))
-    }
-    this.opLock = CONST_WRITING_FILE
-    this.writing = file
-    let offset = 0
 
     const commands = [
       'import binascii',
       `f = open('${file.devPath}', 'wb')`
     ]
 
-    while (offset < data.length) {
-      const bytesToWrite = Buffer.from(data, 'ascii').toString('hex').slice(offset, offset + this._rwRrate)
+    // chunkStart tracks the beginning of the current read chunk
+    let chunkStart = 0
+    while (chunkStart < data.length * 2) {
+      const bytesToWrite = data.toString('hex').slice(chunkStart, chunkStart + this._rwRrate)
       if (bytesToWrite === null) {
         break
       }
       commands.push(`f.write(binascii.unhexlify('${bytesToWrite}'))`)
-      offset += this._rwRrate
+      chunkStart += this._rwRrate
     }
     commands.push('f.close()')
 
+    const commandsPerPaste = 16
     try {
       console.time('rawwrite')
       await this.usbDevice.ifc.sendEnterRawMode()
       while (commands.length > 0) {
-        const commandsToSend = commands.splice(0, 16)
-        commandsToSend.push('f.close()')
+        const commandsToSend = commands.splice(0, commandsPerPaste)
         await this.usbDevice.ifc.sendEnterRawPasteMode()
         await this.usbDevice.ifc.writeRawPasteMode(Buffer.from(commandsToSend.join('\r\n'), 'ascii'))
         await this.usbDevice.ifc.sendExitRawPasteMode()
+        if (typeof progressCallback === 'function') {
+          progressCallback(this._rwRrate * commandsPerPaste, data.length * 2)
+        }
       }
       await this.usbDevice.ifc.sendExitRawMode()
-      console.timeEnd('rawwrite')
       return await Promise.resolve(null)
     } catch (error) {
       return await Promise.reject(error)
     } finally {
+      console.timeEnd('rawwrite')
       this.writing = null
       this.opLock = false
+      await this.usbDevice.ifc.sendExitRawMode()
     }
   }
 
-  async readFileRawREPL (file: UsbDeviceFile, progressCallback: any = null): Promise<string> {
+  async readFileRawREPL (file: UsbDeviceFile, progressCallback: any = null): Promise<Buffer> {
     // if already reading, reject
     if (this.opLock !== false) {
       return await Promise.reject(new Error(this.opLock as string))
     }
     this.opLock = CONST_READING_FILE
     this.reading = file
-    let offset = 0
     const commands = [
       'import binascii',
       `f = open('.${file.devPath}', 'rb')`
     ]
-    while (offset < file.size) {
+
+    let chunkEnd = 0
+    while (chunkEnd < file.size) {
       commands.push(`print(binascii.hexlify(f.read(${this._rwRrate})).decode())`)
-      offset += this._rwRrate
+      chunkEnd += this._rwRrate
     }
     commands.push('f.close()')
 
@@ -184,9 +141,7 @@ export class UsbDeviceFileSystem {
     try {
       await this.usbDevice.ifc.sendEnterRawMode()
       await this.usbDevice.ifc.flush()
-      // await this.usbDevice.ifc.writeRawMode(Buffer.from(commands.join('\r\n'), 'ascii'))
-      console.time('rawread')
-      let n = 0
+
       while (commands.length > 0) {
         let nextCommand = commands.shift()
         if (nextCommand === undefined) {
@@ -200,7 +155,6 @@ export class UsbDeviceFileSystem {
           progressCallback(this._rwRrate, file.size)
         }
       }
-      console.timeEnd('rawread')
       await this.usbDevice.ifc.sendExitRawMode()
       // const readResult = await this.usbDevice.ifc.sendExecuteRawMode()
       // file contents will be a Buffer with this: b'HEXBYTES'\n\rb'HEXBYTES'\n\rb'HEXBYTES'
@@ -213,14 +167,9 @@ export class UsbDeviceFileSystem {
       const hexContents = Buffer.from(hexString, 'hex').toString()
       // convert the ascii hex string to ascii
       // console.log('hexContents', hexContents)
-      const fileContents = Buffer.from(hexContents, 'hex').toString('ascii')
+      const fileContents = Buffer.from(hexContents, 'hex')
 
-      // console.log('fileContents', fileContents.length)
-      if (typeof fileContents === 'string') {
-        return await Promise.resolve(fileContents)
-      } else {
-        throw new Error('unknown error')
-      }
+      return await Promise.resolve(fileContents)
     } catch (error) {
       console.error('error', error)
       return await Promise.reject(error)

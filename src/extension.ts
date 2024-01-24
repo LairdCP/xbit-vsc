@@ -94,7 +94,7 @@ export function activate (context: vscode.ExtensionContext): void {
       await RefreshDevicesCommand()
     } catch (error) {
       // TODO select the previous device
-      ExtensionContextStore.error('Error Refreshing File', error, true)
+      ExtensionContextStore.error('Error Refreshing Devices', error, true)
     }
   }))
   context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.refreshFile', async (usbDeviceFile: UsbDeviceFile) => {
@@ -224,18 +224,27 @@ export function activate (context: vscode.ExtensionContext): void {
       }
 
       // set the silent flag to true to hide REPL output if not enabled in settings
-      const dataToWrite = textDocument.getText()
+      const dataToWrite = Buffer.from(textDocument.getText(), 'utf8')
       try {
-        ExtensionContextStore.mute()
-        await usbDevice.filesystem.writeFileRawREPL(usbDeviceFile, dataToWrite)
-        ExtensionContextStore.outputChannel.appendLine('Saved\n')
-        // remove the local copy?
-        ExtensionContextStore.inform(`Saved File ${usbDeviceFile.name}\n`)
+        ExtensionContextStore.inform(`Writing File ${usbDeviceFile.name}`)
+        return await vscode.window.withProgress({
+          location: vscode.ProgressLocation.Notification,
+          title: `Reading File ${usbDeviceFile.name}`,
+          cancellable: false
+        }, async (progress) => {
+          if (usbDeviceFile === undefined) {
+            throw new Error('usbDeviceFile is undefined')
+          }
+          await usbDevice.writeFile(usbDeviceFile, dataToWrite, (increment: number, total: number) => {
+            progress.report({ increment: (increment / total) * 100, message: '...' })
+          })
+          ExtensionContextStore.outputChannel.appendLine('Saved\n')
+          // remove the local copy?
+          ExtensionContextStore.inform(`Saved File ${usbDeviceFile.name}\n`)
+        })
       } catch (error) {
         ExtensionContextStore.outputChannel.appendLine('Error saving\n')
         ExtensionContextStore.error(`Error Saving File ${usbDeviceFile.name}\n`, error, true)
-      } finally {
-        ExtensionContextStore.unmute()
       }
     } else {
       return await vscode.window.showErrorMessage('Error Saving File. No Tree Provider')

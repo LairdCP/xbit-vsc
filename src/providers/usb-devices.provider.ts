@@ -86,13 +86,10 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
 
         // write the file to the device
         try {
-          ExtensionContextStore.mute()
           await target.createFile(fileName, Buffer.from(data))
           ExtensionContextStore.outputChannel.appendLine('Saved\n')
         } catch (error) {
           ExtensionContextStore.outputChannel.appendLine('Error saving\n')
-        } finally {
-          ExtensionContextStore.unmute()
         }
       }
     }
