@@ -4,9 +4,9 @@ import { UsbDeviceFile } from '../lib/usb-device-file.class'
 import ExtensionContextStore from '../stores/extension-context.store'
 import * as fs from 'fs/promises'
 
-const config = vscode.workspace.getConfiguration('xbit-vsc')
-
 export async function DeleteDeviceFileCommand (usbDeviceFile: UsbDeviceFile): Promise<null | Error> {
+  const config = vscode.workspace.getConfiguration('xbit-vsc')
+
   if (!usbDeviceFile.parentDevice.connected) {
     await vscode.commands.executeCommand('xbitVsc.connectUsbDevice', usbDeviceFile.parentDevice)
   }

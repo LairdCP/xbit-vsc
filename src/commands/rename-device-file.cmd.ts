@@ -4,12 +4,12 @@ import { UsbDeviceFile } from '../lib/usb-device-file.class'
 import ExtensionContextStore from '../stores/extension-context.store'
 import * as fs from 'fs/promises'
 
-const config = vscode.workspace.getConfiguration('xbit-vsc')
-
 export async function RenameDeviceFileCommand (usbDeviceFile: UsbDeviceFile): Promise<null | Error> {
   if (!usbDeviceFile.parentDevice.connected) {
     await vscode.commands.executeCommand('xbitVsc.connectUsbDevice', usbDeviceFile.parentDevice)
   }
+
+  const config = vscode.workspace.getConfiguration('xbit-vsc')
 
   // create a new file object with unamed file
   const newFilePath = await vscode.window.showInputBox({

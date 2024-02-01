@@ -8,7 +8,6 @@ import * as vscode from 'vscode'
 import * as fs from 'fs/promises'
 
 import ExtensionContextStore from '../stores/extension-context.store'
-const config = vscode.workspace.getConfiguration('xbit-vsc')
 
 export class File implements vscode.FileStat {
   type: vscode.FileType
@@ -98,7 +97,7 @@ export class MemFS implements vscode.FileSystemProvider {
     entry.mtime = Date.now()
     entry.size = content.byteLength
     entry.data = content
-
+    const config = vscode.workspace.getConfiguration('xbit-vsc')
     const location: string | undefined = config.get('python-venv')
     if (location !== undefined) {
       const filename = ExtensionContextStore.getLocalFileFromUri(uri)

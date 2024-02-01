@@ -14,8 +14,8 @@ Canvas Software Suite includes a VS Code Extension called Xbit. This extension p
 ## Requirements
 
 - Canvas Device
-- Python 3.10 or later
-- Pip 22 or later
+- Python 3.10 or 3.11
+- Pip 22 or 23
 - On Linux, you may need to install the python venv package. On Ubuntu, this can be done with the following command:
 ```sudo apt install python3.10-venv```
 

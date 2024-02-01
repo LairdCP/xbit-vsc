@@ -13,8 +13,6 @@ if (process.platform === 'win32') {
 const minPythonVersion = [3, 10]
 const minPipVersion = [22, 0]
 
-const config = vscode.workspace.getConfiguration('xbit-vsc')
-
 export class PyocdInterface {
   context: vscode.ExtensionContext
   outputChannel: vscode.OutputChannel
@@ -250,6 +248,7 @@ const checkPythonVersion = async (OUTPUT_CHANNEL: vscode.OutputChannel, pythonEx
 }
 
 const getVenv = async (): Promise<string | null> => {
+  const config = vscode.workspace.getConfiguration('xbit-vsc')
   const pythonVenv: string | undefined = config.get('python-venv')
   if (pythonVenv === undefined) {
     return null
@@ -285,6 +284,8 @@ const initVenv = async (OUTPUT_CHANNEL: vscode.OutputChannel, executable: string
   if (executable === '') {
     return await Promise.reject(new Error('No python executable found'))
   }
+  const config = vscode.workspace.getConfiguration('xbit-vsc')
+
   return await new Promise((resolve, reject) => {
     selectVenv().then((targetLocation) => {
       let error = ''
@@ -324,10 +325,22 @@ const initVenv = async (OUTPUT_CHANNEL: vscode.OutputChannel, executable: string
 }
 
 const installDeps = async (OUTPUT_CHANNEL: vscode.OutputChannel, context: vscode.ExtensionContext, pip: string): Promise<void> => {
+  const config = vscode.workspace.getConfiguration('xbit-vsc')
+
   const metaString: string = (await fs.readFile(context.asAbsolutePath('./package.json'))).toString()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const metaJson: any = JSON.parse(metaString)
   const lastInstalledVersion: string | undefined = config.get('requirements-version')
+
+  // parse requirements.in
+
+  // spawn pip list
+  // split on \n
+  // for each, replace \s+ with \s
+  // split on \s
+  // for each
+  // if p[0] === 'pycod'
+  // if p[1] !== version
 
   if (lastInstalledVersion === undefined || lastInstalledVersion !== metaJson.version) {
     return await new Promise((resolve, reject) => {
@@ -367,6 +380,8 @@ interface detectPythonResult {
 
 const detectPython = async (OUTPUT_CHANNEL: vscode.OutputChannel): Promise<null | detectPythonResult> => {
   const executable: string = await findPythonExecutable(OUTPUT_CHANNEL)
+  const config = vscode.workspace.getConfiguration('xbit-vsc')
+
   if (executable === '') {
     void vscode.window.showWarningMessage('This extension requires python 3.10.0 or greater. Please install python.')
     return null
@@ -419,7 +434,7 @@ const detectPython = async (OUTPUT_CHANNEL: vscode.OutputChannel): Promise<null 
   let venv = await getVenv()
   if (venv === null) {
     OUTPUT_CHANNEL.appendLine('no venv found')
-    void config.update('requirements-version', undefined)
+    config.update('requirements-version', undefined)
 
     // if on linux, prompt to install python3-venv
 

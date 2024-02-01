@@ -2,9 +2,10 @@ import * as vscode from 'vscode'
 import { UsbDevice } from '../lib/usb-device.class'
 import { DeviceConfigurations, DeviceCommand } from '../lib/util.ifc'
 import ExtensionContextStore from '../stores/extension-context.store'
-const config = vscode.workspace.getConfiguration('xbit-vsc')
 
 export async function UpdateUsbDeviceSettingsCommand (usbDevice: UsbDevice, message: DeviceCommand): Promise<null | Error> {
+  const config = vscode.workspace.getConfiguration('xbit-vsc')
+
   // save
   if (usbDevice !== undefined && usbDevice !== null) {
     let deviceConfigurations: DeviceConfigurations | undefined = config.get('device-configurations')
@@ -33,7 +34,6 @@ export async function UpdateUsbDeviceSettingsCommand (usbDevice: UsbDevice, mess
       baudRate,
       name
     }
-
     await config.update('device-configurations', deviceConfigurations, vscode.ConfigurationTarget.Global)
 
     usbDevice.name = name
