@@ -2,7 +2,7 @@ import { ProbeInfo } from './hardware-probe-info.class'
 
 interface DeviceMapEntry {
   vendorId: number
-  productId: number
+  productId?: number
   manufacturer: string
   product: string
   'supports-repl': boolean
@@ -14,14 +14,14 @@ interface DeviceMapEntry {
 
 const map = [{
   vendorId: 1027,
-  productId: 24577,
+  // productId: 24577,
   manufacturer: 'FTDI',
-  product: 'BL654 US 1.0',
-  'supports-repl': false,
-  'eof-type': 'none',
-  'supports-break': false,
+  product: 'Generic FTDI Device',
+  'supports-repl': true,
+  'eof-type': 'restart',
+  'supports-break': true,
   pyocd: false,
-  description: 'Laird Dongle Running Laird SmartBASIC Firmware'
+  description: 'Laird Dongle Running Laird SmartBASIC Firmware or Generic FTDI Device'
 }, {
   vendorId: 6421,
   productId: 21023,
@@ -63,7 +63,11 @@ export class DeviceMap {
 
   find (options: ProbeInfo): DeviceMapEntry | undefined {
     return map.find((mapDef) => {
-      return options.vendorId === mapDef.vendorId && options.productId === mapDef.productId
+      if (mapDef.productId === undefined) {
+        return options.vendorId === mapDef.vendorId
+      } else {
+        return options.vendorId === mapDef.vendorId && options.productId === mapDef.productId
+      }
     })
   }
 }
