@@ -229,7 +229,7 @@ export function activate (context: vscode.ExtensionContext): void {
         ExtensionContextStore.inform(`Writing File ${usbDeviceFile.name}`)
         return await vscode.window.withProgress({
           location: vscode.ProgressLocation.Notification,
-          title: `Reading File ${usbDeviceFile.name}`,
+          title: `Writing File ${usbDeviceFile.name}`,
           cancellable: false
         }, async (progress) => {
           if (usbDeviceFile === undefined) {

@@ -71,6 +71,9 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
           await this.getChildren(target)
         }
 
+        // TODO Check for filename length
+        // check for filename characters
+
         const found = this.treeCache.get(target.uri.path)?.find((file) => {
           const compareFile = file.uri.path.split('/').pop()
           return compareFile === fileName

@@ -318,11 +318,11 @@ export class UsbDeviceInterface extends EventEmitter {
 
   async sendExitRawPasteMode (): Promise<string | Buffer | Error> {
     try {
-      await this.writeWaitFor('\x04', 0x3e)
+      await this.writeWaitFor('\x04', 0x3e, true)
       this.rawPasteMode = false
       return await Promise.resolve('raw paste mode exited')
     } catch (error) {
-      console.log('error', error)
+      console.log('sendExitRawPasteMode caught error', error)
       return await Promise.reject(error)
     }
   }
