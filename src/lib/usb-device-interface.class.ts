@@ -8,6 +8,7 @@ interface Options {
   baudRate: number
   eofType: string
   supportsBreak: boolean
+  supportsRepl: boolean
 }
 // provides the interface to the serial port for the usb device
 // could be extended to support other types of devices connections
@@ -17,6 +18,7 @@ export class UsbDeviceInterface extends EventEmitter {
   path: string
   eofType: string
   supportsBreak: boolean
+  supportsRepl: boolean
   rawMode: boolean
   restarting: boolean
   connected: boolean
@@ -29,6 +31,7 @@ export class UsbDeviceInterface extends EventEmitter {
     this.serialPort = null
     this.eofType = options.eofType
     this.supportsBreak = options.supportsBreak
+    this.supportsRepl = options.supportsRepl
     this.rawMode = false
     this.restarting = false
     this.connected = false

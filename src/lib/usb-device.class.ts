@@ -98,9 +98,11 @@ export class UsbDevice extends vscode.TreeItem {
     const map = deviceMap.find(this.options)
     let eofType = 'none'
     let supportsBreak = false
+    let supportsRepl = false
     if (map !== undefined) {
       eofType = map['eof-type']
       supportsBreak = map['supports-break']
+      supportsRepl = map['supports-repl']
     }
 
     // if has serialPort
@@ -108,8 +110,13 @@ export class UsbDevice extends vscode.TreeItem {
       path: this.options.path,
       baudRate: this.baudRate,
       eofType,
-      supportsBreak
+      supportsBreak,
+      supportsRepl
     })
+
+    if (this.ifc.supportsRepl) {
+      this.type = 'repl'
+    }
 
     // when disconnected, the listener is not removed
     // 5. from device, data = '>>>'
@@ -246,7 +253,7 @@ export class UsbDevice extends vscode.TreeItem {
   }
 
   get replCapable (): boolean {
-    return this.type === 'repl'
+    return this.ifc.supportsRepl || this.type === 'repl'
   }
 
   get connected (): boolean {
