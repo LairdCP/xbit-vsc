@@ -210,7 +210,9 @@ export class UsbDeviceInterface extends EventEmitter {
         }
       }
     } else if (this.eofType === 'restart') {
-      await this.write('\x04')
+      await this.writeWait('\x04', {
+        waitFor: 'MicroPython v'
+      })
       return await sleep(50)
     } else {
       return await Promise.reject(new Error('Unknown eofType'))
