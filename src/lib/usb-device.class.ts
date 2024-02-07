@@ -114,7 +114,7 @@ export class UsbDevice extends vscode.TreeItem {
       supportsRepl
     })
 
-    if (this.ifc.supportsRepl) {
+    if (this.ifc.supportsRepl && this.type === 'unknown') {
       this.type = 'repl'
     }
 

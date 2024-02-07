@@ -7,7 +7,7 @@ export async function RunPythonCommand (usbDeviceFile: UsbDeviceFile, reset: boo
     const usbDevice = usbDeviceFile.parentDevice
     ExtensionContextStore.outputChannel.appendLine('Running Python File')
 
-    // reboot device - this can take a few seconds 
+    // reboot device - this can take a few seconds
     if (reset) {
       await usbDevice.ifc.sendEof()
     }
