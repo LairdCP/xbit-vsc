@@ -8,6 +8,10 @@ export async function CreateDeviceFileCommand (usbDevice: UsbDevice): Promise<nu
     await vscode.commands.executeCommand('xbitVsc.connectUsbDevice', usbDevice)
   }
 
+  if (usbDevice.filesystem === null) {
+    throw new Error('Device File System Not Found')
+  }
+
   if (usbDevice.filesystem.opLock !== false) {
     throw new Error(usbDevice.filesystem.opLock as string)
   }

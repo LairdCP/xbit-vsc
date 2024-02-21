@@ -42,12 +42,13 @@ export class UsbDevice extends vscode.TreeItem {
   lastSentHex?: string
   targetType?: string
   enableApplet = false
-  filesystem = new UsbDeviceFileSystem(this)
+  filesystem: UsbDeviceFileSystem | null = null
   uname = 'unknown'
   appId = 'unknown'
   appVersion = 'unknown'
   xbitShell = false
   resultBuffer = ''
+  treeNodes: UsbDeviceFile[] = []
 
   // overrides
   private readonly _dataHandlers: Map<string, (msg: DeviceCommandResponse) => void> = new Map()
@@ -100,6 +101,7 @@ export class UsbDevice extends vscode.TreeItem {
         this.name = deviceConfigurations[key]?.name === '' ? this.name : deviceConfigurations[key]?.name
       }
     }
+    this.filesystem = new UsbDeviceFileSystem(this)
 
     const map = deviceMap.find(this.options)
     let eofType = 'none'
@@ -356,12 +358,12 @@ export class UsbDevice extends vscode.TreeItem {
 
   // list the child nodes (files) on the USB Device
   async getUsbDeviceFolder (dir = '/'): Promise<UsbDeviceFile[]> {
-    if (!this.replCapable) {
+    if (!this.replCapable || this.filesystem === null) {
       return await Promise.resolve([])
     }
     try {
       const files: pythonLsStatElement[] = await this.filesystem.readDirFromDevice(dir)
-      const treeNodes: UsbDeviceFile[] = []
+      this.treeNodes = []
       files.forEach((file: pythonLsStatElement) => {
         const { path, type, size } = file
         // populate tree items from the read file information
@@ -381,9 +383,9 @@ export class UsbDevice extends vscode.TreeItem {
         } else {
           return
         }
-        treeNodes.push(treeNode)
+        this.treeNodes.push(treeNode)
       })
-      return await Promise.resolve(treeNodes)
+      return await Promise.resolve(this.treeNodes)
     } catch (error) {
       return await Promise.reject(error)
     }
@@ -442,7 +444,6 @@ export class UsbDevice extends vscode.TreeItem {
       name: `${this.name} - ${this.serialNumber}`,
       iconPath: this.iconPath
     })
-
     this.terminal.onInput((data: string): void => {
       // send line to the serial port
       if (this.connected) {
@@ -493,42 +494,42 @@ export class UsbDevice extends vscode.TreeItem {
   // Populate filesystem methods on device class for convienence
   //
   async createFile (filePath: string, data?: Buffer): Promise<null> {
-    if (!this.connected || !this.replCapable) {
+    if (!this.connected || !this.replCapable || this.filesystem === null) {
       return await Promise.reject(new Error('Device is not connected'))
     }
     return await this.filesystem.createFile(filePath, data)
   }
 
   async deleteFile (filePath: string): Promise<void> {
-    if (!this.connected || !this.replCapable) {
+    if (!this.connected || !this.replCapable || this.filesystem === null) {
       return await Promise.reject(new Error('Device is not connected'))
     }
     return await this.filesystem.deleteFile(filePath)
   }
 
   async renameFile (oldFilePath: string, newFilePath: string): Promise<void> {
-    if (!this.connected || !this.replCapable) {
+    if (!this.connected || !this.replCapable || this.filesystem === null) {
       return await Promise.reject(new Error('Device is not connected'))
     }
     return await this.filesystem.renameFile(oldFilePath, newFilePath)
   }
 
   async writeFile (file: UsbDeviceFile, data: Buffer, progressCallback: any = null): Promise<null> {
-    if (!this.connected || !this.replCapable) {
+    if (!this.connected || !this.replCapable || this.filesystem === null) {
       return await Promise.reject(new Error('Device is not connected'))
     }
     return await this.filesystem.writeFileRawREPL(file, data, progressCallback)
   }
 
   async readFile (file: UsbDeviceFile, progressCallback: any = null): Promise<Buffer> {
-    if (!this.connected || !this.replCapable) {
+    if (!this.connected || !this.replCapable || this.filesystem === null) {
       return await Promise.reject(new Error('Device is not connected'))
     }
     return await this.filesystem.readFileRawREPL(file, progressCallback)
   }
 
   async readDirFromDevice (dirPath: string): Promise<pythonLsStatElement[]> {
-    if (!this.connected || !this.replCapable) {
+    if (!this.connected || !this.replCapable || this.filesystem === null) {
       return await Promise.reject(new Error('Device is not connected'))
     }
     return await this.filesystem.readDirFromDevice(dirPath)

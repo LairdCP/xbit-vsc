@@ -5,6 +5,10 @@ export async function RefreshDeviceFilesCommand (usbDevice: UsbDevice): Promise<
   if (ExtensionContextStore.provider !== undefined) {
     const key = usbDevice.uri.path
 
+    if (usbDevice.filesystem === null) {
+      throw new Error('Device File System Not Found')
+    }
+
     if (usbDevice.filesystem.opLock !== false) {
       throw new Error(usbDevice.filesystem.opLock as string)
     }

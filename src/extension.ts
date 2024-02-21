@@ -183,12 +183,16 @@ export function activate (context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(UsbDeviceWebViewProvider.viewType, usbDeviceWebViewProvider))
 
-  vscode.workspace.onDidChangeTextDocument(() => {
-    // console.log('Changed.', e);
+  vscode.workspace.onDidOpenTextDocument((e: vscode.TextDocument) => {
+    console.log('Opened.', e)
   })
 
-  vscode.workspace.onDidCloseTextDocument(() => {
-    // console.log('Closed.', e);
+  // vscode.workspace.onDidChangeTextDocument(() => {
+  //   // console.log('Changed.', e);
+  // })
+
+  vscode.workspace.onDidCloseTextDocument((e: vscode.TextDocument) => {
+    console.log('Closed.', e)
   })
 
   vscode.workspace.onDidSaveTextDocument(async (textDocument: vscode.TextDocument) => {

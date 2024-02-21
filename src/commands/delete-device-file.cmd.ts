@@ -11,6 +11,10 @@ export async function DeleteDeviceFileCommand (usbDeviceFile: UsbDeviceFile): Pr
     await vscode.commands.executeCommand('xbitVsc.connectUsbDevice', usbDeviceFile.parentDevice)
   }
 
+  if (usbDeviceFile.parentDevice.filesystem === null) {
+    throw new Error('Device File System Not Found')
+  }
+
   // const dirPath = path.dirname(filePath)
   const key = usbDeviceFile.parentDevice.uri.path
   try {

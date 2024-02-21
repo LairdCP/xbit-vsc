@@ -18,6 +18,9 @@ export async function RenameDeviceFileCommand (usbDeviceFile: UsbDeviceFile): Pr
 
   if (newFilePath !== undefined && ExtensionContextStore.provider !== undefined) {
     try {
+      if (usbDeviceFile.parentDevice.filesystem === null) {
+        throw new Error('Device File System Not Found')
+      }
       if (usbDeviceFile.parentDevice.filesystem.opLock !== false) {
         throw new Error(usbDeviceFile.parentDevice.filesystem.opLock as string)
       }

@@ -35,6 +35,17 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
     this.pyocdInterface = ifc
   }
 
+  public findDeviceFileByUri (uri: vscode.Uri): UsbDeviceFile | undefined {
+    console.log('findDeviceFileByUri', uri)
+    for (const device of this.usbDeviceNodes) {
+      for (const file of device.treeNodes) {
+        if (file.uri.toString() === uri.toString()) {
+          return file
+        }
+      }
+    }
+  }
+
   get onDidChangeTreeData (): vscode.Event<any> {
     return this._onDidChangeTreeData.event
   }
@@ -195,7 +206,8 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
     })
   }
 
-  getTreeItem (element: vscode.TreeItem): vscode.TreeItem {
+  async getTreeItem (element: vscode.TreeItem): Promise<vscode.TreeItem> {
+    console.log('getTreeItem', element)
     if (element instanceof UsbDevice) {
       let contextValue = 'usbDevice'
       if (element.ifc?.connected) {
@@ -211,7 +223,6 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
         label = `${element.name} (busy)`
         contextValue = 'usbDeviceBusy'
       }
-
       return {
         label,
         description: element.description,
@@ -221,20 +232,38 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
         iconPath: element.iconPath,
         id: element.id
       }
-    } else {
+    } else if (element instanceof UsbDeviceFile) {
       let contextValue = 'usbDeviceFile'
       if (typeof element.label === 'string' && /\.py$/.test(element.label)) {
         contextValue = 'usbDeviceFilePython'
       }
-      return {
+
+      const showOptions: vscode.TextDocumentShowOptions = {
+        preserveFocus: true
+      }
+
+      // console.log('opening device file')
+      // await vscode.commands.executeCommand('xbitVsc.openDeviceFile', element)
+
+      return await Promise.resolve({
         label: element.label,
         description: element.description,
         collapsibleState: element.collapsibleState,
-        command: element.command,
+        // command: element.command,
+        command: {
+          command: 'vscode.open',
+          title: 'Open Call',
+          arguments: [
+            element.uri,
+            showOptions
+          ]
+        },
         contextValue,
         iconPath: element.iconPath,
         id: element.id
-      }
+      })
+    } else {
+      return element
     }
   }
 

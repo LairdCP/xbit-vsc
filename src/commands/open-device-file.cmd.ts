@@ -9,7 +9,7 @@ export async function OpenDeviceFileCommand (usbDeviceFile: UsbDeviceFile): Prom
   ExtensionContextStore.inform(`Opening File ${usbDeviceFile.label}`)
   try {
     // if file exists in cache, switch to it
-    memFs.stat(usbDeviceFile.uri)
+    await memFs.stat(usbDeviceFile.uri)
     await vscode.window.showTextDocument(usbDeviceFile.uri)
     ExtensionContextStore.inform(`Show File ${usbDeviceFile.name}`)
     return await Promise.resolve(null)
@@ -32,7 +32,7 @@ export async function OpenDeviceFileCommand (usbDeviceFile: UsbDeviceFile): Prom
       const pathUri = vscode.Uri.parse('memfs:/' + pathToCreate)
       try {
       // check if directory exists in memfs
-        memFs.stat(pathUri)
+        await memFs.stat(pathUri)
       } catch (error) {
         ExtensionContextStore.inform(`Creating Path ${pathToCreate}`)
         memFs.createDirectory(pathUri)
@@ -42,6 +42,9 @@ export async function OpenDeviceFileCommand (usbDeviceFile: UsbDeviceFile): Prom
 
   // open file
   try {
+    if (usbDeviceFile.parentDevice.filesystem === null) {
+      throw new Error('Device File System Not Found')
+    }
     ExtensionContextStore.inform(`Reading File ${usbDeviceFile.name}`)
     return await vscode.window.withProgress({
       location: vscode.ProgressLocation.Notification,
@@ -54,6 +57,7 @@ export async function OpenDeviceFileCommand (usbDeviceFile: UsbDeviceFile): Prom
 
       memFs.writeFile(usbDeviceFile.uri, fileData, { create: true, overwrite: true })
       await vscode.window.showTextDocument(usbDeviceFile.uri)
+
       ExtensionContextStore.inform(`Opened File ${usbDeviceFile.name}\n`)
       return await Promise.resolve(null)
     })

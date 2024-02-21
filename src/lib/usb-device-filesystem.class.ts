@@ -3,6 +3,10 @@
 import { UsbDeviceFile } from './usb-device-file.class'
 import { UsbDevice } from './usb-device.class'
 import { pythonLsStatElement } from './util.ifc'
+import * as vscode from 'vscode'
+
+import ExtensionContextStore from '../stores/extension-context.store'
+const memFs = ExtensionContextStore.memFs
 
 const CONST_READING_FILE = 'Currently Reading File'
 const CONST_WRITING_FILE = 'Currently Writing File'
@@ -19,6 +23,25 @@ export class UsbDeviceFileSystem {
 
   constructor (usbDevice: UsbDevice) {
     this.usbDevice = usbDevice
+
+    // create the filesystem in memFs for this device
+    ExtensionContextStore.inform(`Ensuring Path Exists ${this.usbDevice.uri.path}`)
+    const pathParts = this.usbDevice.uri.path.split('/')
+    let pathToCreate = ''
+    while (pathParts.length !== 0) {
+      const nextPath = pathParts.shift()
+      if (nextPath !== undefined) {
+        pathToCreate = pathToCreate + '/' + nextPath
+        const pathUri = vscode.Uri.parse('memfs:/' + pathToCreate)
+        try {
+          // check if directory exists in memfs
+          memFs.stat(pathUri)
+        } catch (error) {
+          ExtensionContextStore.inform(`Creating Path ${pathToCreate}`)
+          memFs.createDirectory(pathUri)
+        }
+      }
+    }
   }
 
   get rate (): number {
@@ -237,6 +260,12 @@ export class UsbDeviceFileSystem {
 
         if (r[1] === '32768') {
           element.type = 'file'
+          const pathUri = vscode.Uri.parse('memfs://' + this.usbDevice.uri.path + r[0])
+          try {
+            memFs.writeFile(pathUri, Buffer.from(''), { create: true, overwrite: true })
+          } catch (error) {
+            console.error('error', error)
+          }
         } else if (r[1] === '16384') {
           element.type = 'dir'
           // TODO Create the directory in memFs

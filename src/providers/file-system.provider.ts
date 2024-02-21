@@ -8,6 +8,7 @@ import * as vscode from 'vscode'
 import * as fs from 'fs/promises'
 
 import ExtensionContextStore from '../stores/extension-context.store'
+import { UsbDeviceFile } from '../lib/usb-device-file.class'
 
 export class File implements vscode.FileStat {
   type: vscode.FileType
@@ -52,6 +53,9 @@ export class MemFS implements vscode.FileSystemProvider {
   root = new Directory('')
 
   // --- manage file metadata
+  statFolder (uri: vscode.Uri): vscode.FileStat {
+    return this._lookupAsDirectory(uri, false)
+  }
 
   stat (uri: vscode.Uri): vscode.FileStat {
     return this._lookup(uri, false)
@@ -68,10 +72,30 @@ export class MemFS implements vscode.FileSystemProvider {
 
   // --- manage file contents
 
-  readFile (uri: vscode.Uri): Uint8Array {
-    const data = this._lookupAsFile(uri, false).data
+  async readFile (uri: vscode.Uri): Promise<Uint8Array> {
+    let data = this._lookupAsFile(uri, false).data
+    if (data != null && data.length > 0) {
+      return await Promise.resolve(data)
+    }
+
+    if (ExtensionContextStore.provider === undefined) {
+      throw vscode.FileSystemError.FileNotFound(uri)
+    }
+    const usbDeviceFile: UsbDeviceFile | undefined = ExtensionContextStore.provider.findDeviceFileByUri(uri)
+    if (usbDeviceFile === undefined) {
+      throw vscode.FileSystemError.FileNotFound(uri)
+    }
+
+    if (usbDeviceFile.parentDevice.filesystem === null) {
+      throw new Error('Device File System Not Found')
+    }
+
+    const result: Buffer = await usbDeviceFile.parentDevice.readFile(usbDeviceFile)
+    this.writeFile(usbDeviceFile.uri, result, { create: true, overwrite: true })
+
+    data = this._lookupAsFile(uri, false).data
     if (data != null) {
-      return data
+      return await Promise.resolve(data)
     }
     throw vscode.FileSystemError.FileNotFound()
   }
