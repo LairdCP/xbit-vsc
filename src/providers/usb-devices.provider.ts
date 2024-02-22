@@ -36,7 +36,6 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
   }
 
   public findDeviceFileByUri (uri: vscode.Uri): UsbDeviceFile | undefined {
-    console.log('findDeviceFileByUri', uri)
     for (const device of this.usbDeviceNodes) {
       for (const file of device.treeNodes) {
         if (file.uri.toString() === uri.toString()) {
@@ -44,6 +43,31 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
         }
       }
     }
+    return undefined
+  }
+
+  public findDeviceByUri (uri: vscode.Uri): UsbDevice | undefined {
+    // device uri is /serial/{serialNumber}/dev/tty.usbmodem1411
+    // or /serial/{serialNumber}/COM3
+    const p = uri.path.split('/')
+    let newUri = uri
+    let path: string
+    if (/^\/serial\/.+\/dev/.test(uri.path)) {
+      // linux / mac
+      path = p.slice(0, 5).join('/')
+    } else {
+      // windows
+      path = p.slice(0, 4).join('/')
+    }
+    console.log(path)
+    newUri = vscode.Uri.parse(`memfs://${path}`)
+
+    for (const device of this.usbDeviceNodes) {
+      if (device.uri.toString() === newUri.toString()) {
+        return device
+      }
+    }
+    return undefined
   }
 
   get onDidChangeTreeData (): vscode.Event<any> {

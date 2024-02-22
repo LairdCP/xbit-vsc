@@ -184,7 +184,7 @@ export function activate (context: vscode.ExtensionContext): void {
     vscode.window.registerWebviewViewProvider(UsbDeviceWebViewProvider.viewType, usbDeviceWebViewProvider))
 
   vscode.workspace.onDidOpenTextDocument((e: vscode.TextDocument) => {
-    console.log('Opened.', e)
+    console.log('<><> Opened.', e)
   })
 
   // vscode.workspace.onDidChangeTextDocument(() => {
@@ -192,32 +192,56 @@ export function activate (context: vscode.ExtensionContext): void {
   // })
 
   vscode.workspace.onDidCloseTextDocument((e: vscode.TextDocument) => {
-    console.log('Closed.', e)
+    console.log('<><> Closed.', e)
+  })
+
+  vscode.workspace.onDidCreateFiles(async (e: vscode.FileCreateEvent) => {
+    console.log('<><> Created workspace event', e)
   })
 
   vscode.workspace.onDidSaveTextDocument(async (textDocument: vscode.TextDocument) => {
-    let usbDeviceFile: UsbDeviceFile | undefined
+    console.log('<><> Saved workspace event', textDocument)
+
     // this fires for any file save, so only show the error if the file is in the tree
     if (textDocument.uri.scheme !== 'memfs') {
       return
     }
 
-    // find the deviceFile by uri
+    let usbDeviceFile: UsbDeviceFile | undefined
+    let usbDevice: UsbDevice | undefined
     if (ExtensionContextStore.provider !== undefined) {
-      const iterator = ExtensionContextStore.provider.treeCache.entries()
-      for (const [, value] of iterator) {
-        for (const i of value) {
-          if (i.uri.path === textDocument.uri.path) {
-            usbDeviceFile = i
-            break
-          }
+      usbDeviceFile = ExtensionContextStore.provider.findDeviceFileByUri(textDocument.uri)
+
+      // if this is a new file that doesn't exist on the device yet
+      // create the file on the device
+      if (usbDeviceFile === undefined) {
+        // create the file if it doesn't exist
+        // find the device based on the file path
+        usbDevice = ExtensionContextStore.provider.findDeviceByUri(textDocument.uri)
+
+        if (usbDevice === undefined) {
+          return await vscode.window.showErrorMessage('Error Creating File. Device Not Found')
         }
+        // create the file
+        const fileName = textDocument.uri.path.split('/').pop()
+        if (fileName === undefined) {
+          return await vscode.window.showErrorMessage('Error Creating File. File Name Not Found')
+        }
+        // TODO fileName will need to be a uri when folders are supported
+        // e.files[0] is a uri
+        usbDeviceFile = await usbDevice.createFile(fileName)
+        // refresh the tree
+        ExtensionContextStore.provider.refresh()
+      } else {
+        usbDevice = usbDeviceFile?.parentDevice
       }
 
+      // if for some reason the file is still not found, throw an error
       if (usbDeviceFile === undefined) {
-        return await vscode.window.showErrorMessage('Error Saving File. File Not Found')
+        throw new Error('usbDeviceFile is undefined')
       }
-      const usbDevice = usbDeviceFile.parentDevice
+
+      // if the device is not connected, connect it
       if (!usbDevice.connected) {
         try {
           await vscode.commands.executeCommand('xbitVsc.connectUsbDevice', usbDeviceFile.parentDevice)
@@ -227,7 +251,7 @@ export function activate (context: vscode.ExtensionContext): void {
         }
       }
 
-      // set the silent flag to true to hide REPL output if not enabled in settings
+      // write the file to the device
       const dataToWrite = Buffer.from(textDocument.getText(), 'utf8')
       try {
         ExtensionContextStore.inform(`Writing File ${usbDeviceFile.name}`)
@@ -239,7 +263,7 @@ export function activate (context: vscode.ExtensionContext): void {
           if (usbDeviceFile === undefined) {
             throw new Error('usbDeviceFile is undefined')
           }
-          await usbDevice.writeFile(usbDeviceFile, dataToWrite, (increment: number, total: number) => {
+          await usbDevice?.writeFile(usbDeviceFile, dataToWrite, (increment: number, total: number) => {
             progress.report({ increment: (increment / total) * 100, message: '...' })
           })
           ExtensionContextStore.outputChannel.appendLine('Saved\n')
@@ -248,7 +272,7 @@ export function activate (context: vscode.ExtensionContext): void {
         })
       } catch (error) {
         ExtensionContextStore.outputChannel.appendLine('Error saving\n')
-        ExtensionContextStore.error(`Error Saving File ${usbDeviceFile.name}\n`, error, true)
+        ExtensionContextStore.error(`Error Saving File ${textDocument.uri.path}\n`, error, true)
       }
     } else {
       return await vscode.window.showErrorMessage('Error Saving File. No Tree Provider')

@@ -1,4 +1,5 @@
 // this class managing filesystem operations on the device
+// interacts directly with the REPL console
 
 import { UsbDeviceFile } from './usb-device-file.class'
 import { UsbDevice } from './usb-device.class'
@@ -262,7 +263,15 @@ export class UsbDeviceFileSystem {
           element.type = 'file'
           const pathUri = vscode.Uri.parse('memfs://' + this.usbDevice.uri.path + r[0])
           try {
-            memFs.writeFile(pathUri, Buffer.from(''), { create: true, overwrite: true })
+            memFs.writeFile(pathUri, Buffer.from(''), {
+              create: true,
+              overwrite: false,
+              temp: true
+            })
+              .catch(() => {
+                // usually a file exists error
+                // console.debug('error creating temporary file', error)
+              })
           } catch (error) {
             console.error('error', error)
           }
@@ -283,20 +292,4 @@ export class UsbDeviceFileSystem {
       this.opLock = false
     }
   }
-
-  // async readFile (file: UsbDeviceFile): Promise<string> {
-  //   if (this.opLock !== false) {
-  //     return await Promise.reject(new Error(this.opLock as string))
-  //   }
-  //   this.reading = file
-  //   this.opLock = CONST_READING_FILE
-  //   try {
-  //     return await file.readFileFromDevice()
-  //   } catch (error) {
-  //     return await Promise.reject(error)
-  //   } finally {
-  //     this.reading = null
-  //     this.opLock = false
-  //   }
-  // }
 }

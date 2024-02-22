@@ -493,11 +493,17 @@ export class UsbDevice extends vscode.TreeItem {
 
   // Populate filesystem methods on device class for convienence
   //
-  async createFile (filePath: string, data?: Buffer): Promise<null> {
+  async createFile (filePath: string, data?: Buffer): Promise<UsbDeviceFile> {
     if (!this.connected || !this.replCapable || this.filesystem === null) {
       return await Promise.reject(new Error('Device is not connected'))
     }
-    return await this.filesystem.createFile(filePath, data)
+    await this.filesystem.createFile(filePath, data)
+
+    // add the new file to the tree so it's available right away
+    const uri = vscode.Uri.parse('memfs:' + this.uri.path + '/' + filePath)
+    const file = new UsbDeviceFile(this.context, uri, 'file', 0, this)
+    this.treeNodes.push(file)
+    return await Promise.resolve(file)
   }
 
   async deleteFile (filePath: string): Promise<void> {

@@ -19,6 +19,10 @@ export class File implements vscode.FileStat {
   name: string
   data?: Uint8Array
 
+  // when listing files from a device, we mark them as temporary when data has yet to be loaded
+  // we know a file is there, just haven't loaded it yet
+  temp = false
+
   constructor (name: string) {
     this.type = vscode.FileType.File
     this.ctime = Date.now()
@@ -36,6 +40,8 @@ export class Directory implements vscode.FileStat {
 
   name: string
   entries: Map<string, File | Directory>
+
+  temp = false
 
   constructor (name: string) {
     this.type = vscode.FileType.Directory
@@ -73,9 +79,10 @@ export class MemFS implements vscode.FileSystemProvider {
   // --- manage file contents
 
   async readFile (uri: vscode.Uri): Promise<Uint8Array> {
-    let data = this._lookupAsFile(uri, false).data
-    if (data != null && data.length > 0) {
-      return await Promise.resolve(data)
+    console.log('<> readFile from memfs', uri.path)
+    let file = this._lookupAsFile(uri, false)
+    if (file.data != null && !file.temp) {
+      return await Promise.resolve(file.data)
     }
 
     if (ExtensionContextStore.provider === undefined) {
@@ -90,17 +97,21 @@ export class MemFS implements vscode.FileSystemProvider {
       throw new Error('Device File System Not Found')
     }
 
+    // read the file from the device
     const result: Buffer = await usbDeviceFile.parentDevice.readFile(usbDeviceFile)
-    this.writeFile(usbDeviceFile.uri, result, { create: true, overwrite: true })
-
-    data = this._lookupAsFile(uri, false).data
-    if (data != null) {
-      return await Promise.resolve(data)
+    // write to the local filesystem
+    await this.writeFile(usbDeviceFile.uri, result, { create: true, overwrite: true })
+    // mark the file as not temporary
+    file.temp = false
+    file = this._lookupAsFile(uri, false)
+    if (file.data != null) {
+      return await Promise.resolve(file.data)
     }
     throw vscode.FileSystemError.FileNotFound()
   }
 
-  writeFile (uri: vscode.Uri, content: Uint8Array, options: { create: boolean, overwrite: boolean }): void {
+  async writeFile (uri: vscode.Uri, content: Uint8Array, options: { create: boolean, overwrite: boolean, temp?: boolean }): Promise<void> {
+    console.log('<> writeFile to memfs', uri.path, content.byteLength, options)
     const basename = path.posix.basename(uri.path)
     const parent = this._lookupParentDirectory(uri)
     let entry = parent.entries.get(basename)
@@ -115,12 +126,15 @@ export class MemFS implements vscode.FileSystemProvider {
     }
     if (entry == null) {
       entry = new File(basename)
+      entry.temp = options.temp === true
       parent.entries.set(basename, entry)
       this._fireSoon({ type: vscode.FileChangeType.Created, uri })
     }
     entry.mtime = Date.now()
     entry.size = content.byteLength
     entry.data = content
+
+    // write to local filesystem backup
     const config = vscode.workspace.getConfiguration('xbit-vsc')
     const location: string | undefined = config.get('python-venv')
     if (location !== undefined) {
