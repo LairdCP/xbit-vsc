@@ -27,8 +27,6 @@ Visual Studio Code extensions:
 
 # Getting started
 
-On the first run of the extension, you are prompted to select a folder for the tool to store the Python virtual environment it will operate within for Python-based operations. When prompted, click and select a location for the tool to store its virtual environment. The tool will create its own subfolder named xbit.venv in the folder you select and operate from there. If your system doesn't meet the minimum requirements for python, the tool will prompt you to install the missing requirements.
-
 Opening VS Code should automatically display the Xbit extension icon in the sidebar when installed. When the Xbit extension is activated by clicking on its icon, it will scan your workstation for compatible USB devices and present a USB serial port list in the sidebar. If a Python REPL is detected, you will see a name next to each device serial port and an icon indicating the type of interface available. A triple greater-than '>>>' icon indicates a Python REPL prompt.
 
 ![image info](https://raw.githubusercontent.com/LairdCP/xbit-vsc/main/resources/detected-repl.png)
@@ -43,6 +41,8 @@ This extension will also allow interaction with Zephyr console shells on devices
 
 
 ## Updating Canvas Firmware
+
+This extension uses PyOCD to enable firmware updates. You will need to setup a Python virtual environment to support Python-based operations. To do this, opem the command palette (CTRL+SHIFT+P) and find "xbit: Initialize Python Environment". When prompted, select a location for the tool to store its virtual environment. The tool will create its own subfolder named xbit.venv in the folder you select and operate from there. If your system doesn't meet the minimum requirements for python, the tool will prompt you to install the missing requirements.
 
 Canvas Firmware is the underlying software enabling Canvas-enabled radio modules to run Python scripts and access underlying hardware via APIs. It is important to make sure your hardware is using the latest Canvas Firmware before you start developing application scripts. See the product page for details on where to locate the latest Canvas Firmware for your specific hardware.
 

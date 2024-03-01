@@ -177,6 +177,7 @@ export class UsbDeviceFileSystem {
           element.type = 'file'
         } else if (r[1] === '16384') {
           element.type = 'dir'
+          // TODO Create the directory in memFs
         } else {
           element.type = r[1]
         }

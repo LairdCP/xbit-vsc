@@ -6,6 +6,7 @@ import ExtensionContextStore from '../stores/extension-context.store'
 interface Options {
   path: string
   baudRate: number
+  rtscts: boolean
   eofType: string
   supportsBreak: boolean
   supportsRepl: boolean
@@ -22,6 +23,7 @@ export class UsbDeviceInterface extends EventEmitter {
   rawMode: boolean
   restarting: boolean
   connected: boolean
+  rtscts: boolean
 
   constructor (options: Options) {
     super()
@@ -35,6 +37,7 @@ export class UsbDeviceInterface extends EventEmitter {
     this.rawMode = false
     this.restarting = false
     this.connected = false
+    this.rtscts = options.rtscts
   }
 
   // get connected (): boolean {
@@ -50,7 +53,8 @@ export class UsbDeviceInterface extends EventEmitter {
       try {
         this.serialPort = new SerialPort({
           path: this.path,
-          baudRate: this.baudRate
+          baudRate: this.baudRate,
+          rtscts: this.rtscts
         }, (error) => {
           if (error !== null) {
             reject(error)
@@ -197,7 +201,7 @@ export class UsbDeviceInterface extends EventEmitter {
       await this.disconnect()
       while (!this.connected) {
         tryCount--
-        await sleep(1000)
+        await sleep(500)
         try {
           await this.connect()
         } catch (error) {

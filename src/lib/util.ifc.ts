@@ -7,6 +7,7 @@ export interface TreeItemIconPath {
 
 export interface DeviceConfiguration {
   baudRate: number
+  rtscts: boolean
   name: string
 }
 

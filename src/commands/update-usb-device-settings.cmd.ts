@@ -22,6 +22,11 @@ export async function UpdateUsbDeviceSettingsCommand (usbDevice: UsbDevice, mess
       }
     }
 
+    let rtscts = usbDevice.rtscts
+    if ('rtscts' in message.params) {
+      rtscts = message.params.rtscts === true
+    }
+
     let name = usbDevice.options.board_name
     if ('name' in message.params) {
       name = String(message.params.name)
@@ -31,6 +36,7 @@ export async function UpdateUsbDeviceSettingsCommand (usbDevice: UsbDevice, mess
     }
 
     deviceConfigurations[key] = {
+      rtscts,
       baudRate,
       name
     }
@@ -38,6 +44,7 @@ export async function UpdateUsbDeviceSettingsCommand (usbDevice: UsbDevice, mess
 
     usbDevice.name = name
     usbDevice.baudRate = baudRate
+    usbDevice.rtscts = rtscts
     ExtensionContextStore.provider?.refresh()
     // refresh?devPath
   }

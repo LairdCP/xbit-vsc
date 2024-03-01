@@ -78,6 +78,12 @@
         </div>
       </section>
       <section class="details-section">
+        <div class="dropdown-container">
+          <label for="rtscts">RTS/CTS</label>
+          <vscode-checkbox id="rtscts">Enabled</vscode-checkbox>
+        </div>
+      </section>
+      <section class="details-section">
         <vscode-text-field type="text" id="custom-name">Custom Name</vscode-text-field>
       </section>
       <section class="details-section">
@@ -96,6 +102,7 @@
     <script>
       const serialNumber = document.getElementById('serial-number')
       const baudRate = document.getElementById('baud-rate')
+      const rtscts = document.getElementById('rtscts')
       const customName = document.getElementById('custom-name')
       const appletDropdown = document.getElementById('applets')
       const productId = document.getElementById('productId')
@@ -116,6 +123,7 @@
           method: 'save',
           params: {
             baudRate: parseInt(baudRate.value),
+            rtscts: rtscts.checked,
             name: customName.value
           }
         })
@@ -165,11 +173,13 @@
         switch (message.method) {
           case 'setSelected':
             if (message.params.device) {
+              console.log('message.params.device', message.params.device)
               currentDevice = message.params.device
               serialNumber.textContent = message.params.device.serialNumber
               connected = message.params.device.connected || false
               customName.value = message.params.device.name
               baudRate.value = message.params.device.baudRate.toString()
+              rtscts.checked = message.params.device.rtscts
               productId.textContent = `Product ID: ${message.params.device.productId}`
               vendorId.textContent = `Vendor ID: ${message.params.device.vendorId}`
               manufacturer.textContent = `Manufacturer: ${message.params.device.manufacturer}`
@@ -181,6 +191,7 @@
             } else {
               serialNumber.textContent = 'None'
               baudRate.value = ''
+              rtscts.checked = true
               connected = false
               handledConnected()
               document.querySelector('.device-selected').style.display = 'none'

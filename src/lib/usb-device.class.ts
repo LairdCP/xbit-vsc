@@ -32,6 +32,7 @@ export class UsbDevice extends vscode.TreeItem {
   uri: vscode.Uri
   options: ProbeInfo
   _baudRate: number
+  _rtscts: boolean
   command: vscode.Command | undefined
   type: string
   ifc: UsbDeviceInterface
@@ -68,6 +69,7 @@ export class UsbDevice extends vscode.TreeItem {
     this.uri = uri
     this.options = options
     this._baudRate = 115200
+    this._rtscts = true
     // this.tooltip = this.label
     this.type = type
     this.command = command // default vs code command when clicking on item
@@ -91,6 +93,10 @@ export class UsbDevice extends vscode.TreeItem {
         if (deviceConfigurations[key]?.baudRate !== undefined) {
           this._baudRate = deviceConfigurations[key].baudRate
         }
+        if (deviceConfigurations[key]?.rtscts !== undefined) {
+          this._rtscts = deviceConfigurations[key].rtscts
+        }
+
         this.name = deviceConfigurations[key]?.name === '' ? this.name : deviceConfigurations[key]?.name
       }
     }
@@ -109,6 +115,7 @@ export class UsbDevice extends vscode.TreeItem {
     this.ifc = new UsbDeviceInterface({
       path: this.options.path,
       baudRate: this.baudRate,
+      rtscts: this.rtscts,
       eofType,
       supportsBreak,
       supportsRepl
@@ -231,7 +238,6 @@ export class UsbDevice extends vscode.TreeItem {
   set baudRate (baudRate: number | string) {
     if (typeof baudRate === 'string') {
       this._baudRate = parseInt(baudRate, 10)
-      this.ifc.baudRate = parseInt(baudRate, 10)
     } else {
       this._baudRate = baudRate
     }
@@ -242,6 +248,17 @@ export class UsbDevice extends vscode.TreeItem {
 
   get baudRate (): number {
     return this._baudRate
+  }
+
+  set rtscts (rtscts: boolean) {
+    this._rtscts = rtscts
+    if (this.ifc !== undefined) {
+      this.ifc.rtscts = this._rtscts
+    }
+  }
+
+  get rtscts (): boolean {
+    return this._rtscts
   }
 
   get uriString (): string {

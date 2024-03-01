@@ -106,7 +106,7 @@ export class UsbDeviceWebViewProvider implements vscode.WebviewViewProvider {
 
     if (usbDevice instanceof UsbDevice) {
       this._selectedDevice = usbDevice
-
+      console.log(this._selectedDevice)
       // tell the webview the device was selected
       await this.webview?.postMessage({
         method: 'setSelected',
@@ -117,6 +117,7 @@ export class UsbDeviceWebViewProvider implements vscode.WebviewViewProvider {
             name: usbDevice.name,
             manufacturer: usbDevice.options.manufacturer,
             baudRate: usbDevice.baudRate,
+            rtscts: usbDevice.rtscts,
             connected: usbDevice.connected,
             productId: usbDevice.options.productId,
             vendorId: usbDevice.options.vendorId,
