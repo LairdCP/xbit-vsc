@@ -8,8 +8,8 @@ export async function WriteHexFileCommand (usbDevice: UsbDevice): Promise<null |
 
   await vscode.commands.executeCommand('xbitVsc.disconnectUsbDevice', usbDevice)
 
-  if (pyocdInterface === undefined) {
-    throw new Error('pyocdInterface undefined')
+  if (pyocdInterface === undefined || !pyocdInterface.configured) {
+    throw new Error('pyocdInterface not available')
   }
 
   // if (usbDevice.targetType === 'nrf52833') {

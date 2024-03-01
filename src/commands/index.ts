@@ -12,3 +12,4 @@ export { UpdateUsbDeviceSettingsCommand } from './update-usb-device-settings.cmd
 export { RefreshDeviceFilesCommand } from './refresh-device-files.cmd'
 export { InitializeWorkspaceCommand } from './initialize-workspace.cmd'
 export { RunPythonCommand } from './run-python.cmd'
+export { InitializePythonCommand } from './initialize-python.cmd'

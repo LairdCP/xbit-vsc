@@ -48,9 +48,9 @@ export class ExtensionContextStore extends EventEmitter {
     return [deviceId, ...filename].join('-')
   }
 
-  init (
+  async init (
     context: vscode.ExtensionContext
-  ): void {
+  ): Promise<void> {
     this.pyocdInterface = new PyocdInterface(context, this.outputChannel)
     this.provider = new UsbDevicesProvider(context, this.pyocdInterface)
     this.context = context
@@ -71,6 +71,7 @@ export class ExtensionContextStore extends EventEmitter {
         }
       }
     }))
+    await this.pyocdInterface.detectPython()
   }
 
   log (message: string): void {

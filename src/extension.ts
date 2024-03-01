@@ -22,7 +22,8 @@ import {
   DisconnectUsbDeviceCommand,
   UpdateUsbDeviceSettingsCommand,
   InitializeWorkspaceCommand,
-  RunPythonCommand
+  RunPythonCommand,
+  InitializePythonCommand
 } from './commands'
 
 // this is a singleton that can be imported anywhere
@@ -30,7 +31,9 @@ import ExtensionContextStore from './stores/extension-context.store'
 
 export function activate (context: vscode.ExtensionContext): void {
   // initialize the extension context store with the extension context
-  ExtensionContextStore.init(context)
+  ExtensionContextStore.init(context).catch((error: unknown) => {
+    ExtensionContextStore.error('Error initializing extension context', error, true)
+  })
 
   // "files.autoSave": "afterDelay"
   const workbenchConfig = vscode.workspace.getConfiguration('files')
@@ -165,6 +168,13 @@ export function activate (context: vscode.ExtensionContext): void {
     } catch (error) {
       // TODO select the previous device
       ExtensionContextStore.error('Error Opening File', error, true)
+    }
+  }))
+  context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.initializePython', async () => {
+    try {
+      await InitializePythonCommand()
+    } catch (error) {
+      ExtensionContextStore.error('Error Initializing Python Environment', error, true)
     }
   }))
 

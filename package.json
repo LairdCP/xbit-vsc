@@ -2,7 +2,7 @@
   "name": "xbit-vsc",
   "displayName": "Xbit tools for VS Code",
   "description": "",
-  "version": "0.1.19",
+  "version": "0.1.20",
   "publisher": "rfp-canvas",
   "repository": {
     "type": "git",
@@ -26,11 +26,6 @@
           "type": "string",
           "default": "",
           "description": "Specifies the path to the python virtual env to install required tools."
-        },
-        "xbit-vsc.requirements-version": {
-          "type": "string",
-          "default": "",
-          "description": "Stores the version during which python requirements were installed last."
         },
         "xbit-vsc.device-configurations": {
           "type": "object",
@@ -136,6 +131,11 @@
       {
         "command": "xbitVsc.initializeWorkspace",
         "title": "Xbit: Initialize Workspace"
+      },
+      {
+        "command": "xbitVsc.initializePython",
+        "title": "Xbit: Initialize Python Environment"
+      
       },
       {
         "command": "xbitVsc.runPythonReset",
