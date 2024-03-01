@@ -42,7 +42,7 @@ This extension will also allow interaction with Zephyr console shells on devices
 
 ## Updating Canvas Firmware
 
-This extension uses PyOCD to enable firmware updates. You will need to setup a Python virtual environment to support Python-based operations. To do this, opem the command palette (CTRL+SHIFT+P) and find "xbit: Initialize Python Environment". When prompted, select a location for the tool to store its virtual environment. The tool will create its own subfolder named xbit.venv in the folder you select and operate from there. If your system doesn't meet the minimum requirements for python, the tool will prompt you to install the missing requirements.
+This extension uses PyOCD to enable firmware updates. You will need to setup a Python virtual environment to support Python-based operations. To do this, open the command palette (CTRL+SHIFT+P) and find "xbit: Initialize Python Environment". When prompted, select a location for the tool to store its virtual environment. The tool will create its own subfolder named xbit.venv in the folder you select and operate from there. If your system doesn't meet the minimum requirements for python, the tool will prompt you to install the missing requirements.
 
 Canvas Firmware is the underlying software enabling Canvas-enabled radio modules to run Python scripts and access underlying hardware via APIs. It is important to make sure your hardware is using the latest Canvas Firmware before you start developing application scripts. See the product page for details on where to locate the latest Canvas Firmware for your specific hardware.
 
