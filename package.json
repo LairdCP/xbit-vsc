@@ -93,6 +93,11 @@
         "icon": "$(add)"
       },
       {
+        "command": "xbitVsc.createDeviceFolder",
+        "title": "Create Folder",
+        "icon": "$(add)"
+      },
+      {
         "command": "xbitVsc.refreshFile",
         "title": "Refresh"
       },
@@ -178,6 +183,11 @@
           "command": "xbitVsc.refreshDeviceFiles",
           "when": "viewItem == usbDevice || viewItem == usbDeviceConnected || viewItem == usbDeviceDvkProbe || viewItem == usbDeviceConnectedDvkProbe",
           "group": "navigation@2"
+        },
+        {
+          "command": "xbitVsc.createDeviceFolder",
+          "when": "viewItem == usbDevice || viewItem == usbDeviceConnected || viewItem == usbDeviceDvkProbe || viewItem == usbDeviceConnectedDvkProbe || viewItem == usbDeviceFolder",
+          "group": "navigation@3"
         },
         {
           "command": "xbitVsc.writeHexFile",

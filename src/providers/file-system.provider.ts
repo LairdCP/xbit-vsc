@@ -9,6 +9,7 @@ import * as fs from 'fs/promises'
 
 import ExtensionContextStore from '../stores/extension-context.store'
 import { UsbDeviceFile } from '../lib/usb-device-file.class'
+import { UsbDeviceFolder } from '../lib/usb-device-folder.class'
 
 export class File implements vscode.FileStat {
   type: vscode.FileType
@@ -91,6 +92,10 @@ export class MemFS implements vscode.FileSystemProvider {
     const usbDeviceFile: UsbDeviceFile | undefined = ExtensionContextStore.provider.findDeviceFileByUri(uri)
     if (usbDeviceFile === undefined) {
       throw vscode.FileSystemError.FileNotFound(uri)
+    }
+
+    if (usbDeviceFile instanceof UsbDeviceFolder) {
+      throw vscode.FileSystemError.FileIsADirectory(uri)
     }
 
     if (usbDeviceFile.parentDevice.filesystem === null) {

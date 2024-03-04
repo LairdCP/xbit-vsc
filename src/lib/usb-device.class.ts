@@ -3,6 +3,7 @@ import * as vscode from 'vscode'
 // const UsbDeviceFile = require('../lib/usb-device-file.class')
 import { UsbDeviceFile } from './usb-device-file.class'
 import { UsbDeviceInterface } from './usb-device-interface.class'
+import { UsbDeviceFolder } from './usb-device-folder.class'
 import { ProbeInfo } from './hardware-probe-info.class'
 import { ReplTerminal } from './repl-terminal.class'
 import { UsbDeviceFileSystem } from './usb-device-filesystem.class'
@@ -48,7 +49,7 @@ export class UsbDevice extends vscode.TreeItem {
   appVersion = 'unknown'
   xbitShell = false
   resultBuffer = ''
-  treeNodes: UsbDeviceFile[] = []
+  treeNodes: Array<UsbDeviceFile | UsbDeviceFolder> = []
 
   // overrides
   private readonly _dataHandlers: Map<string, (msg: DeviceCommandResponse) => void> = new Map()
@@ -357,11 +358,17 @@ export class UsbDevice extends vscode.TreeItem {
   }
 
   // list the child nodes (files) on the USB Device
-  async getUsbDeviceFolder (dir = '/'): Promise<UsbDeviceFile[]> {
+  async getUsbDeviceFolder (dir = '/'): Promise<Array<UsbDeviceFile | UsbDeviceFolder>> {
     if (!this.replCapable || this.filesystem === null) {
       return await Promise.resolve([])
     }
     try {
+      // replace the device uri with ''
+      dir = dir.replace(this.uri.path, '')
+      if (dir === '') {
+        dir = '/'
+      }
+      console.log('dir', dir)
       const files: pythonLsStatElement[] = await this.filesystem.readDirFromDevice(dir)
       this.treeNodes = []
       files.forEach((file: pythonLsStatElement) => {
@@ -373,12 +380,12 @@ export class UsbDevice extends vscode.TreeItem {
         const uri = vscode.Uri.parse('memfs:' + this.uri.path + path)
         //
         // Omit folders from the tree for now
-        // if (type === 'dir') {
-        // treeNode = new UsbDeviceFolder(uri)
-        // command will be handled by the tree provider, getChildren
-        // treeNode.parentDevice = element.parentDevice
+        if (type === 'dir') {
+          treeNode = new UsbDeviceFolder(uri, this)
+          // command will be handled by the tree provider, getChildren
+          treeNode.parentDevice = this.parentDevice
         // } else
-        if (type === 'file') {
+        } else if (type === 'file') {
           treeNode = new UsbDeviceFile(this.context, uri, type, size, this)
         } else {
           return
@@ -504,6 +511,19 @@ export class UsbDevice extends vscode.TreeItem {
     const file = new UsbDeviceFile(this.context, uri, 'file', 0, this)
     this.treeNodes.push(file)
     return await Promise.resolve(file)
+  }
+
+  async createFolder (folderPath: string): Promise<UsbDeviceFolder> {
+    if (!this.connected || !this.replCapable || this.filesystem === null) {
+      return await Promise.reject(new Error('Device is not connected'))
+    }
+    await this.filesystem.createFolder(folderPath)
+
+    // add the new folder to the tree so it's available right away
+    const uri = vscode.Uri.parse('memfs:' + this.uri.path + '/' + folderPath)
+    const folder = new UsbDeviceFolder(uri, this)
+    this.treeNodes.push(folder)
+    return await Promise.resolve(folder)
   }
 
   async deleteFile (filePath: string): Promise<void> {

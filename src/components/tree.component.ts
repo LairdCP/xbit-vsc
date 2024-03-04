@@ -20,12 +20,13 @@ export function SetupTree (ExtensionContextStore: ExtensionContextStore): vscode
     console.log('onDidChangeSelection', e) // breakpoint here for debug
 
     if (e.selection.length > 0) {
-      ExtensionContextStore.emit('selectedDevice', e.selection[0])
-      const usbDevice = e.selection[0]
-      if (usbDevice instanceof UsbDevice) {
-        if (usbDevice.connected) {
+      const item = e.selection[0]
+      console.log('item', item)
+      if (item instanceof UsbDevice) {
+        ExtensionContextStore.emit('selectedDevice', e.selection[0])
+        if (item.connected) {
           // if connected, show the terminal
-          await usbDevice.showTerminal()
+          await item.showTerminal()
         }
       }
     } else {

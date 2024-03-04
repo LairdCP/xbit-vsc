@@ -11,11 +11,13 @@ interface Options {
   supportsBreak: boolean
   supportsRepl: boolean
 }
+
 // provides the interface to the serial port for the usb device
 // could be extended to support other types of devices connections
 export class UsbDeviceInterface extends EventEmitter {
   private serialPort: null | SerialPort
   baudRate: number
+  rtscts: boolean
   path: string
   eofType: string
   supportsBreak: boolean
@@ -32,6 +34,7 @@ export class UsbDeviceInterface extends EventEmitter {
     super()
     this.path = options.path
     this.baudRate = isNaN(options.baudRate) ? 115200 : options.baudRate
+    this.rtscts = options.rtscts
     this.serialPort = null
     this.eofType = options.eofType
     this.supportsBreak = options.supportsBreak

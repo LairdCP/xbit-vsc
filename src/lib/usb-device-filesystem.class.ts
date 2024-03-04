@@ -81,6 +81,21 @@ export class UsbDeviceFileSystem {
     }
   }
 
+  async createFolder (folderPath: string): Promise<null> {
+    if (this.opLock !== false) {
+      return await Promise.reject(new Error(this.opLock as string))
+    }
+    this.opLock = CONST_CREATING_FILE
+    try {
+      await this.usbDevice.writeWait(`import os\ros.mkdir('${folderPath}')\r`, 1000)
+      return await Promise.resolve(null)
+    } catch (error) {
+      return await Promise.reject(error)
+    } finally {
+      this.opLock = false
+    }
+  }
+
   // TODO change to deleteFile command
   async deleteFile (filePath: string): Promise<void> {
     // write import os
@@ -119,7 +134,6 @@ export class UsbDeviceFileSystem {
 
     const commandsPerPaste = 16
     try {
-      console.time('rawwrite')
       await this.usbDevice.ifc.sendEnterRawMode()
       while (commands.length > 0) {
         const commandsToSend = commands.splice(0, commandsPerPaste)
@@ -278,6 +292,7 @@ export class UsbDeviceFileSystem {
         } else if (r[1] === '16384') {
           element.type = 'dir'
           // TODO Create the directory in memFs
+          memFs.createDirectory(vscode.Uri.parse('memfs://' + this.usbDevice.uri.path + r[0]))
         } else {
           element.type = r[1]
         }

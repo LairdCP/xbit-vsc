@@ -23,7 +23,8 @@ import {
   UpdateUsbDeviceSettingsCommand,
   InitializeWorkspaceCommand,
   RunPythonCommand,
-  InitializePythonCommand
+  InitializePythonCommand,
+  CreateDeviceFolderCommand
 } from './commands'
 
 // this is a singleton that can be imported anywhere
@@ -148,6 +149,8 @@ export function activate (context: vscode.ExtensionContext): void {
       ExtensionContextStore.error('Error Opening File', error, true)
     }
   }))
+
+  context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.createDeviceFolder', CreateDeviceFolderCommand))
   context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.writeHexFile', WriteHexFileCommand))
   context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.runApplet', RunApplet))
   context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.connectUsbDevice', ConnectUsbDeviceCommand))
@@ -254,7 +257,8 @@ export function activate (context: vscode.ExtensionContext): void {
       // write the file to the device
       const dataToWrite = Buffer.from(textDocument.getText(), 'utf8')
       try {
-        ExtensionContextStore.inform(`Writing File ${usbDeviceFile.name}`)
+        const usbDeviceFileName = usbDeviceFile.name
+        ExtensionContextStore.inform(`Writing File ${usbDeviceFileName}`)
         return await vscode.window.withProgress({
           location: vscode.ProgressLocation.Notification,
           title: `Writing File ${usbDeviceFile.name}`,

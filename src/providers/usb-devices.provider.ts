@@ -2,6 +2,7 @@ import * as vscode from 'vscode'
 import * as async from 'async'
 
 import { UsbDevice } from '../lib/usb-device.class'
+import { UsbDeviceFolder } from '../lib/usb-device-folder.class'
 import { ProbeInfo, DvkProbeInterface, DvkProbeInterfaces } from '../lib/hardware-probe-info.class'
 import { PortInfo } from '@serialport/bindings-interface'
 
@@ -20,7 +21,7 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
   usbDeviceNodes: UsbDevice[]
   hiddenUsbDeviceNodes: string[]
   lastSentHex: string | null
-  treeCache: Map<string, UsbDeviceFile[]>
+  treeCache: Map<string, Array<UsbDeviceFile | UsbDeviceFolder>>
   staleTreeCache: Map<string, Array<{ path: string, size: number }>>
   pyocdInterface: PyocdInterface
 
@@ -38,7 +39,7 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
   public findDeviceFileByUri (uri: vscode.Uri): UsbDeviceFile | undefined {
     for (const device of this.usbDeviceNodes) {
       for (const file of device.treeNodes) {
-        if (file.uri.toString() === uri.toString()) {
+        if (file.uri.toString() === uri.toString() && file instanceof UsbDeviceFile) {
           return file
         }
       }
@@ -286,6 +287,10 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
         iconPath: element.iconPath,
         id: element.id
       })
+    } else if (element instanceof UsbDeviceFolder) {
+      // list files in the folder
+      // tree provider will do this
+      return element
     } else {
       return element
     }
@@ -449,31 +454,39 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
     })
   }
 
-  async getChildren (element?: UsbDevice): Promise<vscode.TreeItem[]> {
+  async getChildren (element?: UsbDevice | UsbDeviceFolder): Promise<vscode.TreeItem[]> {
     // if (element !== undefined && !element.connected) {
     //   return await Promise.resolve([])
     // }
-    if (this.pyocdInterface.executable === null) {
-      return await Promise.resolve([])
-    }
+    // if (this.pyocdInterface.executable === null) {
+    //   return await Promise.resolve([])
+    // }
+
     if (element !== undefined) {
       const key = element?.uri.path ?? 'root'
-      const result = this.treeCache.get(key)
+      let result = this.treeCache.get(key)
       if (result !== undefined) {
         return await Promise.resolve(result)
       }
       try {
-        if (!element.connected) {
-          await vscode.commands.executeCommand('xbitVsc.connectUsbDevice', element)
+        if (element instanceof UsbDevice) {
+          if (!element.connected) {
+            await vscode.commands.executeCommand('xbitVsc.connectUsbDevice', element)
+          }
+          ExtensionContextStore.mute()
+          result = await element.getUsbDeviceFolder()
+          this.treeCache.set(key, result)
+        } else if (element instanceof UsbDeviceFolder) {
+          result = await element.parentDevice.getUsbDeviceFolder(element.uri.path)
+          this.treeCache.set(key, result)
+        } else {
+          return await Promise.resolve([])
         }
-        ExtensionContextStore.mute()
-        const result = await element.getUsbDeviceFolder()
-        this.treeCache.set(key, result)
 
         // if this.staleTreeCache has a key for this device, compare the files
         // if the file size is different, mark the file as dirty
         const staleFiles = this.staleTreeCache.get(key)
-        if (staleFiles !== undefined) {
+        if (staleFiles !== undefined && result !== undefined) {
           for (const file of result) {
             const staleFile = staleFiles.find((f) => {
               return f.path === file.uri.path
