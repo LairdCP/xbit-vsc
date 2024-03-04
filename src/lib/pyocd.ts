@@ -293,6 +293,12 @@ const checkPythonVersion = async (OUTPUT_CHANNEL: vscode.OutputChannel, pythonEx
         resolve(updateFlag)
       }
     })
+
+    // sometimes the child process hangs, so we kill it after 2 seconds
+    setTimeout(() => {
+      childProcess.kill()
+      reject(new Error('Python version check timed out'))
+    }, 1000)
   })
 }
 
@@ -320,6 +326,12 @@ const checkPipVersion = async (OUTPUT_CHANNEL: vscode.OutputChannel, executable:
         resolve(updateFlag)
       }
     })
+
+    // sometimes the child process hangs, so we kill it after 2 seconds
+    setTimeout(() => {
+      childProcess.kill()
+      reject(new Error('Pip version check timed out'))
+    }, 1000)
   })
 }
 
