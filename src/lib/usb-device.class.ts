@@ -373,6 +373,11 @@ export class UsbDevice extends vscode.TreeItem {
       this.treeNodes = []
       files.forEach((file: pythonLsStatElement) => {
         const { path, type, size } = file
+
+        if (path === '/.' || path === '/..') {
+          return
+        }
+
         // populate tree items from the read file information
         let treeNode
 

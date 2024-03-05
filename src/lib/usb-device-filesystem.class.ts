@@ -291,8 +291,10 @@ export class UsbDeviceFileSystem {
           }
         } else if (r[1] === '16384') {
           element.type = 'dir'
-          // TODO Create the directory in memFs
-          memFs.createDirectory(vscode.Uri.parse('memfs://' + this.usbDevice.uri.path + r[0]))
+          if (r[0] !== '/.' && r[0] !== '/..') {
+            // TODO Create the directory in memFs
+            memFs.createDirectory(vscode.Uri.parse('memfs://' + this.usbDevice.uri.path + r[0]))
+          }
         } else {
           element.type = r[1]
         }
