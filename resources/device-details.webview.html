@@ -65,6 +65,9 @@
       </div>
       <h3>Options</h3>
       <section class="details-section">
+        <vscode-text-field type="text" id="custom-name">Custom Name</vscode-text-field>
+      </section>
+      <section class="details-section">
         <div class="dropdown-container">
           <label for="baud-rate">Baud Rate</label>
           <vscode-dropdown id="baud-rate">
@@ -88,18 +91,13 @@
         </div>
       </section>
       <section class="details-section">
-        <vscode-text-field type="text" id="custom-name">Custom Name</vscode-text-field>
-      </section>
-      <section class="details-section">
         <vscode-button appearance="secondary" id="save-button">Save</vscode-button>
       </section>
       <vscode-divider role="separator"></vscode-divider>
       <h3>Details</h3>
       <section class="details-section">
-        <ul class="list-details">
-          <li id="productId"></li>
-          <li id="vendorId"></li>
-          <li id="manufacturer"></li>
+        <ul id="ProductDetails" class="list-details">
+
         </ul>
         </section>
       </div>
@@ -109,14 +107,15 @@
       const rtscts = document.getElementById('rtscts')
       const customName = document.getElementById('custom-name')
       const appletDropdown = document.getElementById('applets')
-      const productId = document.getElementById('productId')
-      const vendorId = document.getElementById('vendorId')
-      const manufacturer = document.getElementById('manufacturer')
+      // const productId = document.getElementById('productId')
+      // const vendorId = document.getElementById('vendorId')
+      // const manufacturer = document.getElementById('manufacturer')
       const breakButton = document.getElementById('break-button')
       const eofButton = document.getElementById('eof-button')
       const exitRawButton = document.getElementById('exit-raw-button')
       const enterRawButton = document.getElementById('enter-raw-button')
       const execRawButton = document.getElementById('exec-raw-button')
+      const productDetailsList = document.getElementById('ProductDetails')
       
       baudRate.value = 115200
 
@@ -194,11 +193,42 @@
               customName.value = message.params.device.name
               baudRate.value = message.params.device.baudRate.toString()
               rtscts.checked = message.params.device.rtscts
-              productId.textContent = `Product ID: ${message.params.device.productId}`
-              vendorId.textContent = `Vendor ID: ${message.params.device.vendorId}`
-              manufacturer.textContent = `Manufacturer: ${message.params.device.manufacturer}`
               breakButton.disabled = message.params.device.supportsBreak !== true
               eofButton.disabled = message.params.device.eofType === 'none'
+
+              const productDetails = []
+              if (message.params.device.productId) {
+                productDetails.push(`Product ID: ${message.params.device.productId}`)
+              }
+              if (message.params.device.vendorId) {
+                productDetails.push(`Vendor ID: ${message.params.device.vendorId}`)
+              }
+              if (message.params.device.manufacturer) {
+                productDetails.push(`Manufacturer: ${message.params.device.manufacturer}`)
+              }
+
+              console.log('message.params.device.uname', message.params.device.uname)
+              if (message.params.device.uname && message.params.device.uname !== 'unknown') {
+                // convert to a dictionary
+                // from (sysname='Lyra', nodename='Lyra', release='1.21.0', version='v1.21.0 on 2023-12-14', machine='LYRA_24_S10_138.6.0.6')
+                try {
+                  const uname = message.params.device.uname.replace(/^\(|\)$/, '').split(',').map((item) => {
+                    let [key, value] = item.trim().split('=')
+                    key = key.charAt(0).toUpperCase() + key.slice(1)
+                    value = value.replace(/^'|'$/g, '')
+                    productDetails.push(`${key}: ${value}`)
+                  })
+                } catch (e) {
+                  console.error('Error parsing uname', e)
+                }
+              }
+              console.log('productDetails', productDetails)
+              // Add to the dom
+              productDetails.forEach(detail => {
+                const li = document.createElement('li')
+                li.textContent = detail
+                productDetailsList.append(li)
+              })
 
               handledConnected()
               document.querySelector('.device-selected').style.display = 'inline-block'
