@@ -3,8 +3,9 @@ import * as path from 'path'
 import { UsbDeviceFile } from '../lib/usb-device-file.class'
 import ExtensionContextStore from '../stores/extension-context.store'
 import * as fs from 'fs/promises'
+import { UsbDeviceFolder } from '../lib/usb-device-folder.class'
 
-export async function RenameDeviceFileCommand (usbDeviceFile: UsbDeviceFile): Promise<null | Error> {
+export async function RenameDeviceFileCommand (usbDeviceFile: UsbDeviceFile | UsbDeviceFolder): Promise<null | Error> {
   if (!usbDeviceFile.parentDevice.connected) {
     await vscode.commands.executeCommand('xbitVsc.connectUsbDevice', usbDeviceFile.parentDevice)
   }
@@ -44,13 +45,13 @@ export async function RenameDeviceFileCommand (usbDeviceFile: UsbDeviceFile): Pr
 
       // rename in MemFS cache
       const newPath = path.dirname(usbDeviceFile.uri.path) + '/' + newFileName
-      console.log('deleting', usbDeviceFile.uri.path)
+
       ExtensionContextStore.provider.treeCache.delete(usbDeviceFile.uri.path)
       const newUri = usbDeviceFile.uri.with({ path: vscode.Uri.parse(newPath).path })
       try {
         ExtensionContextStore.memFs.rename(usbDeviceFile.uri, newUri, { overwrite: true })
       } catch (ex) {
-        console.log('Error renaming file in MemFS cache', ex)
+        console.error('Error renaming file in MemFS cache', ex)
         // can't rename file as it's not been loaded
         // OK
       }
@@ -66,16 +67,17 @@ export async function RenameDeviceFileCommand (usbDeviceFile: UsbDeviceFile): Pr
         // OK
       }
 
-      const location: string | undefined = config.get('python-venv')
-      if (location !== undefined) {
-        const oldFilename = ExtensionContextStore.getLocalFileFromUri(usbDeviceFile.uri)
-        const newFilename = ExtensionContextStore.getLocalFileFromUri(newUri)
+      if (usbDeviceFile instanceof UsbDeviceFile) {
+        const location: string | undefined = config.get('python-venv')
+        if (location !== undefined) {
+          const oldFilename = ExtensionContextStore.getLocalFileFromUri(usbDeviceFile.uri)
+          const newFilename = ExtensionContextStore.getLocalFileFromUri(newUri)
 
-        await fs.rename(path.join(location, oldFilename), path.join(location, newFilename))
-        ExtensionContextStore.inform('File Renamed', false)
+          await fs.rename(path.join(location, oldFilename), path.join(location, newFilename))
+          ExtensionContextStore.inform('File Renamed', false)
+        }
       }
-
-      ExtensionContextStore.inform(`Renamed File ${usbDeviceFile.label} to ${newFileName}\n`)
+      ExtensionContextStore.inform(`Renamed File ${oldFileName} to ${newFileName}\n`)
       return await Promise.resolve(null)
     } catch (error: unknown) {
       return await Promise.reject(error)

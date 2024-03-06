@@ -141,6 +141,7 @@ export function activate (context: vscode.ExtensionContext): void {
       ExtensionContextStore.error('Error Renaming File', error, true)
     }
   }))
+  context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.renameDeviceFolder', RenameDeviceFileCommand))
   // called when a python file on a connected device is selected in the tree view
   context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.openDeviceFile', async (usbDeviceFile: UsbDeviceFile) => {
     try {

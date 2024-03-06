@@ -88,6 +88,11 @@
         "icon": "$(edit)"
       },
       {
+        "command": "xbitVsc.renameDeviceFolder",
+        "title": "Rename Folder",
+        "icon": "$(edit)"
+      },
+      {
         "command": "xbitVsc.createDeviceFile",
         "title": "Create File",
         "icon": "$(add)"
@@ -96,6 +101,11 @@
         "command": "xbitVsc.createDeviceFolder",
         "title": "Create Folder",
         "icon": "$(add)"
+      },
+      {
+        "command": "xbitVsc.deleteDeviceFolder",
+        "title": "Delete Folder",
+        "icon": "$(trash)"
       },
       {
         "command": "xbitVsc.refreshFile",
@@ -185,31 +195,44 @@
           "group": "navigation@2"
         },
         {
-          "command": "xbitVsc.createDeviceFolder",
-          "when": "viewItem == usbDevice || viewItem == usbDeviceConnected || viewItem == usbDeviceDvkProbe || viewItem == usbDeviceConnectedDvkProbe || viewItem == usbDeviceFolder",
-          "group": "navigation@3"
-        },
-        {
           "command": "xbitVsc.writeHexFile",
           "when": "viewItem == usbDevice || viewItem == usbDeviceConnected || viewItem == usbDeviceDvkProbe || viewItem == usbDeviceConnectedDvkProbe",
           "group": "commands"
         },
         {
           "command": "xbitVsc.createDeviceFile",
-          "when": "viewItem == usbDevice || viewItem == usbDeviceConnected || viewItem == usbDeviceDvkProbe || viewItem == usbDeviceConnectedDvkProbe",
+          "when": "viewItem == usbDevice || viewItem == usbDeviceConnected || viewItem == usbDeviceDvkProbe || viewItem == usbDeviceConnectedDvkProbe || viewItem == usbDeviceFolder",
           "group": "navigation@3"
         },
         {
-          "command": "xbitVsc.deleteDeviceFile",
-          "when": "viewItem == usbDeviceFile || viewItem == usbDeviceFilePython"
+          "command": "xbitVsc.renameDeviceFile",
+          "when": "viewItem == usbDeviceFile || viewItem == usbDeviceFilePython",
+          "group": "navigation@1"
         },
         {
-          "command": "xbitVsc.renameDeviceFile",
-          "when": "viewItem == usbDeviceFile || viewItem == usbDeviceFilePython"
+          "command": "xbitVsc.renameDeviceFolder",
+          "when": "viewItem == usbDeviceFolder",
+          "group": "navigation@1"
         },
         {
           "command": "xbitVsc.refreshFile",
-          "when": "viewItem == usbDeviceFile || viewItem == usbDeviceFilePython"
+          "when": "viewItem == usbDeviceFile || viewItem == usbDeviceFilePython",
+          "group": "navigation@2"
+        },
+        {
+          "command": "xbitVsc.deleteDeviceFile",
+          "when": "viewItem == usbDeviceFile || viewItem == usbDeviceFilePython",
+          "group": "navigation@3"
+        },
+        {
+          "command": "xbitVsc.createDeviceFolder",
+          "when": "viewItem == usbDevice || viewItem == usbDeviceConnected || viewItem == usbDeviceDvkProbe || viewItem == usbDeviceConnectedDvkProbe || viewItem == usbDeviceFolder",
+          "group": "navigation@3"
+        },
+        {
+          "command": "xbitVsc.deleteDeviceFolder",
+          "when": "viewItem == usbDeviceFolder",
+          "group": "navigation@3"
         },
         {
           "command": "xbitVsc.runPythonReset",
