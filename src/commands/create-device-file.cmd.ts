@@ -1,9 +1,18 @@
-
 import * as vscode from 'vscode'
 import { UsbDevice } from '../lib/usb-device.class'
+import { UsbDeviceFolder } from '../lib/usb-device-folder.class'
 import ExtensionContextStore from '../stores/extension-context.store'
 
-export async function CreateDeviceFileCommand (usbDevice: UsbDevice): Promise<null | Error> {
+export async function CreateDeviceFileCommand (parentNode: UsbDevice | UsbDeviceFolder): Promise<null | Error> {
+  let usbDevice: UsbDevice
+  let basePath = '/'
+  if (parentNode instanceof UsbDevice) {
+    usbDevice = parentNode
+  } else {
+    usbDevice = parentNode.parentDevice
+    basePath = parentNode.devPath
+  }
+
   if (!usbDevice.connected) {
     await vscode.commands.executeCommand('xbitVsc.connectUsbDevice', usbDevice)
   }
@@ -17,16 +26,19 @@ export async function CreateDeviceFileCommand (usbDevice: UsbDevice): Promise<nu
   }
 
   // create a new file object with unamed file
-  const fileName = await vscode.window.showInputBox()
+  let fileName = await vscode.window.showInputBox()
   // check if the file already exists with the same filename.
   // If it does, append a number to the filename?
   // create a new file object with named file
   if (fileName !== undefined) {
-    const key = usbDevice.parentDevice.uri.path
     try {
+      if (/^\//.test(fileName)) {
+        fileName = basePath + fileName
+      } else {
+        fileName = basePath + '/' + fileName
+      }
       ExtensionContextStore.mute()
       await usbDevice.createFile(fileName)
-      ExtensionContextStore.provider?.treeCache.delete(key)
       ExtensionContextStore.provider?.refresh()
       ExtensionContextStore.inform(`Created New File: ${fileName}`)
       return await Promise.resolve(null)

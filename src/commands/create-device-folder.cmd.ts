@@ -12,12 +12,12 @@ export async function CreateDeviceFolderCommand (parentNode: UsbDevice | UsbDevi
     usbDevice = parentNode
   } else {
     usbDevice = parentNode.parentDevice
-    basePath = parentNode.uri.path.replace(usbDevice.uri.path, '')
+    basePath = parentNode.devPath
   }
 
   // create a new file object with unamed file
   console.log('showInputBox')
-  const fileName = await vscode.window.showInputBox()
+  let fileName = await vscode.window.showInputBox()
 
   if (!usbDevice.connected) {
     console.log('connecting')
@@ -39,14 +39,16 @@ export async function CreateDeviceFolderCommand (parentNode: UsbDevice | UsbDevi
   // If it does, append a number to the filename?
   // create a new file object with named file
   if (fileName !== undefined) {
-    const key = usbDevice.parentDevice.uri.path
     try {
-      const folderName = basePath + '/' + fileName
+      if (/^\//.test(fileName)) {
+        fileName = basePath + fileName
+      } else {
+        fileName = basePath + '/' + fileName
+      }
       ExtensionContextStore.mute()
-      await usbDevice.createFolder(folderName)
-      ExtensionContextStore.provider?.treeCache.delete(key)
+      await usbDevice.createFolder(fileName)
       ExtensionContextStore.provider?.refresh()
-      ExtensionContextStore.inform(`Created New Folder: ${folderName}`)
+      ExtensionContextStore.inform(`Created New Folder: ${fileName}`)
       return await Promise.resolve(null)
     } catch (error: unknown) {
       return await Promise.reject(error)

@@ -12,11 +12,11 @@ export async function RenameDeviceFileCommand (usbDeviceFile: UsbDeviceFile): Pr
   const config = vscode.workspace.getConfiguration('xbit-vsc')
 
   // create a new file object with unamed file
-  const newFilePath = await vscode.window.showInputBox({
+  const newFileName = await vscode.window.showInputBox({
     value: usbDeviceFile.label
   })
 
-  if (newFilePath !== undefined && ExtensionContextStore.provider !== undefined) {
+  if (newFileName !== undefined && ExtensionContextStore.provider !== undefined) {
     try {
       if (usbDeviceFile.parentDevice.filesystem === null) {
         throw new Error('Device File System Not Found')
@@ -26,23 +26,34 @@ export async function RenameDeviceFileCommand (usbDeviceFile: UsbDeviceFile): Pr
       }
 
       // rename the file on the device
-      const oldFilePath = usbDeviceFile.devPath.split('/').pop() ?? ''
-      const newFileName = newFilePath.split('/').pop() ?? ''
-      if (oldFilePath === '' || newFileName === '') {
+      // /test-one/file001
+      const oldFilePath = usbDeviceFile.devPath
+
+      // file001
+      const oldFileName = oldFilePath.split('/').pop() ?? ''
+
+      // /test-one/file002
+      const newFilePath = oldFilePath.replace(oldFileName, newFileName)
+
+      if (oldFilePath === '' || newFilePath === '') {
         throw new Error('invalid file path for rename')
       }
-      const key = usbDeviceFile.parentDevice.uri.path
-      await usbDeviceFile.parentDevice.renameFile(oldFilePath, newFileName)
+      // /serial/F1924F836EF168E9/dev/tty.usbmodem3201
+      // const key = usbDeviceFile.parentDevice.uri.path
+      await usbDeviceFile.parentDevice.renameFile(oldFilePath, newFilePath)
+
       // rename in MemFS cache
       const newPath = path.dirname(usbDeviceFile.uri.path) + '/' + newFileName
+      console.log('deleting', usbDeviceFile.uri.path)
+      ExtensionContextStore.provider.treeCache.delete(usbDeviceFile.uri.path)
       const newUri = usbDeviceFile.uri.with({ path: vscode.Uri.parse(newPath).path })
       try {
         ExtensionContextStore.memFs.rename(usbDeviceFile.uri, newUri, { overwrite: true })
       } catch (ex) {
+        console.log('Error renaming file in MemFS cache', ex)
         // can't rename file as it's not been loaded
         // OK
       }
-      ExtensionContextStore.provider.treeCache.delete(key)
       ExtensionContextStore.provider.refresh()
 
       // close and reopend the renamed file
