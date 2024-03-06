@@ -71,7 +71,7 @@ export class UsbDevice extends vscode.TreeItem {
     this.uri = uri
     this.options = options
     this._baudRate = 115200
-    this._rtscts = true
+    this._rtscts = false
     // this.tooltip = this.label
     this.type = type
     this.command = command // default vs code command when clicking on item
