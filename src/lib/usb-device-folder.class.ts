@@ -26,4 +26,8 @@ export class UsbDeviceFolder extends vscode.TreeItem {
       dark: path.join(__filename, '../../..', 'resources', 'dark', 'gen-folder.svg')
     }
   }
+
+  get devPath (): string {
+    return this.uri.path.replace(this.parentDevice.uri.path, '')
+  }
 }

@@ -96,10 +96,13 @@ export class UsbDeviceFileSystem {
     }
   }
 
-  // TODO change to deleteFile command
   async deleteFile (filePath: string): Promise<void> {
     // write import os
     await this.usbDevice.writeWait(`import os\ros.unlink('${filePath}')\r`, 1000)
+  }
+
+  async deleteFolder (folderPath: string): Promise<void> {
+    await this.usbDevice.writeWait(`import os\ros.rmdir('${folderPath}')\r`, 1000)
   }
 
   async renameFile (oldFilePath: string, newFilePath: string): Promise<void> {

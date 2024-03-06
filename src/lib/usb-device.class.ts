@@ -363,8 +363,6 @@ export class UsbDevice extends vscode.TreeItem {
       return await Promise.resolve([])
     }
     try {
-      // replace the device uri with ''
-      dir = dir.replace(this.uri.path, '')
       if (dir === '') {
         dir = '/'
       }
@@ -536,6 +534,13 @@ export class UsbDevice extends vscode.TreeItem {
       return await Promise.reject(new Error('Device is not connected'))
     }
     return await this.filesystem.deleteFile(filePath)
+  }
+
+  async deleteFolder (folderPath: string): Promise<void> {
+    if (!this.connected || !this.replCapable || this.filesystem === null) {
+      return await Promise.reject(new Error('Device is not connected'))
+    }
+    return await this.filesystem.deleteFolder(folderPath)
   }
 
   async renameFile (oldFilePath: string, newFilePath: string): Promise<void> {

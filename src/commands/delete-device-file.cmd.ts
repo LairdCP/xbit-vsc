@@ -16,7 +16,6 @@ export async function DeleteDeviceFileCommand (usbDeviceFile: UsbDeviceFile): Pr
   }
 
   // const dirPath = path.dirname(filePath)
-  const key = usbDeviceFile.parentDevice.uri.path
   try {
     if (usbDeviceFile.parentDevice.filesystem.opLock !== false) {
       throw new Error(usbDeviceFile.parentDevice.filesystem.opLock as string)
@@ -24,7 +23,6 @@ export async function DeleteDeviceFileCommand (usbDeviceFile: UsbDeviceFile): Pr
     ExtensionContextStore.mute()
     await usbDeviceFile.parentDevice.deleteFile(usbDeviceFile.devPath)
     // remove from MemFS cache
-    ExtensionContextStore.provider?.treeCache.delete(key)
     ExtensionContextStore.provider?.refresh()
 
     // deleting a file that's never been opened will throw an error

@@ -60,7 +60,6 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
       // windows
       path = p.slice(0, 4).join('/')
     }
-    console.log(path)
     newUri = vscode.Uri.parse(`memfs://${path}`)
 
     for (const device of this.usbDeviceNodes) {
@@ -137,6 +136,7 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
   }
 
   refresh (): void {
+    this.treeCache = new Map()
     // appears to be a race condition with the treeview
     // where the first time clicked, the emitted event is empty
     setTimeout(() => {
@@ -477,7 +477,7 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
           result = await element.getUsbDeviceFolder()
           this.treeCache.set(key, result)
         } else if (element instanceof UsbDeviceFolder) {
-          result = await element.parentDevice.getUsbDeviceFolder(element.uri.path)
+          result = await element.parentDevice.getUsbDeviceFolder(element.devPath)
           this.treeCache.set(key, result)
         } else {
           return await Promise.resolve([])

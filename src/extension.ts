@@ -24,7 +24,8 @@ import {
   InitializeWorkspaceCommand,
   RunPythonCommand,
   InitializePythonCommand,
-  CreateDeviceFolderCommand
+  CreateDeviceFolderCommand,
+  DeleteDeviceFolderCommand
 } from './commands'
 
 // this is a singleton that can be imported anywhere
@@ -151,6 +152,7 @@ export function activate (context: vscode.ExtensionContext): void {
   }))
 
   context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.createDeviceFolder', CreateDeviceFolderCommand))
+  context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.deleteDeviceFolder', DeleteDeviceFolderCommand))
   context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.writeHexFile', WriteHexFileCommand))
   context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.runApplet', RunApplet))
   context.subscriptions.push(vscode.commands.registerCommand('xbitVsc.connectUsbDevice', ConnectUsbDeviceCommand))
