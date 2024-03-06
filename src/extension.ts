@@ -190,7 +190,7 @@ export function activate (context: vscode.ExtensionContext): void {
     vscode.window.registerWebviewViewProvider(UsbDeviceWebViewProvider.viewType, usbDeviceWebViewProvider))
 
   vscode.workspace.onDidOpenTextDocument((e: vscode.TextDocument) => {
-    console.log('<><> Opened.', e)
+    // console.log('<><> Opened.', e)
   })
 
   // vscode.workspace.onDidChangeTextDocument(() => {
@@ -198,15 +198,15 @@ export function activate (context: vscode.ExtensionContext): void {
   // })
 
   vscode.workspace.onDidCloseTextDocument((e: vscode.TextDocument) => {
-    console.log('<><> Closed.', e)
+    // console.log('<><> Closed.', e)
   })
 
   vscode.workspace.onDidCreateFiles(async (e: vscode.FileCreateEvent) => {
-    console.log('<><> Created workspace event', e)
+    // console.log('<><> Created workspace event', e)
   })
 
   vscode.workspace.onDidSaveTextDocument(async (textDocument: vscode.TextDocument) => {
-    console.log('<><> Saved workspace event', textDocument)
+    // console.log('<><> Saved workspace event', textDocument)
 
     // this fires for any file save, so only show the error if the file is in the tree
     if (textDocument.uri.scheme !== 'memfs') {

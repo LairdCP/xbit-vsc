@@ -80,7 +80,6 @@ export class MemFS implements vscode.FileSystemProvider {
   // --- manage file contents
 
   async readFile (uri: vscode.Uri): Promise<Uint8Array> {
-    console.log('<> readFile from memfs', uri.path)
     let file = this._lookupAsFile(uri, false)
     if (file.data != null && !file.temp) {
       return await Promise.resolve(file.data)
@@ -116,7 +115,6 @@ export class MemFS implements vscode.FileSystemProvider {
   }
 
   async writeFile (uri: vscode.Uri, content: Uint8Array, options: { create: boolean, overwrite: boolean, temp?: boolean }): Promise<void> {
-    console.log('<> writeFile to memfs', uri.path, content.byteLength, options)
     const basename = path.posix.basename(uri.path)
     const parent = this._lookupParentDirectory(uri)
     let entry = parent.entries.get(basename)

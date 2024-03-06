@@ -7,7 +7,6 @@ import ExtensionContextStore from '../stores/extension-context.store'
 
 export async function DeleteDeviceFolderCommand (usbDeviceFolder: UsbDeviceFolder): Promise<null | Error> {
   // const config = vscode.workspace.getConfiguration('xbit-vsc')
-  console.log('DeleteDeviceFolderCommand', usbDeviceFolder)
   if (!usbDeviceFolder.parentDevice.connected) {
     await vscode.commands.executeCommand('xbitVsc.connectUsbDevice', usbDeviceFolder.parentDevice)
   }

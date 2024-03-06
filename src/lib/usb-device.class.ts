@@ -219,7 +219,7 @@ export class UsbDevice extends vscode.TreeItem {
           void vscode.commands.executeCommand('xbitVsc.disconnectUsbDevice', this)
         } catch (error) {
           // error should already be handled by the command
-          console.log('silent', error)
+          console.error('silent', error)
         }
       }
     })
@@ -366,7 +366,6 @@ export class UsbDevice extends vscode.TreeItem {
       if (dir === '') {
         dir = '/'
       }
-      console.log('dir', dir)
       const files: pythonLsStatElement[] = await this.filesystem.readDirFromDevice(dir)
       this.treeNodes = []
       files.forEach((file: pythonLsStatElement) => {
@@ -384,7 +383,7 @@ export class UsbDevice extends vscode.TreeItem {
         //
         // Omit folders from the tree for now
         if (type === 'dir') {
-          treeNode = new UsbDeviceFolder(uri, this)
+          treeNode = new UsbDeviceFolder(this.context, uri, this)
           // command will be handled by the tree provider, getChildren
           treeNode.parentDevice = this.parentDevice
         // } else
@@ -524,7 +523,7 @@ export class UsbDevice extends vscode.TreeItem {
 
     // add the new folder to the tree so it's available right away
     const uri = vscode.Uri.parse('memfs:' + this.uri.path + '/' + folderPath)
-    const folder = new UsbDeviceFolder(uri, this)
+    const folder = new UsbDeviceFolder(this.context, uri, this)
     this.treeNodes.push(folder)
     return await Promise.resolve(folder)
   }

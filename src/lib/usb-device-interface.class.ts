@@ -82,7 +82,7 @@ export class UsbDeviceInterface extends EventEmitter {
         })
 
         this.serialPort.on('error', (error: unknown) => {
-          console.log('serialPort on error', error)
+          console.error('serialPort on error', error)
           this.emit('error', error)
         })
 
@@ -140,7 +140,7 @@ export class UsbDeviceInterface extends EventEmitter {
       if (this.serialPort !== null && 'port' in this.serialPort) {
         this.serialPort.write(data, (error) => {
           if (error !== null && error !== undefined) {
-            console.log('write error', error)
+            console.error('write error', error)
             reject(error)
           } else {
             resolve(null)
@@ -275,7 +275,7 @@ export class UsbDeviceInterface extends EventEmitter {
       const trimmedResult = result.slice(2, result.length - 3)
       return trimmedResult
     } catch (error) {
-      console.log('sendExecuteRawMode error', error)
+      console.error('sendExecuteRawMode error', error)
       return await Promise.reject(error)
     }
   }
@@ -286,7 +286,7 @@ export class UsbDeviceInterface extends EventEmitter {
       this.rawMode = false
       return p
     } catch (error) {
-      console.log('sendExitRawMode error', error)
+      console.error('sendExitRawMode error', error)
       return await Promise.reject(error)
     }
   }
@@ -325,7 +325,7 @@ export class UsbDeviceInterface extends EventEmitter {
       this.rawPasteMode = false
       return await Promise.resolve('raw paste mode exited')
     } catch (error) {
-      console.log('sendExitRawPasteMode caught error', error)
+      console.error('sendExitRawPasteMode caught error', error)
       return await Promise.reject(error)
     }
   }
@@ -344,7 +344,6 @@ export class UsbDeviceInterface extends EventEmitter {
     // from the serial port
     return await new Promise((resolve, reject) => {
       this.awaiting = (data) => {
-        console.log('data', data.toString('hex'))
         if (data[0] === 0x01) {
           // Device indicated that a new window of data can be sent.
           windowRemain += this.windowSize
@@ -396,7 +395,7 @@ export class UsbDeviceInterface extends EventEmitter {
         try {
           await this.connect()
         } catch (error) {
-          console.log('reconnect error', error)
+          console.error('reconnect error', error)
         }
         if (tryCount === 0) {
           this.restarting = false

@@ -27,7 +27,7 @@ export async function RunPythonCommand (usbDeviceFile: UsbDeviceFile, reset: boo
     return await Promise.resolve(null)
   } catch (error: unknown) {
     ExtensionContextStore.error('File Not Executed:' + usbDeviceFile.name, error, true)
-    console.log('RunPythonCommand', error)
+    console.error('RunPythonCommand', error)
     return await Promise.reject(error)
   }
 }

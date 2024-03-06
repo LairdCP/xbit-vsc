@@ -16,17 +16,14 @@ export async function CreateDeviceFolderCommand (parentNode: UsbDevice | UsbDevi
   }
 
   // create a new file object with unamed file
-  console.log('showInputBox')
   let fileName = await vscode.window.showInputBox()
 
   if (!usbDevice.connected) {
-    console.log('connecting')
     // await usbDevice.connect()
     // await ConnectUsbDeviceCommand(usbDevice)
     await vscode.commands.executeCommand('xbitVsc.connectUsbDevice', usbDevice)
   }
 
-  console.log('filesystem')
   if (usbDevice.filesystem === null) {
     throw new Error('Device File System Not Found')
   }
@@ -56,7 +53,6 @@ export async function CreateDeviceFolderCommand (parentNode: UsbDevice | UsbDevi
       ExtensionContextStore.unmute()
     }
   }
-  console.log('resolve')
   // cancelled?
   return await Promise.resolve(null)
 }

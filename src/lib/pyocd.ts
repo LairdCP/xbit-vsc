@@ -276,7 +276,6 @@ const checkPythonVersion = async (OUTPUT_CHANNEL: vscode.OutputChannel, pythonEx
     let errorString = ''
     const childProcess = spawn(pythonExecutable, ['--version'])
     childProcess.stdout.on('data', (out) => {
-      console.log(out.toString())
       const version = out.toString().split(' ')[1].split('.')
       if (version[0] < minPythonVersion[0] || version[1] < minPythonVersion[1] || version[2] < minPythonVersion[2] || version[0] > maxPythonVersion[0] || version[1] > maxPythonVersion[1] || version[2] > maxPythonVersion[2]) {
         // error, need update
@@ -288,7 +287,6 @@ const checkPythonVersion = async (OUTPUT_CHANNEL: vscode.OutputChannel, pythonEx
     })
 
     childProcess.on('close', (code: any) => {
-      console.log('python version check', code, updateFlag)
       if (errorString !== '') {
         reject(errorString)
       } else {
@@ -304,7 +302,6 @@ const checkPipVersion = async (OUTPUT_CHANNEL: vscode.OutputChannel, executable:
     let updateFlag = false
     const childProcess = spawn(executable, ['-m', 'pip', '--version'])
     childProcess.stdout.on('data', (out) => {
-      console.log(out.toString())
       const version = out.toString().split(' ')[1].split('.')
       if (version[0] < minPipVersion[0]) {
         // error, need update
@@ -416,9 +413,6 @@ const installDeps = async (OUTPUT_CHANNEL: vscode.OutputChannel, context: vscode
 
     let errorString = ''
     const childProcess = spawn(pip, ['install', '-qq', '-r', context.asAbsolutePath('./requirements.in')])
-    childProcess.stdout.on('data', (out) => {
-      console.log(out.toString())
-    })
 
     childProcess.stderr.on('data', (data: Buffer) => {
       // stderr includes [notice] messages which aren't errors

@@ -19,7 +19,7 @@ export async function DisconnectUsbDeviceCommand (usbDevice: UsbDevice): Promise
     ExtensionContextStore.provider?.treeCache.delete(key)
   } catch (error: unknown) {
     // ignore, item was never selected
-    console.log(error)
+    console.error(error)
   }
   deviceFiles?.forEach((file) => {
     try {
@@ -37,7 +37,7 @@ export async function DisconnectUsbDeviceCommand (usbDevice: UsbDevice): Promise
   try {
     await usbDevice.destroyTerminal()
   } catch (error: unknown) {
-    console.log(error)
+    console.error(error)
     ExtensionContextStore.error('Error Closing Terminal', error)
   }
 
@@ -46,7 +46,7 @@ export async function DisconnectUsbDeviceCommand (usbDevice: UsbDevice): Promise
     ExtensionContextStore.emit('disconnectUsbDevice', usbDevice)
     ExtensionContextStore.inform('Disconnected')
   } catch (error: unknown) {
-    console.log(error)
+    console.error(error)
     ExtensionContextStore.error('Error Closing Port', error)
     return await Promise.reject(error)
   }

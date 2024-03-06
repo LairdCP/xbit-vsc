@@ -232,7 +232,6 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
   }
 
   async getTreeItem (element: vscode.TreeItem): Promise<vscode.TreeItem> {
-    console.log('getTreeItem', element)
     if (element instanceof UsbDevice) {
       let contextValue = 'usbDevice'
       if (element.ifc?.connected) {
@@ -266,9 +265,6 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
       const showOptions: vscode.TextDocumentShowOptions = {
         preserveFocus: true
       }
-
-      // console.log('opening device file')
-      // await vscode.commands.executeCommand('xbitVsc.openDeviceFile', element)
 
       return await Promise.resolve({
         label: element.label,

@@ -4,12 +4,8 @@ import { copy, emptyDir } from 'fs-extra'
 import ExtensionContextStore from '../stores/extension-context.store'
 
 export async function InitializeWorkspaceCommand (e: any): Promise<null | Error> {
-  console.log(e)
-
-  console.log('InitializeWorkspaceCommand', process.platform)
   let path = nodePath.posix
   if (process.platform === 'win32') {
-    console.log('setting path', 'win32')
     path = nodePath.win32
   }
 
@@ -32,13 +28,11 @@ export async function InitializeWorkspaceCommand (e: any): Promise<null | Error>
 
   // copy recursively files from extension/canvas-stubs to e.path/.vscode/xbit/canvas-stubs
   try {
-    console.log('Updating stubs for workspaceFolder', workspaceFolder)
     const tempPath = path.join(workspaceFolder.uri.fsPath, '.vscode', 'xbit')
     if (process.platform === 'win32' && tempPath.startsWith('\\')) {
       tempPath.replace('\\', '')
     }
     const stubsFolder = path.join(workspaceFolder.uri.fsPath, '.vscode', 'xbit', 'canvas-stubs')
-    console.log('stubsFolder', stubsFolder)
 
     await emptyDir(stubsFolder)
     await copy(path.join(extensionFolder, 'stubs'), stubsFolder)

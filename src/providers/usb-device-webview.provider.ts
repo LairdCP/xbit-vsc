@@ -100,7 +100,7 @@ export class UsbDeviceWebViewProvider implements vscode.WebviewViewProvider {
       try {
         this._view.show()
       } catch (error) {
-        console.log('error showing webview', error)
+        console.error('error showing webview', error)
       }
     }
 
@@ -110,7 +110,6 @@ export class UsbDeviceWebViewProvider implements vscode.WebviewViewProvider {
 
     if (usbDevice instanceof UsbDevice) {
       this._selectedDevice = usbDevice
-      console.log(this._selectedDevice)
       // tell the webview the device was selected
       await this.webview?.postMessage({
         method: 'setSelected',
