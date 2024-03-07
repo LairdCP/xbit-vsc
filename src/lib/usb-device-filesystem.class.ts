@@ -274,7 +274,7 @@ export class UsbDeviceFileSystem {
         await timeout(50)
       }
 
-      await this.usbDevice.writeWait('\r', 1000)
+      await this.usbDevice.ifc.writeWaitFor('\r', '>>> ')
       const result = await this.usbDevice.writeWait(`ls('${dirPath}')\r`, 1000)
       const resultMap = result.split('\r').map((r: string) => r.trim())
       const files = []
