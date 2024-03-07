@@ -263,26 +263,25 @@ export class UsbDeviceFileSystem {
       '    for f in os.listdir(path):\r',
       '        full_name = path + f\r',
       '        s = os.stat(full_name)\r',
-      '        print(full_name, s[0], s[5], ",")\r'
+      '        print(full_name)\r',
+      '        print(s[0])\r',
+      '        print(s[5])\r'
     ]
 
     try {
       for (const i of lsFunction) {
         await this.usbDevice.write(i)
-        await timeout(100)
+        await timeout(50)
       }
 
       await this.usbDevice.writeWait('\r', 1000)
       const result = await this.usbDevice.writeWait(`ls('${dirPath}')\r`, 1000)
-      const resultMap = result.split(',')
-        .map((r: string) => r.trim()
-          .split(' ')
-        )
-        .filter((r: string[]) => {
-          return r.length > 1
-        })
-
-      const fileResult: pythonLsStatElement[] = resultMap.map((r: string[]) => {
+      const resultMap = result.split('\r').map((r: string) => r.trim())
+      const files = []
+      for (let i = 0; i < resultMap.length - 3; i = i + 3) {
+        files.push([resultMap[i], resultMap[i + 1], resultMap[i + 2]])
+      }
+      const fileResult: pythonLsStatElement[] = files.map((r: string[]) => {
         const element: pythonLsStatElement = {
           type: '',
           size: parseInt(r[2], 10),
