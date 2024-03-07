@@ -75,16 +75,21 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
   }
 
   public async handleDrop (
-    target: vscode.TreeItem | undefined,
+    target: UsbDevice | UsbDeviceFolder | UsbDeviceFile,
     sources: vscode.DataTransfer,
     token: vscode.CancellationToken): Promise<void> {
+    console.log('handleDrop', target, sources, token)
+
     if (target === undefined) {
       return
     }
-    if (target instanceof UsbDeviceFile) {
-      target = target.parentDevice
+    let parentDevice: UsbDevice | undefined
+    if (target instanceof UsbDeviceFile || target instanceof UsbDeviceFolder) {
+      parentDevice = target.parentDevice
+    } else {
+      parentDevice = target
     }
-    if (!(target instanceof UsbDevice)) {
+    if (!(parentDevice instanceof UsbDevice)) {
       return
     }
     const files: string[] = sources.get('text/uri-list')?.value.split('\r\n')
@@ -124,7 +129,8 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
 
         // write the file to the device
         try {
-          await target.createFile(fileName, Buffer.from(data))
+          const filePath = target.devPath + '/' + fileName
+          await parentDevice.createFile(filePath, Buffer.from(data))
           ExtensionContextStore.outputChannel.appendLine('Saved\n')
         } catch (error) {
           ExtensionContextStore.outputChannel.appendLine('Error saving\n')
@@ -132,8 +138,12 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
       }
     }
     // refresh device files command
-    await vscode.commands.executeCommand('xbitVsc.refreshDeviceFiles', target)
+    await vscode.commands.executeCommand('xbitVsc.refreshDeviceFiles', parentDevice)
   }
+
+  // public async handleDrag (source: vscode.TreeItem[]): Promise<void> {
+  //   console.log('handleDrag', source)
+  // }
 
   refresh (): void {
     this.treeCache = new Map()

@@ -32,11 +32,8 @@ export async function CreateDeviceFileCommand (parentNode: UsbDevice | UsbDevice
   // create a new file object with named file
   if (fileName !== undefined) {
     try {
-      if (/^\//.test(fileName)) {
-        fileName = basePath + fileName
-      } else {
-        fileName = basePath + '/' + fileName
-      }
+      fileName = basePath + '/' + fileName
+      fileName = fileName.replace(/\/+/g, '/')
       ExtensionContextStore.mute()
       await usbDevice.createFile(fileName)
       ExtensionContextStore.provider?.refresh()

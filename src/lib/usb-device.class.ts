@@ -50,7 +50,7 @@ export class UsbDevice extends vscode.TreeItem {
   xbitShell = false
   resultBuffer = ''
   treeNodes: Array<UsbDeviceFile | UsbDeviceFolder> = []
-
+  devPath = ''
   // overrides
   private readonly _dataHandlers: Map<string, (msg: DeviceCommandResponse) => void> = new Map()
   iconPath?: TreeItemIconPath | undefined
@@ -506,11 +506,7 @@ export class UsbDevice extends vscode.TreeItem {
     if (!this.connected || !this.replCapable || this.filesystem === null) {
       return await Promise.reject(new Error('Device is not connected'))
     }
-    await this.filesystem.createFile(filePath, data)
-
-    // add the new file to the tree so it's available right away
-    const uri = vscode.Uri.parse('memfs:' + this.uri.path + '/' + filePath)
-    const file = new UsbDeviceFile(this.context, uri, 'file', 0, this)
+    const file = await this.filesystem.createFile(filePath, data)
     this.treeNodes.push(file)
     return await Promise.resolve(file)
   }

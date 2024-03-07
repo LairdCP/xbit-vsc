@@ -62,18 +62,23 @@ export class UsbDeviceFileSystem {
   }
 
   // TODO change to writeFile command
-  async createFile (filePath: string, data?: Buffer): Promise<null> {
+  async createFile (filePath: string, data?: Buffer): Promise<UsbDeviceFile> {
     try {
       // if data is defined, write it to the file
+      let dataLength = 0
       if (data !== undefined) {
-        const newFile = new UsbDeviceFile(this.usbDevice.context, this.usbDevice.uri.with({ path: filePath }), 'file', data.length, this.usbDevice)
-        return await this.writeFileRawREPL(newFile, data)
+        dataLength = data.length
+      }
+      const uri = vscode.Uri.parse('memfs://' + this.usbDevice.uri.path + '/' + filePath)
+      const newFile = new UsbDeviceFile(this.usbDevice.context, uri, 'file', dataLength, this.usbDevice)
+      if (data !== undefined) {
+        await this.writeFileRawREPL(newFile, data)
       } else {
         this.opLock = CONST_CREATING_FILE
         await this.usbDevice.writeWait(`f = open('${filePath}', 'w')\r`, 1000)
         await this.usbDevice.writeWait('f.close()\r', 1000)
-        return await Promise.resolve(null)
       }
+      return await Promise.resolve(newFile)
     } catch (error) {
       return await Promise.reject(error)
     } finally {
@@ -152,7 +157,6 @@ export class UsbDeviceFileSystem {
     } catch (error) {
       return await Promise.reject(error)
     } finally {
-      console.timeEnd('rawwrite')
       this.writing = null
       this.opLock = false
       await this.usbDevice.ifc.sendExitRawMode()
