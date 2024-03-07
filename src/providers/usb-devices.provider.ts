@@ -133,6 +133,7 @@ export class UsbDevicesProvider implements vscode.TreeDataProvider<vscode.TreeIt
           await parentDevice.createFile(filePath, Buffer.from(data))
           ExtensionContextStore.outputChannel.appendLine('Saved\n')
         } catch (error) {
+          ExtensionContextStore.error(`Error saving new file: ${fileName}`, error, true)
           ExtensionContextStore.outputChannel.appendLine('Error saving\n')
         }
       }

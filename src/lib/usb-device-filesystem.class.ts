@@ -63,6 +63,10 @@ export class UsbDeviceFileSystem {
 
   // TODO change to writeFile command
   async createFile (filePath: string, data?: Buffer): Promise<UsbDeviceFile> {
+    if (filePath.length > 48) {
+      return await Promise.reject(new Error('Path Too Long. 48 characters max.'))
+    }
+
     try {
       // if data is defined, write it to the file
       let dataLength = 0
@@ -90,6 +94,11 @@ export class UsbDeviceFileSystem {
     if (this.opLock !== false) {
       return await Promise.reject(new Error(this.opLock as string))
     }
+
+    if (folderPath.length > 48) {
+      return await Promise.reject(new Error('Path Too Long. 48 characters max.'))
+    }
+
     this.opLock = CONST_CREATING_FILE
     try {
       await this.usbDevice.writeWait(`import os\ros.mkdir('${folderPath}')\r`, 1000)

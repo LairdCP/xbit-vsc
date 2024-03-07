@@ -26,7 +26,16 @@ export async function CreateDeviceFileCommand (parentNode: UsbDevice | UsbDevice
   }
 
   // create a new file object with unamed file
-  let fileName = await vscode.window.showInputBox()
+  let fileName = await vscode.window.showInputBox({
+    validateInput: text => {
+      if (basePath.length + text.length > 48) {
+        return 'File path too long'
+      } else {
+        return null
+      }
+    }
+  })
+
   // check if the file already exists with the same filename.
   // If it does, append a number to the filename?
   // create a new file object with named file
@@ -40,6 +49,7 @@ export async function CreateDeviceFileCommand (parentNode: UsbDevice | UsbDevice
       ExtensionContextStore.inform(`Created New File: ${fileName}`)
       return await Promise.resolve(null)
     } catch (error: unknown) {
+      ExtensionContextStore.error(`Error creating new file: ${fileName}`, error, true)
       return await Promise.reject(error)
     } finally {
       ExtensionContextStore.unmute()

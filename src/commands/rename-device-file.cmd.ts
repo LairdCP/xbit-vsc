@@ -14,7 +14,14 @@ export async function RenameDeviceFileCommand (usbDeviceFile: UsbDeviceFile | Us
 
   // create a new file object with unamed file
   const newFileName = await vscode.window.showInputBox({
-    value: usbDeviceFile.label
+    value: usbDeviceFile.label,
+    validateInput: text => {
+      if (usbDeviceFile.devPath.length + text.length > 48) {
+        return 'File path too long'
+      } else {
+        return null
+      }
+    }
   })
 
   if (newFileName !== undefined && ExtensionContextStore.provider !== undefined) {
