@@ -222,7 +222,9 @@
                   console.error('Error parsing uname', e)
                 }
               }
-              console.log('productDetails', productDetails)
+
+              // clear the dom
+              productDetailsList.innerHTML = ''
               // Add to the dom
               productDetails.forEach(detail => {
                 const li = document.createElement('li')
